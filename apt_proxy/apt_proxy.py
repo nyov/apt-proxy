@@ -797,8 +797,18 @@ class AptProxyClientGzip(AptProxyClient, protocol.ProcessProtocol):
         The problem only happends when we try to finish the process
         while decompresing.
         """
-        os.kill(self.process.pid, signal.SIGTERM)
-        self.process.connectionLost()
+        if hasattr(self, 'process'):
+            try:
+                os.kill(self.process.pid, signal.SIGTERM)
+                self.process.connectionLost()
+            except exceptions.OSError, Error:
+                import errno
+                (Errno, Errstr) = Error
+                if Errno != errno.ESRCH:
+                    log.debug('Passing OSError exception '+Errstr)
+                    raise 
+                else:
+                    log.debug('Threw away exception OSError no such process')
 
     def processEnded(self, reason=None):
         log.debug("Status: %d" %(self.process.status),'gzip')
