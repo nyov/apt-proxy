@@ -1,5 +1,12 @@
+apt-proxy-v2 (1.9.1+2pre1) experimental; urgency=low
+
+  * Fix hanging when 2 clients are connected simultaneously (Manuel)
+
+ -- Chris Halls <chris.halls@gmx.de>  Thu, 22 Aug 2002 16:39:46 +0200
+
 apt-proxy-v2 (1.9.1) experimental; urgency=low
 
+  * Remove support for twisted versions < 0.19 (Manuel)
   * Create logfile in init script if it does not already exist
   * Depend on python-apt (Thanks Mark Titorenko)
 
