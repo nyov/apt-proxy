@@ -1,4 +1,4 @@
-apt-proxy (1.9.5.6pre1) experimental; urgency=low
+apt-proxy (1.9.5.6pre2) experimental; urgency=low
 
   * Fix FTP code and clean up.
   * Remove usage of depreciated clientTCP.
@@ -9,6 +9,9 @@ apt-proxy (1.9.5.6pre1) experimental; urgency=low
   * Changed default port to 9999 to match apt-proxy v1.
   * Conflicts/Replaces: apt-proxy-v2 (<= 1.9.5)
   * Added UPGRADING notes.
+  * Customize apt-proxy-v2.conf based on ap1's apt-proxy.conf when upgrading.
+  * Disable apt-proxy v1's inetd line on upgrade, and reenable it on downgrade.
+  * Remove .pyc and .pyo files on remove.
 
  -- Manuel Estrada Sainz <ranty@debian.org>  Tue, 26 Nov 2002 22:44:41 +0100
 
