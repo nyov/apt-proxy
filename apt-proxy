@@ -5,13 +5,13 @@
 # Released under the GPL version 2 or later
 #	Fixed by Stephen Rothwell <sfr@canb.auug.org.au>
 #       Stuff by Martin Schwenke <martin@meltin.net>
-#	Maintained and packaged for Debian by Chris Halls <chris.halls@nikocity.de>
+#	Maintained and packaged for Debian by Chris Halls <chris.halls@gmx.de>
 #
 #	`perl!' -- Anton Blanchard
 #	`I was joking!' -- Paul Mackerras
 #	`Note that Rusty's name is at the top' -- Stephen Rothwell.
 #	`Perl!!!  Please?' -- Martin Schwenke
-APT_PROXY_VERSION=1.2.9.3
+APT_PROXY_VERSION=1.2.9.4
 
 # Default values
 APT_PROXY_LOGFILE=/dev/null
