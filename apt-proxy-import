@@ -2,15 +2,17 @@
 # Import package files from incoming directories
 #
 # Copyright 2002 Chris Halls <chris.halls@gmx.de>
+#                Manuel Estrada Sainz <ranty@debian.org>
 #           GPLv2 or higher
 #
 # Use: apt-proxy-import directory-name ...
 #
 PROGNAME=apt-proxy-import
-VERSION=0.1
+VERSION=0.2
 CONFIG_FILE=/etc/apt-proxy/apt-proxy.conf
 EXACT_MOVING=on
 FUZZY_MATCHING="packages fuzzy_packages"
+DPKG_NAME=/usr/bin/dpkg-name
 
 usage()
 {
@@ -33,7 +35,7 @@ line_feedback()
 	while read LINE
 	do
 		if [ -n "$VERBOSE" ] ;then
-			echo "$@"
+			echo "$LINE"
 		else
 			echo -n "."
 		fi
@@ -172,8 +174,13 @@ done
 
 . $CONFIG_FILE
 
+if [ ! -x "$DPKG_NAME" ];then
+  echo "$PROGNAME: $DPKG_NAME not found - please install package dpkg-dev"
+  exit 1
+fi
+
 if [ -z "$BACKENDS" ]; then
-  echo "No backend filelists found."
+  echo "$PROGNAME: No backend filelists found."
   exit 1
 fi
 
@@ -192,7 +199,8 @@ for directory in $@; do
 
     rm -rf "$APT_PROXY_CACHE/dpkg-name.links/"
     mkdir "$APT_PROXY_CACHE/dpkg-name.links/"
-    dpkg-name -k -s "$APT_PROXY_CACHE/dpkg-name.links" "$directory"/*.deb \
+    [ -z "$VERBOSE" ] && echo -n "getting file names"
+    $DPKG_NAME -k -s "$APT_PROXY_CACHE/dpkg-name.links" "$directory"/*.deb \
     	| line_feedback
 
     for file in "$APT_PROXY_CACHE"/dpkg-name.links/*; do
