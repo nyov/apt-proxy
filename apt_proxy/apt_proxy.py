@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from twisted.internet import reactor, defer, abstract, protocol
-from twisted.protocols import http, ftp
+from twisted.protocols import http, ftp, basic
 from twisted.web import static
 import os, stat, signal, fcntl, exceptions
 from os.path import dirname, basename
@@ -1068,8 +1068,6 @@ class FetcherFile(Fetcher):
     gzip_convert = re.compile(r"^Should not match anything$")
 
     request = None
-    laterID = None
-    file = None
     def if_modified(self, request):
         """
         Check if the file was 'modified-since' and tell the client if it
@@ -1093,6 +1091,9 @@ class FetcherFile(Fetcher):
             return
         Fetcher.insert_request(self, request)
         self.if_modified(request)
+        file = open(self.local_file,'rb')
+        fcntl.lockf(file.fileno(), fcntl.LOCK_SH)
+	basic.FileSender().beginFileTransfer(file, request).addCallback(self.apEnd).addCallback(lambda r: file.close())
         
     def activate(self, request):
         Fetcher.activate(self, request)
@@ -1107,33 +1108,17 @@ class FetcherFile(Fetcher):
             return
 
         self.size = request.local_size
-        self.file = open(self.local_file,'rb')
-        fcntl.lockf(self.file.fileno(), fcntl.LOCK_SH)
+        file = open(self.local_file,'rb')
+        fcntl.lockf(file.fileno(), fcntl.LOCK_SH)
         
         request.setHeader("Content-Length", request.local_size)
         request.setHeader("Last-modified",
                           http.datetimeToString(request.local_mtime))
-        self.readBuffer()
+	basic.FileSender().beginFileTransfer(file, self.request).addCallback(self.apEnd).addCallback(lambda r: file.close())
 
-    def readBuffer(self):
-        self.laterID = None
-        data = self.file.read(abstract.FileDescriptor.bufferSize)
-        self.apDataReceived(data)
-
-        if self.file.tell() == self.size:
-            self.apDataReceived("")
-            for req in self.requests:
-                req.finish()
-            self.apEnd()
-        else:
-            self.laterID = reactor.callLater(0, self.readBuffer)
-
-    def apEnd(self):
-        if self.laterID:
-            self.laterID.cancel()
-        if self.file:
-            self.file.close()
-        Fetcher.apEnd(self)
+    def apEnd(self, ignored=None):
+        if len(self.requests) == 0:
+            Fetcher.apEnd(self)
                                          
 class Backend:
     """
@@ -1384,7 +1369,7 @@ class Request(http.Request):
         Use post_convert and gzip_convert regular expresions of the Fetcher
         to gzip/gunzip file before and after download.
     
-        'serve_cached': this is somewhat of a hack only usefull for
+        'serve_cached': this is somewhat of a hack only useful for
         LoopbackRequests (See LoopbackRequest class for more information).
         """
         def fetch_real(result, dummyFetcher, cached, running):
@@ -1522,7 +1507,7 @@ class LoopbackRequest(Request):
         "We don't care for the data, just want to know then it is served."
         pass
     def finish(self):
-        "If he wanted to know, tell dady that we are served."
+        "If he wanted to know, tell daddy that we are served."
         if self.finish_cb:
             self.finish_cb()
         self.transport = None
@@ -1533,7 +1518,7 @@ class Channel(http.HTTPChannel):
     This class encapsulates a channel (an HTTP socket connection with a single
     client).
 
-    Each incomming request is passed to a new Request instance.
+    Each incoming request is passed to a new Request instance.
     """
     requestFactory = Request
     log_headers = None
@@ -1554,7 +1539,7 @@ class Channel(http.HTTPChannel):
         http.HTTPChannel.allContentReceived(self)
 
     def connectionLost(self, reason=None):
-        "If the connection is lost, notify all my requets"
+        "If the connection is lost, notify all my requests"
         __pychecker__ = 'unusednames=reason'
         for req in self.requests:
             req.connectionLost()

@@ -1,5 +1,7 @@
 apt-proxy (1.9.17+CVS) unstable; urgency=low
-
+  
+  * Applied patch provided by Paul Wagland <paul@kungfoocoder.org> to
+    improve of caching response speeds (closes: #267915)
   * Debconf Translations:
     - Czech (cs.po) by Jan Outrata <outrataj@upcase.inf.upol.cz>
       (closes: #266571)
