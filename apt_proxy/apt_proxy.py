@@ -373,6 +373,10 @@ class Fetcher:
         for req in self.requests[:]:
             self.remove_request(req)
 
+        import gc
+        #Cleanup circular references
+        reactor.callLater(5, gc.collect)
+
     def apEndCached(self):
         """
         Serve my requests from the cache.
