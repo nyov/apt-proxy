@@ -1,0 +1,32 @@
+# Use for a local mirror - remove the ftp1 http lines for the bits
+# your mirror contains.
+# deb file:/your/mirror/here/debian stable main contrib non-free
+# See sources.list(5) for more information, especial
+# Remember that you can only use http, ftp or file URIs
+
+# In brackets is the localpart, [XXX] means a directory $DEBROOT/XXX
+# Requests for http://localhost:PORT/XXX will go to [XXX]
+# You can have multiple deb lines with the same localpart
+
+deb [jdk] http://www.ibiblio.org/pub/linux/devel/lang/java/blackdown.org/debian woody non-free 
+
+#deb [debian] http://linux.eecs.umich.edu/debian potato main contrib non-free
+#deb [debian] http://linux.eecs.umich.edu/debian woody main contrib non-free
+#deb [debian] http://linux.eecs.umich.edu/debian sid main contrib non-free
+
+deb [debian] http://mirrors.kernel.org/debian potato main contrib non-free
+deb [debian] http://mirrors.kernel.org/debian woody main contrib non-free
+deb [debian] http://mirrors.kernel.org/debian sid main contrib non-free
+
+deb [debian] http://http.us.debian.org/debian potato main contrib non-free
+deb [debian] http://http.us.debian.org/debian woody main contrib non-free
+deb [debian] http://http.us.debian.org/debian sid main contrib non-free
+
+deb [non-US] http://debian.yorku.ca/debian/non-US potato/non-US main contrib non-free
+deb [non-US] http://debian.yorku.ca/debian/non-US woody/non-US main contrib non-free
+deb [non-US] http://debian.yorku.ca/debian/non-US sid/non-US main contrib non-free
+#deb [helixcode] http://red-carpet.ximian.com/debian stable main
+deb [evolution] http://spidermonkey.ximian.com/evolution-snapshots/distributions/Debian unstable main
+deb [security] http://security.debian.org/ stable/updates main contrib non-free
+deb [gabber] http://eliot.landrum.cx/packages woody main
+deb [gabber] http://eliot.landrum.cx/packages stable main

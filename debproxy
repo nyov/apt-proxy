@@ -1,0 +1,731 @@
+#!/usr/bin/env python2.2
+#
+# debproxy: A caching proxy server that understands Debian archives
+# (C) 2000-2001 Chris Lawrence <lawrencc@debian.org>
+# You may freely use and modify this software under the conditions of
+# version 2 of the GNU General Public License.
+#
+# It's getting there...
+#
+# To do:
+#  - Read parameters from an rc file
+#  - Logging
+#  - Some sort of locking
+#  - Some sort of threading or forking... we can do this once we have locking
+#  - rsync the Packages files (?)
+#  - Check packages against Packages/Sources file to make sure the file is
+#    intact before forwarding upstream
+#    (we should check the md5sum and refetch if needed)
+#  - Put packages in the "right place" locally and symlink them
+#    (i.e. oldest release, binary-all if possible)
+#    [package pools deal with this already, so not a high priority]
+#  - Handle non-structured mirrors (i.e. flat directories)
+#    (this may work already)
+#  - Unified repositories.
+#    (Basically, point your apt at / and you get one bigass Packages file.)
+#
+# Perhaps a separate process should do these things:
+#  - Auto-decrufting of old packages
+#  - Auto-download of packages files every day (cron job?)
+#  - Auto-prefetch of packages based on past fetches, priority
+
+__version__ = "0.1"
+MIRRORLOC = "/sda1/debian"
+
+import SocketServer, md5, re, glob
+import os, SimpleHTTPServer, BaseHTTPServer, sys, urlparse, urllib
+import posixpath, httplib, rfc822, time, shlex, whrandom, gzip
+import cStringIO, socket, errno
+
+PORT  = 9999  # Port to listen on
+SLEEP = 0.1   # Time to wait between attempts to retrieve the URL, in sec
+BYTES = 16384 # How many bytes to push through at once
+
+DEBUGLEVEL = 0 # Debugging level for httplib.HTTPConnection
+
+def parse_apt_sources(file):
+    mirrors = []
+
+    if os.path.exists(file):
+        for line in open(file).xreadlines():
+            line = line.strip()
+            bits = line.split(' ')
+            type = bits[0]
+            if type != 'deb' and type != 'deb-src':
+                continue
+
+            local = bits[1]
+            if local[0] == '[' and local[-1] == ']':
+                local = local[1:-1]
+            else:
+                print 'localpart for '+local+' missing'
+                break
+
+            url, dist = bits[2:4]
+            if dist[-1] != "/":
+                sects = tuple(bits[4:])
+            else:
+                sects = None
+
+            mirrors.append((local, type, url, dist, sects))
+
+    return mirrors
+
+mirrors = parse_apt_sources("sources.list")
+archives = map(lambda x: x[0], mirrors)
+#print archives
+
+os.chdir(MIRRORLOC)
+
+def parse_packages_file(packages):
+    files = []
+    bpackre = re.compile(r'^Filename: ((?:pool|dists)/.+)$', re.M | re.I)
+    md5re = re.compile(r'^MD5Sum: (.*)$', re.M | re.I)
+    sizere = re.compile(r'^Size: (.*)$', re.M | re.I)
+    
+    try:
+        packfile = gzip.open(packages+'.gz').read()
+    except IOError:
+        try:
+            packfile = open(packages).read()
+        except IOError, x:
+            if x.errno == 2: return []
+            raise
+        
+    packs = packfile.split('\n\n')
+    del packfile
+
+    for package in packs:
+        if not package: continue
+        
+        filename = md5sum = size = None
+        ob = bpackre.search(package)
+        if ob:
+            filename = ob.group(1)
+
+        ob = md5re.search(package)
+        if ob:
+            md5sum = ob.group(1)
+
+        ob = sizere.search(package)
+        if ob:
+            try:
+                size = int(ob.group(1))
+            except ValueError:
+                print 'Invalid size for '+filename
+                pass
+
+        if filename and md5sum and size is not None:
+            files.append( (filename, md5sum, size) )
+
+    #print len(packs), len(files)
+    return files
+
+def parse_sources_file(sources):
+    files = []
+    spackre = re.compile(r'^Directory: ((?:pool|dists)/.+)$', re.M | re.I)
+    spackre2 = re.compile(r'^Files:$', re.M | re.I)
+
+    try:
+        packfile = gzip.open(sources).read()
+    except IOError, x:
+        if x.errno == 2: return []
+        raise
+    
+    packs = packfile.split('\n\n')
+    del packfile
+
+    for package in packs:
+        ob = spackre.search(package)
+        ob2 = spackre.search(package)
+        if ob and ob2:
+            dirname = ob.group(1)
+            #print dirname
+            
+            pos = ob2.end()
+            rest = package[pos+1:]
+            filelist = rest.split('\n')
+            for name in filelist:
+                name = name.strip()
+                if not name: continue
+                try:
+                    md5sum, size, filename = name.split()
+                    size = int(size)
+                    filename = dirname+'/'+name.split()[2]
+                    files.append( (filename, md5sum, size) )
+                    #print filename
+                except:
+                    pass
+                
+    #print len(packs), len(files)
+    return files
+
+def check_integrity(localdir, packagefile, files):
+    missing = []
+    bogus = []
+    found = []
+    
+    print 'Iterating'
+    for (file, md5sum, size) in files:
+        file = os.path.join(localdir, file)
+        if not os.path.exists(file):
+            missing.append(file)
+        elif os.stat(file)[6] != size:
+            bogus.append( (file, 'Size mismatch') )
+        else:
+            md5ob = md5.new(open(file).read())
+            sum = md5ob.hexdigest()
+            if sum != md5sum:
+                bogus.append( (file, 'MD5Sum mismatch') )
+            else:
+                found.append(file)
+            del md5ob
+
+    print 'Archive report for %s' % packagefile
+    if len(missing):
+        print '%d files missing from local archive' % len(missing)
+    if len(bogus):
+        print '%d files are bogus' % len(bogus)
+        for file, reason in bogus:
+            if reason == 'MD5Sum mismatch':
+                print 'Deleting', file, '(bogus md5sum)'
+                os.unlink(file)
+
+    if len(found):
+        print '%d files are OK' % len(found)
+
+    return found
+
+def check_binary_integrity(localdir, packagefile):
+    print 'Parsing', localdir, packagefile
+    files = parse_packages_file(packagefile)
+
+    return check_integrity(localdir, packagefile, files)
+
+def check_source_integrity(localdir, packagefile):
+    print 'Parsing', localdir, packagefile
+    files = parse_sources_file(packagefile)
+
+    return check_integrity(localdir, packagefile, files)
+
+def check_packages_integrity(localdir, dist, sect=''):
+    if sect:
+        pkgdir = '%s/dists/%s/%s/binary-' % (localdir, dist, sect)
+        srcdir = '%s/dists/%s/%s/source/' % (localdir, dist, sect)
+        addarch = 1
+    else:
+        pkgdir = '%s/%s' % (localdir, dist)
+        srcdir = pkgdir
+        addarch = 0
+
+    foundbin = []
+    foundsrc = []
+    
+    if addarch:
+        for archdir in glob.glob(pkgdir+'*'):
+            x = check_binary_integrity(localdir, archdir+'/Packages')
+            foundbin = foundbin + x
+    else:
+        foundbin = check_binary_integrity(localdir, pkgdir+'Packages')
+
+    foundsrc = check_source_integrity(localdir, srcdir+'Sources.gz')
+    return (foundbin, foundsrc)
+
+def check_archive_integrity():
+    foundbin = {}
+    foundsrc = {}
+    
+    for (local, type, url, dist, sects) in mirrors:
+        if not sects:
+            (bin, src) = check_packages_integrity(local, dist)
+            foundbin[local] = bin+foundbin.get(local, [])
+            foundsrc[local] = src+foundsrc.get(local, [])
+            continue
+        
+        for sect in sects:
+            (bin, src) = check_packages_integrity(local, dist, sect)
+            foundbin[local] = bin+foundbin.get(local, [])
+            foundsrc[local] = src+foundsrc.get(local, [])
+
+    for (localdir, files) in foundbin.items():
+        # Find all .debs under this directory
+        # find alldebs - files
+        # remove those files
+        pass
+
+# Combine multiple file objects into one for writing... probably should
+# be called Tee or something...
+class Multiplex:
+    def __init__(self, *fds):
+        self.fds = fds
+
+    def write(self, str):
+        if not self.fds: return
+        for fd in self.fds:
+            fd.write(str)
+
+    def flush(self):
+        if not self.fds: return
+        for fd in self.fds:
+            fd.flush()
+
+    def close(self):
+        if not self.fds: return
+        for fd in self.fds:
+            fd.close()
+
+class ProxyHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+    def setup(self):
+        SimpleHTTPServer.SimpleHTTPRequestHandler.setup(self)
+        
+        self.server_version = "debproxy/"+__version__
+        self.protocol_version = "HTTP/1.1"
+        self.conns = {}
+
+        for mirror in mirrors:
+            key, type, url = mirror[:3]
+            host = urlparse.urlparse(url)[1]
+
+            if not self.conns.has_key(key):
+                self.conns[key] = []
+
+            found = 0
+            for bits in self.conns[key]:
+                if host == bits[0]: found = 1
+
+            if not found:
+                # print 'Adding connection for', host
+                conn = httplib.HTTPConnection(host)
+                conn.set_debuglevel(DEBUGLEVEL)
+                self.conns[key].append( (host, url, conn) )
+
+        self.extensions_map.update( { '.deb' : 'application/x-debian-package',
+                                      '.gz' : 'application/gzip' } )
+
+    def acceptable_connections(self, archive, path):
+        return self.conns.get(archive, [])
+
+    def send_bytes(self, fin, fout=None, localfile=None, bs=BYTES, start=None,
+                   end=None, buffer=''):
+        pos = 0
+        if fout and start < len(buffer):
+            bit = buffer[start:end+1]
+            try:
+                fout.write(bit)
+            except IOError, x:
+                if x.errno == errno.EPIPE:
+                    #print 'Broken Pipe'
+                    pass
+            pos = start + len(bit)
+
+        while 1:
+            try:
+                stuff = fin.read(BYTES)
+            except httplib.IncompleteRead:
+                #print 'IncompleteRead'
+                break
+            if not stuff: break
+            if localfile:
+                localfile.write(stuff)
+
+            if fout:
+                l = len(stuff)
+                #print start, pos, end
+                s = max(start - pos, 0)
+                e = min(end - pos + 1, l)
+                # print os.getpid(), 'sending bytes', s, e, l
+                try:
+                    fout.write(stuff[s:e])
+                    sys.stdout.write('.')
+                    sys.stdout.flush()
+                except IOError, x:
+                    if x.errno == errno.EPIPE:
+                        #print 'Broken Pipe'
+                        sys.stdout.write('+')
+                        sys.stdout.flush()
+                        pass
+                pos = pos + l
+        sys.stdout.write('\n')
+
+    def snarf_if_needed(self, pathname, localpath, archive, nosend=0):
+        close_connection = self.close_connection
+        send_nada = 0
+        
+        pathname = posixpath.normpath(pathname)
+        filepart = os.path.basename(pathname)
+
+        print '-'*70
+        print 'HTTP request from', self.client_address,\
+              self.command,  self.request_version
+
+        if_mod_since = self.headers.getdate_tz('If-Modified-Since')
+        print 'IMS:', if_mod_since, self.headers.get('If-Modified-Since')
+        req_ifrange = send_range = None
+
+        if if_mod_since:
+            if_mod_since = int(rfc822.mktime_tz(if_mod_since))
+            print '*** If-Modified-Since:', rfc822.formatdate(if_mod_since)
+        else:
+            range = self.headers.get('Range')
+            try:
+                type, range = range.split('=', 1)
+                ranges = range.split(',')
+            except:
+                type, ranges = 'crud', []
+                
+            if type == 'bytes' and len(ranges) == 1:
+                # We only tolerate single ranges at the moment
+                start, end = ranges[0].split('-')
+                try:
+                    if start and end:
+                        start, end = int(start), int(end)
+                    elif start:
+                        start, end = int(start), None
+                    elif end:
+                        start, end = None, -int(end)
+                    else:
+                        start = end = None
+
+                    send_range = (start, end)
+                except ValueError:
+                    send_range = None
+                
+                ifrange = self.headers.getdate_tz('If-Range')
+                if send_range and ifrange:
+                    req_ifrange = int(rfc822.mktime_tz(ifrange))
+                    print '*** If-Range:', send_range, \
+                          rfc822.formatdate(req_ifrange)
+                else:
+                    print '*** Range:', send_range
+                    req_ifrange = 0
+
+        if not if_mod_since and not send_range:
+            print '*** Requested the whole enchilada.'
+
+        # We need some intelligence about dists and binary-all here
+        dirpart = os.path.dirname(localpath)
+        if not os.path.exists(dirpart):
+            os.makedirs(dirpart)
+
+        local_exists = os.path.exists(localpath)
+        if local_exists:
+            stinfo = os.stat(localpath)
+            lsz, local_mtime = stinfo[6], int(stinfo[8])
+            loctimestr = rfc822.formatdate(local_mtime)
+            rangestr = 'bytes=%d-' % (lsz-1)
+            print '%s Here: %s/%d' % (filepart, loctimestr, lsz)
+        else:
+            lsz, local_mtime = 0, 0
+            rangestr = ''
+            print '%s: No local file.' % filepart
+            
+        wfile = self.wfile
+        if self.command == 'HEAD':
+            wfile = None
+
+        acceptable = self.acceptable_connections(archive, pathname)
+        for host, url, conn in acceptable:
+            if url[-1] == '/':
+                url = url[:-1]
+            httppath = url + '/' + pathname
+            print 'Trying '+httppath
+
+            (scheme, netloc, netpath, parms, q, frag) = \
+                     urlparse.urlparse(httppath)
+
+            # We need to be able to handle ftp eventually
+            if scheme != 'http':
+                continue
+
+            if not conn:
+                conn = httplib.HTTPConnection(host)
+                conn.set_debuglevel(DEBUGLEVEL)
+
+            headers = {'User-Agent' : self.server_version}
+            if local_exists:
+                headers.update({
+                    'If-Range' : loctimestr,
+                    'Range' : rangestr
+                    })
+            print headers
+            conn.request('GET', netpath, headers=headers)
+
+            response = None
+            while not response:
+                try:
+                    response = conn.getresponse()
+                except httplib.ResponseNotReady:
+                    time.sleep(SLEEP)
+                except httplib.BadStatusLine, x:
+                    print 'Bad Status Line:', x.line
+                    conn.close()
+
+            print response.msg.headers
+            try:
+                text = response.getheader('Last-Modified')
+                last_mod = int(rfc822.mktime_tz(rfc822.parsedate_tz(text)))
+                timestr = rfc822.formatdate(last_mod)
+                expires = response.getheader('Expires')
+            except:
+                last_mod = 0
+                timestr = text = expires = ''
+
+            if response.status in (404, 410):
+                print '%s: missing (%d %s)' % (conn.host, response.status,
+                                               response.reason)
+                response.close()
+                continue
+            elif response.status not in (200, 203, 206, 304):
+                print '%s: odd status (%d %s)' % (conn.host, response.status,
+                                                  response.reason)
+                print response.msg.headers
+                response.close()
+                continue
+
+            length = response.getheader('content-length')
+            if length and not response.chunked:
+                try:
+                    rsz = int(length)
+                except ValueError:
+                    rsz = None
+            else:
+                rsz = None
+                
+            if not rsz:
+                print 'Something fishy going on'
+                print response.reason, response.msg.headers
+                response.close()
+                continue
+            
+            print '%s %s: %d %s/%d' % (filepart, conn.host,
+                                       response.status, timestr, rsz)
+            if text != timestr:
+                print "*** GOT %s from server!" % text
+                
+            if local_exists and ((response.status == 206 and rsz == 1) or
+                                 response.status == 304):
+                response.close()
+                print 'Serving from cache (%s).' % localpath
+                if last_mod:
+                    os.utime(localpath, (time.time(), last_mod))
+                else:
+                    local_mtime = last_mod
+
+                start, end = 0, lsz-1
+                length = lsz
+                if send_range and ((not req_ifrange) or
+                                   req_ifrange <= int(local_mtime)):
+                    f = open(localpath)
+                    start, end = send_range
+
+                    if not end:
+                        end = lsz-1
+                    elif end < 0:
+                        print lsz, end
+                        start = lsz+end
+                        end = lsz-1
+
+                    if start >= end:
+                        print 'Not sending anything.'
+                        self.send_response(304)
+                        length, end = 0, lsz
+                        f = None
+                    else:
+                        range = 'bytes %d-%d/%d' % (start, end, lsz)
+                        length = end-start+1
+                        print 'Sending partial response:', range, length
+                        self.send_response(206, "Partial content follows")
+                        self.send_header('Content-Range', range)
+                elif (if_mod_since and if_mod_since >= local_mtime):
+                    f = length = None
+                    print 'Not sending anything.'
+                    self.send_response(304)
+                else:
+                    print if_mod_since, local_mtime
+                    f = open(localpath)
+                    self.send_response(200)
+                    print 'Sending %d bytes.' % length
+
+                if length is not None:
+                    self.send_header("Content-Length", str(length))
+                if expires:
+                    self.send_header("Expires", expires)
+                self.send_header('Accept-Ranges', 'bytes')
+                self.send_header("Content-Type",
+                                 self.guess_type(pathname))
+                self.send_header("Last-Modified",
+                                 rfc822.formatdate(local_mtime))
+                self.end_headers()
+
+                if f and wfile:
+                    print 'Sending bytes %d-%d' % (start, end)
+                    self.send_bytes(fin=f, fout=wfile, start=start,
+                                    end=end)
+                    print 'Send complete.'
+                return None
+
+            # If not changed, send what we have
+            # If getting partial content, append then send
+            # If getting full content, just send
+            localtemppath = localpath+'.partial'
+            if os.path.exists(localtemppath):
+                # Do something clever here instead of overwriting it
+                pass
+                
+            if response.status in (200, 203, 206):
+                length = 0
+
+                start, end = 0, rsz-1
+                if not nosend:
+                    if send_range and ((not req_ifrange) or
+                                       req_ifrange <= local_mtime or
+                                       not local_mtime):
+                        start, end = send_range
+
+                        if not end:
+                            end = rsz-1
+                        elif end < 0:
+                            start = rsz+end
+                            end = rsz-1
+
+                        self.send_response(206, 'Partial content follows')
+                        self.send_header('Content-Range', 'bytes %d-%d/%d' %
+                                         (start, end, rsz))
+                        length = end-start+1
+                        print 'Sending partial content.'
+                    elif (if_mod_since and if_mod_since >= last_mod):
+                        send_nada = 1
+                        self.send_response(304)
+                        print 'Not sending anything.'
+                        wfile = None
+                    else:
+                        self.send_response(200)
+                        print 'Sending whole file.'
+
+                    if wfile:
+                        self.send_header("Content-Type",
+                                         self.guess_type(pathname))
+                        self.send_header("Last-Modified",
+                                         rfc822.formatdate(last_mod))
+                        self.send_header('Accept-Ranges', 'bytes')
+
+                f = open(localtemppath, 'wb')
+                length = length or rsz
+                if response.status == 206:
+                    buffer = open(localpath, 'rb').read()[:-1]
+                    f.write(buffer[:-1])
+                    print "Appending what we don't have:",\
+                          response.getheader('content-range')
+                else:
+                    buffer = ''
+                    print "Fetching file fresh (%s)." % localtemppath
+
+                if not send_nada:
+                    self.send_header("Content-Length", str(length))
+                if expires:
+                    self.send_header("Expires", expires)
+                self.end_headers()
+
+                if wfile:
+                    print 'Sending bytes %d-%d (%d bytes)' % (start, end,
+                                                              length)
+                self.send_bytes(fin=response, fout=wfile, localfile=f,
+                                buffer=buffer, start=start, end=end)
+
+                response.close()
+                f.close()
+                if os.path.exists(localtemppath):
+                    print 'Moving %s into place.' % filepart
+                    if last_mod:
+                        os.utime(localtemppath, (time.time(), last_mod))
+                    # Move new file into place
+                    os.rename(localtemppath, localpath)
+
+                return None
+            else:
+                if not nosend:
+                    self.send_error(response.status)
+                response.close()
+                return None
+
+        # See if we can just serve something we have - and we
+        # don't care about the niceties here yet
+        #
+        # We send a "not authoritative" header to play nicely
+        if os.path.exists(localpath):
+            stinfo = os.stat(localpath)
+            lsz, local_mtime = stinfo[6], int(stinfo[8])
+            loctimestr = rfc822.formatdate(local_mtime)
+
+            self.send_response(203)
+            self.send_header("Content-Length", str(lsz))
+            self.send_header("Content-type", self.guess_type(pathname))
+            self.send_header("Last-Modified", rfc822.formatdate(local_mtime))
+            self.end_headers()
+            
+            return open(localpath)
+            
+        print 'No dice.'
+	try:
+            self.send_error(404, "File not found")
+	except IOError:
+	    pass
+        return None
+
+    def send_head(self, send_nada=0):
+        """Common code for GET and HEAD commands.
+
+        This sends the response code and MIME headers.
+
+        Return value is either a file object (which has to be copied
+        to the outputfile by the caller unless the command was HEAD,
+        and must be closed by the caller under all circumstances), or
+        None, in which case the caller has nothing further to do.
+
+        """
+        # Reap any children... yes, this is a lame place to do it.  Sue me.
+        try:
+            os.waitpid(-1, os.WNOHANG)
+        except OSError:
+            pass
+
+        # Get rid of any abnormalities in the path
+        self.path = posixpath.normpath('/'+urllib.unquote(self.path))
+        bits = self.path.split('/')
+        bits = filter(None, bits)
+        if not bits:
+            self.send_error(403, "Must specify archive in first component.")
+            return None
+
+        # Archive selector
+        archive = bits[0]
+        if archive not in archives:
+            self.send_error(403, "Must specify archive in first component.")
+            return None
+
+        pathtouse = '/'.join(bits[1:])
+        path = self.translate_path(posixpath.join(archive, pathtouse))
+        if os.path.isdir(path):
+            # Need dir listing support?
+            self.send_error(403, "Directory listing not supported")
+            return None
+
+        #bits = parse_distinfo(pathtouse)
+        #print pathtouse
+        #release, section, arch = bits
+
+        return self.snarf_if_needed(pathtouse, path, archive)
+            
+
+class ForkingHTTPServer(SocketServer.ForkingMixIn,
+                        BaseHTTPServer.HTTPServer): pass
+
+# Disable forking by doing this
+ForkingHTTPServer = BaseHTTPServer.HTTPServer
+
+if __name__ == '__main__':
+    # check_archive_integrity()
+    
+    print "debproxy serving on", PORT
+    serv = ForkingHTTPServer( ("", PORT), ProxyHTTPRequestHandler)
+    serv.serve_forever()
