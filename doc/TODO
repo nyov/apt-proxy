@@ -4,10 +4,6 @@
 #####################################
 
 Mirror house-keeping:support apt-proxy-import operations again (DONE?)
-	Consider using apt-listchanges' python modules to parse the .deb files
-	Or the old dpkg-python (This I would have to adopt and fix first)
-		Or even get the usefull stuff of apt-listchanges into
-			dpkg-python and get it up to date.
 	Consider using a little heuristic for unknown versions.
 		Look for all versions of the package on the listings and move
 		it to the path of the version just on top of it.

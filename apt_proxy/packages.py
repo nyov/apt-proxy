@@ -15,43 +15,27 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import apt_pkg, sys, time, os, stat
+import apt_pkg, apt_inst, sys, time, os, stat
 from os.path import dirname, basename
-import re, signal, shelve, shutil
+import re, signal, shelve, shutil, fcntl
 from twisted.internet import process
-import apt_proxy, copy
+import apt_proxy, copy, UserDict
 
-class AptDpkgInfo:
+class AptDpkgInfo(UserDict.UserDict):
     """
-    Gets package name and version from a .deb file.
+    Gets control fields from a .deb file.
 
-    self.version
-    self.package
-    self.failed: evaluates to true if the action failed.
+    And then behaves like a regular python dictionary.
+
+    See AptPackages.get_mirror_path
     """
-    version_re = re.compile(r'^ Version: *([^ ]*)$', re.M)
-    package_re = re.compile(r'^ Package: *([^ ]*)$', re.M)
-
-    version = None
-    package = None
-    failed = 0
+    data = {}
     def __init__(self, filename):
-        self.stdout = os.popen('/usr/bin/dpkg --info %s'%(filename), 'r')
-        self.data = ''
-        while 1:
-            new_data = self.stdout.read()
-            if new_data == '':
-                break
-            self.data += new_data
-
-        self.stdout.close()
-        if self.data == '':
-            self.failed=1
-            return
-        self.version = (self.version_re.search(self.data).expand(r'\1'))
-        self.package = (self.package_re.search(self.data).expand(r'\1'))
-        if (not self.version) or (not self.package):
-            self.failed=1
+        self.control = apt_inst.debExtractControl(open(filename))
+        for line in self.control.split('\n'):
+            if line.find(': ') != -1:
+                key, value = line.split(': ', 1)
+                self.data[key] = value
 
 class AptPackagesServer:
     """
@@ -237,7 +221,7 @@ class AptPackages:
         self.load()
         server = self.server_process
         server.writeCode('print get_mirror_path("%s", "%s")'
-                             %(info.package,info.version))
+                             %(info['Package'],info['Version']))
         ans = server.readAnswer()
         return ans
 
