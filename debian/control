@@ -1,25 +1,17 @@
 Source: apt-proxy
 Section: admin
 Priority: extra
-Maintainer: Chris Halls <chris.halls@nikocity.de>
+Maintainer: Chris Halls <chris.halls@gmx.de>
+Uploaders: Manuel Estrada Sainz <ranty@debian.org>
 Standards-Version: 3.5.6
 Build-Depends-Indep: debhelper (>> 3.0.0)
 
 Package: apt-proxy
 Architecture: all
-Depends: wget | rsync, grep-dctrl, tcpd, netbase, ash
+Depends: rsync, grep-dctrl, tcpd, netbase
 Recommends: apt
-Description: Debian archive proxy and partial mirror builder
- apt-proxy automatically builds a Debian HTTP mirror based
- on requests which pass through the proxy.  It's great for
- multiple Debian machines on the same network with a slower
- internet link.
- .
- The archive is automatically kept up to date using http,
- ftp or rsync.  Cache cleaning of unused and old versions 
- is also configurable.  You can also import the contents of 
- your apt cache into the archive using apt-proxy-import.
- . 
- For more information, see the apt-proxy homepage at
- http://apt-proxy.sourceforge.net
-
+Description: Debian automatic partial mirror builder
+ apt-proxy is a script to build up a Debian HTTP mirror
+ based on requests which pass through the proxy. It's
+ great for multiple Debian machines behind a slow link.
+ The archive is kept up to date using rsync.
