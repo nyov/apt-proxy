@@ -6,6 +6,10 @@ TODO list for apt-proxy
   people who are using alternative servers would file a wishlist bug containing
   their apt-proxy.conf, and I'll integrate it into the distribution.
 
-- Work through the remaining bugs in the BTS.  Keep those reports coming in folks!
+- Work through the remaining wishlist bugs in the BTS.  Keep those reports
+  coming in folks!
+
+- Rewrite in perl.  Join the apt-proxy-user list or #apt-proxy on IRC if you
+  want to be involved!
 
 Chris Halls, Feb 2002
