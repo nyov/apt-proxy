@@ -3,7 +3,7 @@ apt-proxy (1.9.26) unstable; urgency=low
   * Add Depends to disallow upgrade of python2.3 without
     upgrade of twisted.  Closes: #294626
   * init script: wait longer for apt-proxy to stop, thanks
-    Herbert Thielen for the patch. Closes: #284423
+    Herbert Thielen for the patch. Closes: #284432
 
  -- Chris Halls <halls@debian.org>  Tue, 22 Feb 2005 23:52:09 +0000
 
