@@ -2,7 +2,7 @@
 
 #DEBHELPER#
 
-PYVER=2.1
+PYVER=2.2
 NAME=apt-proxy-v2
 APTPROXY_USER=aptproxy
 APTPROXY_LOGFILE=/var/log/$NAME.log
