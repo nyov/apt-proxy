@@ -40,6 +40,10 @@ install-stamp: build-stamp
 	#install -g root -o root -m 644 \
 	#	apt-proxy.conf debian/apt-proxy/etc/apt-proxy/apt-proxy.conf
 	
+	# Temporary rename to apt-proxy.conf to make it easier to
+	# upgrade/downgrade between v1 and v2.
+	mv $(PKGDIR)/etc/apt-proxy/apt-proxy.conf $(PKGDIR)/etc/apt-proxy/apt-proxy-v2.conf
+
 	touch install-stamp
 
 binary-arch: build install
