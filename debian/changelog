@@ -1,14 +1,14 @@
 apt-proxy (1.9.18+CVS) UNRELEASED; urgency=low
 
-  * Fix format in apt-proxy.conf(5). (closes: #272153)
+  * Fix format in apt-proxy.conf(5). (closes: #272153) (Otavio)
   * Add default to 30 in timeout parameter when importing from version
-    1. (closes: #266776, #266567)
-  * Allow listening on multiple IP addresses. (closes: #266453)
+    1. (closes: #266776, #266567) (Otavio)
+  * Allow listening on multiple IP addresses. (closes: #266453) (Otavio)
   * Change to wait by the _server_ closes the connection, this solve the
     hang while using with wget and in that case, debootstrap. Thanks to
-    Chet Murthy <chetsky@gmail.com> by the patch.
+    Chet Murthy <chetsky@gmail.com> by the patch. (Otavio)
   * Change default apt-proxy.conf file to use debian-non-US instead of
-    non-US. (closes: #273973, #267427)
+    non-US. (closes: #273973, #267427) (Otavio)
   * Disable pipelining by default (disable_pipelining=1) until the pipelining
     logic is more sensible and does not attempt multiple connections to
     the same backend server (Chris)
