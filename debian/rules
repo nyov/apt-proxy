@@ -8,12 +8,13 @@ build: build-stamp
 build-stamp:
 	dh_testdir
 
-	# $(MAKE) apt-proxy-import.8
+	$(MAKE) -C doc apt-proxy-import.8
 	touch build-stamp
 
 clean:
 	dh_testdir
 	dh_testroot
+	$(MAKE) -C doc clean
 	rm -f build-stamp install-stamp AptProxy-shutdown.tap
 	find . -name "*.pyc" |xargs -r rm
 	dh_clean
