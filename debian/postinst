@@ -60,7 +60,7 @@ case "$1" in
 	    fi
 	fi
 	# We changed the database backend so rebuild all database.
-	if dpkg --compare-version "$PREV" lt-nl 1.9.21; then
+	if dpkg --compare-versions "$PREV" lt-nl 1.9.22; then
 	    if [ -d /var/cache/apt-proxy/.apt-proxy ]; then
 		echo "Removing previous database as the format has change."
 		rm -rf /var/cache/apt-proxy/.apt-proxy
