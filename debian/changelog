@@ -5,8 +5,12 @@ apt-proxy (1.2.9.3) sourceforge; urgency=low
   * If a file to be downloaded was not newer, wget would not download a file
     and the apt client would receive a zero length file.
   * Return an error if a file does not exist on any server
+  * Add fuzzy matching to apt-proxy-import by ranty, which enables it to guess
+    where a .deb file should go even if the Packages files do not contain the
+    exact version.  Only works for new style pool directories, and is not yet
+    documented.
 
- -- Chris Halls <chris.halls@nikocity.de>  Mon, 11 Mar 2002 15:42:05 +0100
+ -- Chris Halls <chris.halls@nikocity.de>  Mon, 11 Mar 2002 17:14:35 +0100
 
 apt-proxy (1.2.9.2) sourceforge; urgency=low
 
