@@ -37,7 +37,7 @@ class AptDpkgInfo(UserDict.UserDict):
             import traceback
             traceback.print_exc()
             log.msg("Had problems reading: %s"%(filename), 'AptDpkgInfo')
-            return
+            raise
         for line in self.control.split('\n'):
             if line.find(': ') != -1:
                 key, value = line.split(': ', 1)

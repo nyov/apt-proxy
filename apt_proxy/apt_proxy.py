@@ -1365,8 +1365,9 @@ class Factory(protocol.ServerFactory):
             if not os.path.exists(cache_dir +'/'+ uri):
                 packages.remove(uri)
             else:
-                info[uri] = AptDpkgInfo(cache_dir +'/'+ uri)
-                if not info[uri].has_key('Version'):
+                try:
+                    info[uri] = AptDpkgInfo(cache_dir +'/'+ uri)
+                except SystemError:
                     log.msg("Found problems with %s, aborted cleaning"%(uri),
                             'max_versions')
                     return
