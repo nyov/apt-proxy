@@ -298,7 +298,6 @@ def check_archive_integrity():
 
         if not sects:
             id = local+'-'+dist
-            print id
             if checked.get(id): continue
             checked[id] = 1
             (bin, src) = check_packages_integrity(local, dist)
@@ -308,7 +307,6 @@ def check_archive_integrity():
         
         for sect in sects:
             id = local+'-'+dist+'-'+sect
-            print id
             if checked.get(id): continue
             checked[id] = 1
             (bin, src) = check_packages_integrity(local, dist, sect)
