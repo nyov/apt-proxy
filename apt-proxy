@@ -488,7 +488,7 @@ find_and_cat()
 
 # For all the requests in a particular session
 while true; do
-    unset DO_CLEANUP SIZE_FILE IMS_DATE UNCOMPRESS REQUEST
+    unset DO_CLEANUP SIZE SIZE_FILE IMS_DATE UNCOMPRESS REQUEST
 
     while read PREFIX LINE
     do
