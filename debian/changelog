@@ -1,3 +1,40 @@
+apt-proxy (1.2.0-1) unstable; urgency=low
+
+  * New upstream release
+    - New config file paramter, MAX_VERSIONS, to limit the number of package
+      versions to keep in the cache directory.  Thanks to Martin Schwenke.
+    - New parameters for apt-proxy for runtime setting of config file and log
+      file locations.  Thanks to Gerhard Muntingh. (closes: #77929)
+    - Use the package filelists logic from Martin Schwenke to send the size of
+      package files before downloading, meaning connection keep-alive logic can
+      be used.
+    - Fix the problem of files being corrupted during streaming (often seen as
+      a MD5 sum error which would go away when the file was requested from
+      apt-proxy again), by switching back to using dd instead of tail.
+    - Check for corrupted .deb and .gz files in the cache before sending
+      them to the client.
+    - Bye bye .diff: The Sourceforge project is now up to date and includes the
+      debian packaging.
+  * Really rename main archive name, not just put it in the changelog
+  * Add logrotate script
+  * Clean up debian/rules and use DH_COMPAT=3
+  * If setting up apt-proxy for the first time, do the following:
+    - Create a user, aptproxy (closes: #99259)
+    - Add an entry to inetd.conf, without disabling it (closes: #81746)
+    - Create a log file owned by the user (closes: #109308)
+    This is currently first-install only.  I plan to introduce an upgrade path
+    for existing users using debconf when I have time.
+  * Move installation instructions that are no longer necessary when using the
+    packge into a seperate file, INSTALL. 
+  * Remove extra manual installation instructions that are no longer necessary
+    from README (closes: #132439)
+  * Merge remaining information from README about finding rsync servers into
+    apt-proxy.conf manpage.
+  * Add missing depdendency on gzip
+  * Add UK rsync servers to default apt-proxy.conf, thanks to Simon Huggins.
+
+ -- Chris Halls <chris.halls@nikocity.de>  Mon,  4 Feb 2002 13:24:24 +0100
+
 apt-proxy (1.1.2-2) unstable; urgency=low
 
   * Add updated README to .deb, thanks to Thorsten Gunkel for pointing
