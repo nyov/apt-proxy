@@ -1,5 +1,5 @@
-                 	apt-proxy README
-		    http://apt-proxy.sf.net
+                       apt-proxy README
+                    http://apt-proxy.sf.net
 
               Chris Halls <chris.halls@gmx.de>
 
@@ -65,7 +65,7 @@ A: There is a problem with the syntax in an add_backend line in apt-proxy.conf.
    add_backend /main/                 \
    $APT_PROXY_CACHE/debian/           \
    #       ftp.us.debian.org::debian/ \    <---- This does not work
-	   ftp.de.debian.org::debian/ 
+           ftp.de.debian.org::debian/ 
 
    You should either delete the line, or move it further down to follow a line
    that does not end in a backslash.
@@ -120,7 +120,7 @@ A: You must have at least one apt client visit your brand new, empty cache to
 Q: What else is apt-proxy known to work with?  How do I configure it?
 
 A1: wget.  For example, to get the Woody Release file:
-	wget http://localhost:9999/main/dists/woody/Release
+         wget http://localhost:9999/main/dists/woody/Release
     
     If you normally use a proxy, and that proxy is not aware of the machine that
     apt-proxy is running, on you may need to specify --proxy=off.
@@ -143,7 +143,7 @@ A3: rootstrap, a tool for making root images for user-mode-linux.  Assuming
 
 A4: pbuilder, which also uses debootstrap.  Add this to /etc/pbuilderrc:
 
-	MIRRORSITE=http://APTPROXY:9999/main
-	NONUSMIRRORSITE=http://APTPROXY:9999/non-US
+        MIRRORSITE=http://APTPROXY:9999/main
+        NONUSMIRRORSITE=http://APTPROXY:9999/non-US
 
 September 2002
