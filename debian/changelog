@@ -4,6 +4,7 @@ apt-proxy (1.9.14+CVS20040715) unstable; urgency=low
   * Fix code to not stat a file while this not exist (Otavio).
   * Add support to specify which network interface should listen
     (Otavio). (closes: 256609)
+  * Add support to translated debconf templates (Otavio).
 
  -- Otavio Salvador <otavio@debian.org>  Thu, 15 Jul 2004 21:46:14 -0300
 

@@ -1,0 +1,84 @@
+#
+#    Translators, if you are not familiar with the PO format, gettext
+#    documentation is worth reading, especially sections dedicated to
+#    this format, e.g. by running:
+#         info -n '(gettext)PO Files'
+#         info -n '(gettext)Header Entry'
+#
+#    Some information specific to po-debconf are available at
+#            /usr/share/doc/po-debconf/README-trans
+#         or http://www.debian.org/intl/l10n/po-debconf/README-trans
+#
+#    Developers do not need to manually edit POT or PO files.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2004-07-16 10:00-0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. Type: note
+#. Description
+#: ../templates:3
+msgid "Upgrading from pre-v1.9 packages."
+msgstr ""
+
+#. Type: note
+#. Description
+#: ../templates:3
+msgid "You seem to be upgrading from a version of apt-proxy previous to v1.9."
+msgstr ""
+
+#. Type: note
+#. Description
+#: ../templates:3
+msgid ""
+"apt-proxy has been rewritten in python and the new configuration file format "
+"is incompatible with previous version. Hopefully you will like the new "
+"format better :)"
+msgstr ""
+
+#. Type: note
+#. Description
+#: ../templates:3
+msgid ""
+"I will build /etc/apt-proxy/apt-proxy-v2.conf based on your old settings if "
+"you did't already have such file. In any case, a backup file will be written "
+"to /etc/apt-proxy/apt-proxy-v2.conf.backup"
+msgstr ""
+
+#. Type: note
+#. Description
+#: ../templates:3
+msgid ""
+"There are also other issues documented in /usr/share/doc/apt-proxy/UPGRADING"
+msgstr ""
+
+#. Type: note
+#. Description
+#: ../templates:19
+msgid "Upgrading issues"
+msgstr ""
+
+#. Type: note
+#. Description
+#: ../templates:19
+msgid ""
+"The upgrading script dumped some warnings and they have been mailed to "
+"root@localhost."
+msgstr ""
+
+#. Type: note
+#. Description
+#: ../templates:19
+msgid ""
+"You should read those warnings and /usr/share/doc/apt-proxy/UPGRADING and "
+"revise your configuration (/etc/apt-proxy/apt-proxy-v2.conf)"
+msgstr ""

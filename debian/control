@@ -4,7 +4,7 @@ Priority: extra
 Maintainer: Otavio Salvador <otavio@debian.org>
 Uploaders: Chris Halls <halls@debian.org>
 Standards-Version: 3.6.1.1
-Build-Depends-Indep: debhelper (>= 4.0.0), help2man, python-twisted (>= 1.0.0), python, python-apt
+Build-Depends-Indep: debhelper (>= 4.1.13), po-debconf, help2man, python-twisted (>= 1.0.0), python, python-apt
 
 Package: apt-proxy
 Architecture: all
