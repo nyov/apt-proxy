@@ -197,6 +197,19 @@ class AptPackages:
         return None
       
 
+    def get_mirror_versions(self, info):
+        "Find the available versions of the package descrived by 'info'"
+        self.load()
+        name=info['Package']
+        vers = []
+        try:
+            for pack_vers in self.cache[name].VersionList:
+                vers.append(pack_vers.VerStr)
+        except KeyError:
+            pass
+        return vers
+
+
 def cleanup(factory):
     for backend in factory.backends:
         backend.packages.cleanup()
@@ -214,6 +227,43 @@ def get_mirror_path(factory, file):
             paths.append('/'+backend.base+'/'+path)
     return paths
 
+def get_mirror_versions(factory, file):
+    """
+    Look for the available version of a package in all backends.
+    """
+    info = AptDpkgInfo(file)
+    all_vers = []
+    for backend in factory.backends:
+        vers = backend.packages.get_mirror_versions(info)
+        for ver in vers:
+            path = backend.packages.get_mirror_path(info['Package'], ver)
+            all_vers.append((ver, "%s/%s"%(backend.base,path)))
+    return all_vers
+
+def closest_match(info, others):
+    def compare(a, b):
+        return apt_pkg.VersionCompare(a[0], b[0])
+
+    others.sort(compare)
+    version = info['Version']
+    match = None
+    for ver,path in others:
+        if version <= ver:
+            match = path
+            break
+    if not match:
+        match = others[-1][1]
+
+    dirname=re.sub(r'/[^/]*$', '', match)
+    version=re.sub(r'^[^:]*:', '', info['Version'])
+    if dirname.find('/pool/') != -1:
+        return "%s/%s_%s_%s.deb"%(dirname, info['Package'],
+                                  version, info['Architecture'])
+    else:
+        return "%s/%s_%s.deb"%(dirname, info['Package'], version)
+
+
+    
 def import_debs(factory, dir):
     if not os.path.exists(dir):
         os.makedirs(dir)
@@ -247,15 +297,22 @@ def import_debs(factory, dir):
     for backend in factory.backends:
         backend.packages.unload()
                 
-def test(factory):
+def test(factory, file):
     "Just for testing purposes, this should probably go to hell soon."
     for backend in factory.backends:
         backend.packages.load()
 
-    file = ('/home/ranty/work/apt-proxy/related/tools/galeon_1.2.5-1_i386.deb')
+    info = AptDpkgInfo(file)
     path = get_mirror_path(factory, file)
-    print "FileName: '%s'"%(path)
+    print "Exact Match:"
+    print "\t%s:%s"%(info['Version'], path)
 
+    vers = get_mirror_versions(factory, file)
+    print "Other Versions:"
+    for ver in vers:
+        print "\t%s:%s"%(ver)
+    print "Guess:"
+    print "\t%s:%s"%(info['Version'], closest_match(info, vers))
 if __name__ == '__main__':
     from apt_proxy_conf import factoryConfig
     class DummyFactory:
@@ -265,6 +322,11 @@ if __name__ == '__main__':
     factoryConfig(factory)
     if factory.do_debug:
         log.addDomains(factory.debug)
-    test(factory)
+    test(factory,
+         '/home/ranty/work/apt-proxy/related/tools/galeon_1.2.5-1_i386.deb')
+    test(factory,
+         '/storage/apt-proxy/debian/dists/potato/main/binary-i386/base/'
+         +'libstdc++2.10_2.95.2-13.deb')
+
     cleanup(factory)
 
