@@ -78,7 +78,7 @@ def factoryConfig(factory, shell = None):
     else:
         conf.read('/etc/apt-proxy/apt-proxy.conf')
 
-    factory.proxy_address = conf.get(DEFAULTSECT, 'address')
+    factory.proxy_address = conf.get(DEFAULTSECT, 'address').split(' ')
     factory.proxy_port = conf.getint(DEFAULTSECT, 'port')
     factory.cache_dir = conf.get(DEFAULTSECT, 'cache_dir')
     factory.max_freq = conf.gettime(DEFAULTSECT, 'min_refresh_delay')

@@ -21,9 +21,10 @@ gid = pwent[3]
 
 application = service.Application("AptProxy", uid, gid)
 
-if shell.port:
-    internet.TCPServer(shell.port, shell, interface=factory.proxy_address).setServiceParent(application)
-internet.TCPServer(factory.proxy_port, factory, interface=factory.proxy_address).setServiceParent(application)
+for address in factory.proxy_address:
+    if shell.port:
+        internet.TCPServer(shell.port, shell, interface=address).setServiceParent(application)
+    internet.TCPServer(factory.proxy_port, factory, interface=address).setServiceParent(application)
 
 if __name__ == '__main__':
     #Sorry moshez, but I don't jet feel confortable with twistd
