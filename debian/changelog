@@ -1,4 +1,4 @@
-apt-proxy (1.9.5.6pre3) experimental; urgency=low
+apt-proxy (1.9.6) experimental; urgency=low
 
   * Migrate from python 2.2 to 2.3.
   * Build-depend on python2.3-twisted - needed for invocation of
