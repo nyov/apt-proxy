@@ -16,9 +16,9 @@ usage()
   echo
   echo "usage: $PROGNAME [-c <config-file>] [-d] <directory> ...."
   echo
-  echo "\t<directory>      - directory containing files to import."
-  echo "\t-c <config-file> - location of apt-proxy configuration file"
-  echo "\t-d		   - verbose"
+  echo -e "\t<directory>      - directory containing files to import."
+  echo -e "\t-c <config-file> - location of apt-proxy configuration file"
+  echo -e "\t-d		   - verbose"
   echo
   echo "example: $PROGNAME /var/cache/apt/archives"
   echo "$PROGNAME should be run as the aptproxy user, or as root."
