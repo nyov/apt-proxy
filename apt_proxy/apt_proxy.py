@@ -359,8 +359,7 @@ class Fetcher:
         self.apEnd()
         fetcher = None
         for req in requests:
-            if (self.__class__ != FetcherFile
-                or req.serve_if_cached):
+            if (fetcher_class != FetcherFile or req.serve_if_cached):
                 running = req.factory.runningFetchers
                 if (running.has_key(req.uri)):
                     #If we have an active Fetcher just use that
@@ -674,7 +673,7 @@ class FetcherGzip(Fetcher, protocol.ProcessProtocol):
     gzip_convert = post_convert
 
     exe = '/bin/gzip'
-    def activate(self, request):
+    def activate(self, request, postconverting=0):
         Fetcher.activate(self, request)
         if not request.apFetcher:
             return
@@ -691,12 +690,25 @@ class FetcherGzip(Fetcher, protocol.ProcessProtocol):
         self.host_file = self.factory.cache_dir + host_uri
         self.args += (self.host_file,)
 
-        loop = LoopbackRequest(request, self.host_transfer_done)
-        loop.uri = host_uri
-        loop.local_file = self.host_file
-        loop.process()
-        self.loop_req = loop
-        loop.fetch(serve_cached=0)
+        running = self.factory.runningFetchers
+        if not postconverting or running.has_key(self.host_file):
+            #Make sure that the file is there
+            loop = LoopbackRequest(request, self.host_transfer_done)
+            loop.uri = host_uri
+            loop.local_file = self.host_file
+            loop.process()
+            self.loop_req = loop
+            loop.serve_if_cached=0
+            if running.has_key(self.host_file):
+                #the file is on it's way, wait for it.
+                running[self.host_file].insert_request(loop)
+            else:
+                #we are not postconverting, so we need to fetch the host file.
+                loop.fetch(serve_cached=0)
+        else:
+            #The file should be there already.
+            self.loop_req = None
+            self.host_transfer_done()
 
     def host_transfer_done(self):
         """
@@ -708,7 +720,7 @@ class FetcherGzip(Fetcher, protocol.ProcessProtocol):
         If posible arrange things so the target file gets the same mtime as
         the host file.
         """
-        if self.loop_req.code != http.OK:
+        if self.loop_req and self.loop_req.code != http.OK:
             self.setResponseCode(self.loop_req.code,
                                  self.loop_req.code_message)
             self.apDataReceived("")
@@ -836,8 +848,8 @@ class FetcherFile(Fetcher):
     Sends the cached file or tells the client that the file was not
     'modified-since' if appropriate.
     """
-    post_convert = re.compile(r"^Should not match anything$")
-    gzip_convert = post_convert
+    post_convert = re.compile(r"/Packages.gz$")
+    gzip_convert = re.compile(r"^Should not match anything$")
 
     request = None
     laterID = None
@@ -860,6 +872,9 @@ class FetcherFile(Fetcher):
             self.remove_request(request)
         
     def insert_request(self, request):
+        if not request.serve_if_cached:
+            request.finish()
+            return
         Fetcher.insert_request(self, request)
         self.if_modified(request)
         
@@ -1112,7 +1127,6 @@ class Request(http.Request):
 
             log.debug(msg, 'fetch_real')
             fetcher = dummyFetcher.apEndTransfer(fetcher_class)
-            print "CONVERT:", fetcher.post_convert
             if (fetcher and fetcher.post_convert.search(req.uri)
                 and not running.has_key(req.uri[:-3])):
                 log.debug("post converting: "+req.uri,'convert')
@@ -1120,16 +1134,18 @@ class Request(http.Request):
                 loop.uri = req.uri[:-3]
                 loop.local_file = req.local_file[:-3]
                 loop.process()
+                loop.serve_if_cached=0
                 #FetcherGzip will attach as a request of the
                 #original Fetcher, efectively waiting for the
                 #original file if needed
-                FetcherGzip(loop)
+                gzip = FetcherGzip()
+                gzip.activate(loop, postconverting=1)
 
         self.serve_if_cached = serve_cached
         running = self.factory.runningFetchers
         if (running.has_key(self.uri)):
             #If we have an active fetcher just use that
-            log.debug("have active fetcher",'client')
+            log.debug("have active fetcher: "+self.uri,'client')
             running[self.uri].insert_request(self)
             return running[self.uri]
         else:
