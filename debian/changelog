@@ -1,5 +1,8 @@
 apt-proxy (1.9.17+CVS) unstable; urgency=low
-  
+
+  * Applied patch provided by Sam Couter <sam@couter.dropbear.id.au> to
+    makes apt-proxy start as root and then change UID *after* binding the
+    listen port. (closes: #270650)
   * When logrotate rotates the log file, apt-proxy should be restarted to
     open the new log file (closes: #270634)
   * Applied patch provided by Paul Wagland <paul@kungfoocoder.org> to

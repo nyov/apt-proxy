@@ -21,9 +21,11 @@ case "$1" in
 	echo -n "Starting apt-proxy"
 	[ ! -d $rundir ] && mkdir $rundir
 	[ ! -f $logfile ] && touch $logfile
-	chown $user:$group $rundir $logfile 
-	[ -f $pidfile ] && chown $user:$group $pidfile
-	start-stop-daemon --start --quiet --exec $twistd --chuid $user:$group -- \
+	chown $user $rundir $logfile 
+	[ -f $pidfile ] && chown $user $pidfile
+	# Make cache files readable
+	umask 022
+	start-stop-daemon --start --quiet --exec $twistd -- \
             --pidfile=$pidfile 	--rundir=$rundir --python=$application \
 	    --logfile=$logfile 	--no_save
 	echo "."	

@@ -1,17 +1,25 @@
 #!/usr/bin/env python
 
+import pwd
+
 from twisted.application import service, internet
 
 from apt_proxy.apt_proxy_conf import factoryConfig
 from apt_proxy.apt_proxy import Factory
 from twisted.manhole.telnet import ShellFactory
 
+username = "aptproxy"
+
 factory = Factory()
 shell = ShellFactory()
 
 factoryConfig(factory, shell)
 
-application = service.Application("AptProxy")
+pwent = pwd.getpwnam(username)
+uid = pwent[2]
+gid = pwent[3]
+
+application = service.Application("AptProxy", uid, gid)
 
 if shell.port:
     internet.TCPServer(shell.port, shell, interface=factory.proxy_address).setServiceParent(application)

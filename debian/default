@@ -5,7 +5,3 @@
 
 ## Log file
 #logfile=/var/log/apt-proxy.log
-
-## User and group to run daemon as
-#user=aptproxy
-#group=nogroup
