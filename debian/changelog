@@ -7,6 +7,8 @@ apt-proxy (1.9.18+CVS) UNRELEASED; urgency=low
   * Change to wait by the _server_ closes the connection, this solve the
     hang while using with wget and in that case, debootstrap. Thanks to
     Chet Murthy <chetsky@gmail.com> by the patch.
+  * Change default apt-proxy.conf file to use debian-non-US instead of
+    non-US. (closes: 273973, 267427)
 
  -- Otavio Salvador <otavio@debian.org>  Sat, 18 Sep 2004 11:19:04 -0300
 
