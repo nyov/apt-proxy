@@ -339,6 +339,7 @@ class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
                    {'code': code, 'message': message, 'explain': explain})
         self.send_response(code, message)
         self.send_header('Content-Length', len(content))
+        self.send_header('Content-Type', 'text/html')
         self.end_headers()
         self.wfile.write(content)
 
