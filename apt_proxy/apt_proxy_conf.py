@@ -1,3 +1,18 @@
+#
+# Copyright (C) 2002 Manuel Estrada Sainz <ranty@debian.org>
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of version 2.1 of the GNU Lesser General Public
+# License as published by the Free Software Foundation.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from apt_proxy import AptProxyBackend
 import packages
@@ -16,11 +31,12 @@ def aptProxyFactoryConfig(factory):
         'cache_dir': '/var/cache/apt-proxy',
         'max_versions': '3',
         'max_age': '10',
+        'import_dir': '/var/cache/apt-proxy/import',
         }
     conf = ConfigParser.ConfigParser(defaults)
     if os.path.exists('/etc/apt-proxy/apt-proxy-v2.conf'):
         conf.read('/etc/apt-proxy/apt-proxy-v2.conf')
-    else if os.path.exists('/etc/apt-proxy/apt-proxy-2.conf'):
+    elif os.path.exists('/etc/apt-proxy/apt-proxy-2.conf'):
         conf.read('/etc/apt-proxy/apt-proxy-2.conf')
     else:
         conf.read('/etc/apt-proxy/apt-proxy.conf')
@@ -36,7 +52,7 @@ def aptProxyFactoryConfig(factory):
     factory.do_db_debug = conf.getboolean(DEFAULTSECT, 'db_debug')
     factory.finish_horphans = conf.getboolean(DEFAULTSECT,
                                               'complete_clientless_downloads')
-
+    factory.import_dir = conf.get(DEFAULTSECT, 'import_dir')
     factory.backends = []
     for name in conf.sections():
         if name.find('/') != -1:

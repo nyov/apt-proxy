@@ -1,84 +1,63 @@
 #!/usr/bin/env python
+#
+# Copyright (C) 2002 Manuel Estrada Sainz <ranty@debian.org>
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of version 2.1 of the GNU Lesser General Public
+# License as published by the Free Software Foundation.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import apt_pkg, sys, time, os
-from twisted.internet import reactor, defer
-from twisted.protocols import protocol
-import re, signal, shelve
+import apt_pkg, sys, time, os, stat
+from os.path import dirname, basename
+import re, signal, shelve, shutil
 from twisted.internet import process
 import apt_proxy, copy
 
-class AptDpkgInfo(protocol.ProcessProtocol):
+class AptDpkgInfo:
     version_re = re.compile(r'^ Version: *([^ ]*)$', re.M)
     package_re = re.compile(r'^ Package: *([^ ]*)$', re.M)
-    exe = '/usr/bin/dpkg'
-    args = (exe, '--info')
 
+    version = None
+    package = None
+    failed = 0
     def __init__(self, filename):
-        self.args += (filename,)
-        self.process = reactor.spawnProcess(self, self.exe, self.args)
-        self.deferred = defer.Deferred()
+        self.stdout = os.popen('/usr/bin/dpkg --info %s'%(filename), 'r')
         self.data = ''
-    def dataReceived(self, data):
-        self.data += data
-    def processEnded(self):
-        if self.process.status != 0:
-            self.deferred.errback(self)
-            raise 'dpkg return status code: %d'%(self.process.status)
-        self.version = (self.version_re.search(self.data).
-                        expand(r'\1'))
-        self.package = (self.package_re.search(self.data).
-                        expand(r'\1'))
-        self.deferred.callback(self)
+        while 1:
+            new_data = self.stdout.read()
+            if new_data == '':
+                break
+            self.data += new_data
 
-class AptPackagesServerOLD(protocol.ProcessProtocol):
-    exe = './packages_server.py'
-    args = (exe,)
-    finish=0
-    answer_pending=0
-    ready = re.compile("\nREADY\n$")
-    def __init__(self):
-        self.process = reactor.spawnProcess(self, self.exe, self.args)
-        self.stdin_flush = os.fdopen(self.process.stdin, "w").flush
-        self.data = ''
-    def dataReceived(self, data):
-        if self.ready.search(data):
-            self.answer_pending = 0
-            data = data[:-7]
-        self.data += data
-    def errReceived(self, data):
-        print "error:", data
-    def processEnded(self):
-        self.finish = 1
-        if self.process.status != 0:
-            raise 'status code: %d'%(os.WEXITSTATUS(self.process.status))
-        print "PROCESS_ENDED"
-    def kill(self):
-        os.kill(self.process.pid,signal.TERM)
-    def wait(self):
-        while not self.finish:
-            reactor.iterate()
-    def writeCode(self, code):
-        self.data='' #discard all unread data
-        self.answer_pending=1
-        code += "\nprint 'READY'\n"
-        code = apt_pkg.QuoteString(code,'\n')
-        self.process.write(code+'\n')
-        self.stdin_flush()
-    def readAnswer(self):
-        while self.answer_pending:
-            reactor.iterate()
-        data=self.data
-        self.data = ''
-        return data
-    
+        self.stdout.close()
+        if self.data == '':
+            self.failed=1
+            return
+        self.version = (self.version_re.search(self.data).expand(r'\1'))
+        self.package = (self.package_re.search(self.data).expand(r'\1'))
+        if (not self.version) or (not self.package):
+            self.failed=1
+
 class AptPackagesServer:
-    exe = './packages_server.py'
-    args = (exe,)
     finish=0
     answer_pending=0
     ready = re.compile("READY\n$")
+    command=os.environ.get('APT_PROXY_PACKAGES')
+    if not command:
+        command=os.getcwd() + "/bin/apt_proxy_packages.py"
+        if not os.path.exists(command):
+            command='/usr/share/apt-proxy/apt_proxy_packages.py'
+
     def __init__(self):
-        self.stdin, self.stdout = os.popen2('./packages_server.py')
+        self.stdin, self.stdout = os.popen2(self.command)
     def kill(self):
         self.stdin.close()
         self.stdout.close()
@@ -93,10 +72,14 @@ class AptPackagesServer:
         data = ''
         while 1:
             new_data = self.stdout.readline()
+            if new_data == '':
+                raise 'no data'
             if new_data != 'READY\n':
                 data += new_data
             else:
-                return data
+                if data == 'None\n':
+                    return None
+                return data[:-1] #remove the last newline
     
 class AptPackages:
     local_config = {
@@ -162,55 +145,110 @@ class AptPackages:
         self.loaded = 0
         
     def packages_file(self, uri):
-        mtime = os.stat(self.factory.cache_dir+'/'+uri)
-        self.packages[uri] = mtime
+        if basename(uri)=="Packages" or basename(uri)=="Release":
+            self.factory.debug("REGISTERING PACKAGE:"+uri)
+            mtime = os.stat(self.factory.cache_dir+'/'+uri)
+            self.packages[uri] = mtime
+            self.unload()
         
     def load(self):
-        self.loaded = 1
-        server = self.server_process = AptPackagesServer()
-        server.writeCode("init(%s)"%(self.local_config))
-        print server.readAnswer()
+        if not self.loaded:
+            shutil.rmtree(self.status_dir+'/apt/lists/')
+            os.makedirs(self.status_dir+'/apt/lists/partial')
+            sources = open(self.status_dir+'/'+'apt/etc/sources.list', 'w')
+            for file in self.packages.keys():
+                # we should probably clear old entries from self.packages and
+                # take into account the recorded mtime as optimization
+                fake_uri='http://apt-proxy:'+file
+                source_line='deb '+dirname(fake_uri)+'/ /'
+                listpath=(self.status_dir+'/apt/lists/'
+                          +apt_pkg.URItoFileName(fake_uri))
+                sources.write(source_line+'\n')
+
+                try:
+                    #we should empty the directory instead
+                    os.unlink(listpath)
+                except:
+                    pass
+                os.symlink('../../../../../'+file, listpath)
+            sources.close()
+            server = self.server_process = AptPackagesServer()
+            server.writeCode("init(%s)"%(self.local_config))
+            server.readAnswer()
+            self.loaded = 1
             
     def unload(self):
-        print "unloading packages"
-        self.loaded = 0
-        self.server_process.writeCode('sys.exit(0)')
-
-    def get_mirror_path(self, filename):
-        def get_mirror_path_real(info, server, deferred):
-            server.writeCode('print get_mirror_path("%s", "%s")'
-                             %(info.package,info.version))
-            ans = server.readAnswer()
-            if ans == 'None':
-                ans = None
-            deferred.callback(ans)
-
-        if not self.loaded:
-            self.load()
+        if self.loaded:
+            self.server_process.writeCode('sys.exit(0)')
+            self.server_process.kill()
+            del self.server_process
+            self.loaded = 0
             
-        deferred = defer.Deferred()
-        info = AptDpkgInfo(filename)
-        info.deferred.addCallback(get_mirror_path_real,
-                                  self.server_process, deferred)
-        info.deferred.arm()
-        return deferred
-    
-def test(factory):
-    def test_cb(path):
-        print "FileName: ", path
-        
+    def cleanup(self):
+        self.unload()
+        self.packages.close()
+
+    def get_mirror_path(self, info):
+        self.load()
+        server = self.server_process
+        server.writeCode('print get_mirror_path("%s", "%s")'
+                             %(info.package,info.version))
+        ans = server.readAnswer()
+        return ans
+
+def cleanup(factory):
     for backend in factory.backends:
-        file = (
-            '/home/ranty/work/apt-proxy/twisted/tools/galeon_1.2.5-1_i386.deb')
-        d = backend.packages.get_mirror_path(file)
-        d.addCallback(test_cb)
-        d.arm()
-    print "FINISHED"
+        backend.packages.cleanup()
+
+def get_mirror_path(factory, file):
+    info = AptDpkgInfo(file)
+    paths = []
+    for backend in factory.backends:
+        path = backend.packages.get_mirror_path(info)
+        if path:
+            paths.append('/'+backend.base+'/'+path)
+    if len(paths):
+        return paths
+    else:
+        return None
+
+def import_debs(factory, dir):
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+    for file in os.listdir(dir):
+        if file[-4:]!='.deb':
+            factory.debug("IGNORING:"+ file)
+            continue
+        factory.debug("considering:"+ dir+'/'+file)
+        paths = get_mirror_path(factory, dir+'/'+file)
+        if paths:
+            if len(paths) != 1:
+                factory.debug("WARNING: multiple ocurrences")
+                factory.debug(str(paths))
+            path = paths[0]
+            
+            factory.debug("MIRROR_PATH:"+ path)
+            spath = dir+'/'+file
+            dpath = factory.cache_dir+path
+            if not os.path.exists(dpath):
+                print "IMPORTING:"+spath
+                if not os.path.exists(dirname(dpath)):
+                    os.makedirs(dirname(dpath))
+                shutil.copy2(spath, dpath)
+                atime = os.stat(spath)[stat.ST_ATIME]
+                factory.access_times[path] = atime
     for backend in factory.backends:
         backend.packages.unload()
+                
+def test(factory):
+    for backend in factory.backends:
+        backend.packages.load()
+
+    file = ('/home/ranty/work/apt-proxy/related/tools/galeon_1.2.5-1_i386.deb')
+    path = get_mirror_path(factory, file)
+    print "FileName: '%s'"%(path)
 
 if __name__ == '__main__':
-    signal.signal(signal.SIGCHLD, process.reapProcess)
     from apt_proxy_conf import aptProxyFactoryConfig
     class DummyFactory:
         def debug(self, msg):
@@ -218,4 +256,5 @@ if __name__ == '__main__':
     factory = DummyFactory()
     aptProxyFactoryConfig(factory)
     test(factory)
+    cleanup(factory)
 

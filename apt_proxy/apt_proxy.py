@@ -19,13 +19,17 @@ from twisted.internet import reactor, defer
 from twisted.protocols import http, protocol, ftp
 from twisted.web import static
 import os, stat, signal
+from os.path import dirname, basename
 import re
 import urlparse
 import time
 import string
 import shelve
 from cStringIO import StringIO
-import packages
+
+#sibling imports
+import packages, misc
+
 status_dir = '.apt-proxy'
 
 from twisted import copyright
@@ -219,9 +223,9 @@ class AptProxyClient:
 
     def aptDataEnd(self, buffer):
         if (self.status_code == http.OK):
-            dirname = re.sub(r"/[^/]*$", "", self.local_file)
-            if(not os.path.exists(dirname)):
-                os.makedirs(dirname)
+            dir = dirname(self.local_file)
+            if(not os.path.exists(dir)):
+                os.makedirs(dir)
             f = open(self.local_file, "w")
             f.write(buffer)
             f.close()
@@ -233,18 +237,22 @@ class AptProxyClient:
 
             self.factory.file_served(self.request.uri)
             self.request.backend.packages.packages_file(self.request.uri)
-
+        
         if self.transport:
             self.transport.loseConnection()
         for req in self.requests:
             req.finish()
-            if req.transport:
-                req.transport.loseConnection()
         self.aptEnd()
 
     def aptEnd(self):
         del self.factory.runningClients[self.request.uri]
 
+    def connectionFailed(self):
+        self.factory.debug("Connection Failed!")
+        self.setResponseCode(http.SERVICE_UNAVAILABLE)
+        self.aptDataReceived("")
+        self.aptDataEnd(self.transfered)
+        
 class AptProxyClientHttp(AptProxyClient, http.HTTPClient):
 
     forward_headers = [
@@ -289,9 +297,6 @@ class AptProxyClientHttp(AptProxyClient, http.HTTPClient):
             self.setResponseHeader(key, value)
 
     def handleEndHeaders(self):
-        #we don't support pipelining
-        self.setResponseHeader('Connection', 'close')
-
         if self.status_code == http.NOT_MODIFIED:
             self.factory.debug("NOT_MODIFIED")
             self.transport.loseConnection()
@@ -520,7 +525,9 @@ class AptProxyClientRsync(AptProxyClient, protocol.ProcessProtocol):
 
     LD_PRELOAD=os.environ.get('APT_PROXY_RSYNC_HACK')
     if not LD_PRELOAD:
-        LD_PRELOAD=os.getcwd() + "/rsync_hack/mkstemp.so"
+        LD_PRELOAD=os.getcwd() + "/rsync_hack/rsync_hack.so"
+        if not os.path.exists(LD_PRELOAD):
+            LD_PRELOAD='/usr/lib/apt-proxy/rsync_hack.so'
 
     def __init__ (self, request):
         AptProxyClient.__init__(self, request)
@@ -681,9 +688,9 @@ class AptProxyRequest(http.Request):
 
         if self.local_mtime <= if_modified_since:
             self.setResponseCode(http.NOT_MODIFIED)
+            self.setHeader("Content-Length", 0)
             self.write("")
             self.finish()
-            self.transport.loseConnection()
             return None
 
         f = open(self.local_file,'rb')
@@ -703,9 +710,6 @@ class AptProxyRequest(http.Request):
     def process(self):
         self.uri = self.simplify_path(self.uri)
         self.local_file = self.factory.cache_dir + self.uri
-
-        # We don't support pipelining jet
-        self.setHeader("Connection", "close")
 
         if self.method != 'GET':
             #we currently only support GET
@@ -793,19 +797,27 @@ class AptProxyFactory(protocol.ServerFactory):
     def periodic(self):
         self.debug("Doing periodic cleaning up")
         self.clean_old_files()
+        packages.import_debs(self, self.import_dir)
         self.debug("Periodic cleaning done")
+        self.recycler.start()
         reactor.callLater(self.cleanup_freq, self.periodic)
 
     def __init__ (self):
         self.runningClients = {}
-        self.update_times = shelve.open('update.db')
-        self.access_times = shelve.open('access.db')
-        self.packages = shelve.open('packages.db')
-        reactor.addSystemEventTrigger('during', 'shutdown', self.cleanup)
+        pass
+
+    def startFactory(self):
+        db_dir = self.cache_dir+'/'+status_dir+'/db'
+        if not os.path.exists(db_dir):
+            os.makedirs(db_dir)
+        self.update_times = shelve.open(db_dir+'/update.db')
+        self.access_times = shelve.open(db_dir+'/access.db')
+        self.packages = shelve.open(db_dir+'/packages.db')
         #start periodic updates
-        reactor.callLater(0, self.periodic)
-
-
+        reactor.callLater(self.cleanup_freq, self.periodic)
+        packages.import_debs(self, self.import_dir)
+        self.recycler = misc.MirrorRecycler(self, 1)
+        self.recycler.start()
     def clean_versions(self, packages):
         cache_dir = self.cache_dir
         if len(packages) <= self.max_versions:
@@ -859,11 +871,12 @@ class AptProxyFactory(protocol.ServerFactory):
                 self.packages[package] = packages
         self.dumpdbs()
 
-    def cleanup (self):
+    def stopFactory(self):
         self.dumpdbs()
         self.update_times.close()
         self.access_times.close()
         self.packages.close()
+        packages.cleanup(self)
 
     def dumpdbs (self):
         def dump_update(key, value):
