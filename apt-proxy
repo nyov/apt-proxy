@@ -11,7 +11,7 @@
 #	`I was joking!' -- Paul Mackerras
 #	`Note that Rusty's name is at the top' -- Stephen Rothwell.
 #	`Perl!!!  Please?' -- Martin Schwenke
-APT_PROXY_VERSION=1.2.9.4
+APT_PROXY_VERSION=1.2.9.5
 
 # Default values
 APT_PROXY_LOGFILE=/dev/null
@@ -31,6 +31,10 @@ while [ $# -gt 0 ]; do
 		shift
 		APT_PROXY_LOGFILE="$1"
 		shift
+		;;
+	  '-v'|'--version')
+		echo apt-proxy $APT_PROXY_VERSION;
+		exit
 		;;
 	  *)
 		APT_PROXY_LOGFILE="$1"
@@ -159,16 +163,12 @@ add_backend()
     APT_PROXY_BACKENDS="$APT_PROXY_BACKENDS`echo $@ | tr -s ' \t' ,` "
 }
 
-# Download a file.  -d means url is a directory
-#  download_url([-d] url, destinationDirectory, destinationFile)
+# Download a file.  url is a directory if followed by a trailing slash
+#  download_url(url, destinationDirectory, destinationFile)
 download_url()
 {
     unset RET DL_DIR
 
-    if [ $1 = "-d" ]; then
-      DL_DIR=y
-      shift
-    fi
 
     # DL_URL: URL to download				(http://ftp.debian.org/pool/a/aaa-a.deb)
     # DL_DESTDIR: Destination directory for file	(/var/cache/apt-proxy/debian/pool/a)
@@ -179,6 +179,10 @@ download_url()
     DL_DESTFILE=$3
     DL_FILE=$DL_DESTDIR/$DL_DESTFILE
 
+    case $DL_URL in
+      */) DL_DIR=y;;
+    esac
+
     debug "download_url:$DL_URL dest:$DL_DESTDIR file:$DL_DESTFILE IsDir:[$DL_DIR]"
 
     DL_LOG=$DL_FILE.log
@@ -186,7 +190,7 @@ download_url()
     case "$DL_URL" in
         http://*|ftp://*)
 	    #WGET_CMD="$WGET --non-verbose --timestamping --no-host-directories \
-	    WGET_CMD="$WGET --timestamping --no-host-directories \
+	    WGET_CMD="$WGET --timestamping --no-host-directories --tries=5 \
 			--no-directories -P $DL_DESTDIR"
 	    if [ -z "$DL_DIR" ];then
 	    	# File
@@ -349,7 +353,7 @@ rsync_link()
     shift 2
 echo RSYNC_LINK: Link:$RSL_LINK Subdir:$RSL_SUBDIR, backends:$@
     for rsl_back in $@; do
-	if download_url -d $rsl_back$RSL_LINK $RSL_SUBDIR $RSL_LINK; then
+	if download_url $rsl_back$RSL_LINK/ $RSL_SUBDIR $RSL_LINK; then
 	    return 0
 	fi
     done
@@ -756,8 +760,18 @@ rsync_unlock()
     RSU_REST=$2
     RSU_LOCK=$3
     shift 3
-    RSU_PART=$RSU_FRONT.partial
-    RSU_FAIL=$RSU_FRONT.fail
+    case $RSU_FRONT in
+      */)
+        # Directory
+        RSU_PART="`echo $RSU_FRONT | sed 's|/$||'`"
+	RSU_FAIL=$RSU_PART.fail
+	;;
+      *)
+        RSU_PART=$RSU_FRONT.partial
+        RSU_FAIL=$RSU_FRONT.fail
+	;;
+    esac
+    
     RSU_OPTS="-v --perms --links --times --partial"
 
     # If file exists (eg. Packages file), copy it to partial.
@@ -773,7 +787,13 @@ rsync_unlock()
 	#debug $RSYNC $RSU_OPTS $rsu_b$RSU_REST $RSU_PART
 	if download_url $rsu_b$RSU_REST `dirname $RSU_FRONT` `basename $RSU_PART` ;then
 	#if $RSYNC $RSU_OPTS $rsu_b$RSU_REST $RSU_PART >$RSU_FAIL 2>&1; then
-	    mv $RSU_PART $RSU_FRONT
+	    case $RSU_FRONT in
+	      */)
+	          ;;
+	      *)
+	          mv $RSU_PART $RSU_FRONT
+		  ;;
+	    esac
 	    #[ -n "$KEEP_STATS" ] && log $RSU_REST `tail -2 $RSU_FAIL`
 	    #rm -f $RSU_FAIL
 	    break;
@@ -800,7 +820,7 @@ fetch_file_start()
     shift 2
 
     FF_FRONT=$FF_FRONT_BASE$FF_URL_REST
-    FF_LOCK=$FF_FRONT.lock
+    FF_LOCK="`echo $FF_FRONT | sed 's|/$||'`.lock"
     while true; do
 	debug Fetching $FF_FRONT from $@
 
@@ -823,6 +843,11 @@ fetch_file_start()
 
 	# File, or non-dangling symlink?
 	[ -f $FF_FRONT ] && return 0
+
+	# Directory?
+	case $FF_FRONT in
+	  */) [ -d $FF_FRONT ] && return 0;;
+        esac
 
 	# Dangling symlink?  Follow.
 	LINK="`readlink $FF_FRONT`"
@@ -897,9 +922,13 @@ stream_file()
     wait_for_lock $2.lock 
 
     # Dump the rest.
-    dump_part_file "$2" $SF_OFFSET >&3 && {
+    if dump_part_file "$2" $SF_OFFSET >&3; then
 	log Delivered partial file "$2", from offset $SF_OFFSET.
-    }
+    else
+	log "Error dumping file ($2), aborting"
+	bad_config Error writing file
+    fi
+
 }
 
 # Remove extra versions of given package file.  Filename must be absolute.
@@ -1274,6 +1303,12 @@ while true; do
 	      date:$DATE enc:$conenc request:$REQUEST
 	write_header "200 OK" "$KEEP_ALIVE" "$contype" "$SIZE" "$DATE" "$conenc" "$REQUEST"
 	stream_file "$STREAM" "$FRONT"
+    elif [ -d "$FRONT" ];then
+	# Directory
+	SIZE=0
+	debug Header - 200 OK, keep-alive:$KEEP_ALIVE content:$contype size:$SIZE \
+	      date:$DATE enc:$conenc request:$REQUEST
+	write_header "200 OK" "$KEEP_ALIVE" "$contype" "$SIZE" "$DATE" "$conenc" "$REQUEST"
     else
 	# File not found
 	bad_url keep-alive $REQUEST "File does not exist on any server"

@@ -1,3 +1,10 @@
+apt-proxy (1.2.9.5) sourceforge; urgency=low
+
+  * Fix directory support so apt-proxies can be chained again
+  * Add apt-proxy --version (thanks to Sacha Schlegel)
+
+ -- Chris Halls <chris.halls@gmx.de>  Mon, 25 Mar 2002 16:33:51 +0100
+
 apt-proxy (1.2.9.4) sourceforge; urgency=low
 
   * Merge in changes from stable 1.2.2
@@ -41,7 +48,7 @@ apt-proxy (1.2.9.1) sourceforge; urgency=low
 apt-proxy (1.2.2) unstable; urgency=low
 
   * Fix lockfile name in sweep clean (thanks to Lele Gaifax)
-  * Change maintainer email address (closes #139173)
+  * Change maintainer email address (closes: #139173)
   * Add Manuel Estrada Sainz <ranty@debian.org> to Uploaders.  He has
     been helping improve apt-proxy-import and will sponsor future uploads.
 
