@@ -4,9 +4,9 @@ apt-proxy (1.9.17+CVS) unstable; urgency=low
     makes apt-proxy start as root and then change UID *after* binding the
     listen port. (closes: #270650)
   * When logrotate rotates the log file, apt-proxy should be restarted to
-    open the new log file (closes: #270634)
+    open the new log file. (closes: #270634)
   * Applied patch provided by Paul Wagland <paul@kungfoocoder.org> to
-    improve of caching response speeds (closes: #267915)
+    improve of caching response speeds. (closes: #267915)
 
   * Applied patch provided by Julien Louis <arthur51@ifrance.com> to to
     handle translated manpages with po4a.
