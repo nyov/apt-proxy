@@ -1,6 +1,7 @@
 apt-proxy (1.9.14+CVS20040715) unstable; urgency=low
 
   * Add support for upstream proxy servers (Otavio). (closes: #258904)
+  * Fix code to not stat a file while this not exist (Otavio).
 
  -- Otavio Salvador <otavio@debian.org>  Thu, 15 Jul 2004 21:46:14 -0300
 

@@ -850,7 +850,8 @@ class FetcherGzip(Fetcher, protocol.ProcessProtocol):
             self.apDataEnd("")
             return
 
-        self.local_mtime = os.stat(self.host_file)[stat.ST_MTIME]
+        if os.path.exists(self.host_file):
+            self.local_mtime = os.stat(self.host_file)[stat.ST_MTIME]
         old_mtime = None
         if os.path.exists(self.local_file):
             old_mtime = os.stat(self.local_file)[stat.ST_MTIME]
