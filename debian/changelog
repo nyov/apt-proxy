@@ -1,3 +1,51 @@
+apt-proxy (1.9.8) experimental; urgency=low
+
+  * Log deletion of cache files by max_version algorithm
+  * Change 'RECYCLING' message to 'Adopting new file'
+    (closes: #240296)
+  * Use passive FTP by default, and add configuration option passive_ftp
+    (closes: #190926)
+  * apt-proxy-import:
+    + Fix to work with latest apt_proxy version
+    + Send output to standard out
+    + Add a --recursive flag to import .debs from a directory tree
+    + Make log messages more informative
+    + Confirm that it works with relative paths (closes: #183709)
+  * Updated apt-proxy-import man page
+  * README: Remove outdated section about the twisted version in sarge
+  * apt-proxy.conf:
+    + Update openoffice example repositories
+    + Add passive_ftp example
+    + Document default cache directory in manpage (closes: #206676)
+  * Tested with twisted 1.2.0, warning removed
+
+  * Bugs in version 1 that have been fixed for version 2:
+    Closes: #221754: apt: doesn't url escape '~'
+    Closes: #234900: apt-proxy default config is non-functional
+    Closes: #241303: apt-proxy-import seems to fail when importing dir
+    with a lot of files
+
+  * Bugs that do not apply to version 2:
+    Closes: #187919: apt-proxy fails to report file not found to client,
+    client times out instead
+    Closes: #203868: apt-proxy fails to determine file size and remains
+    suck - Connection timed out for clients
+    Closes: #171889: files sometimes not streamed properly to clients
+    Closes: #175649: Error when update
+    Closes: #180954: apt-proxy sometimes seems to consume vast amounts
+    of CPU for hours
+    Closes: #183222: update fails with openwall kernel patch
+    Closes: #199430: Depends on wget | rsync, but by default doesn't
+    appear to work without rsync
+    Closes: #199831: apt-proxy is *way* slower than apt-rsync
+    Closes: #207067: apt-proxy doesn't work with inetutils-inetd
+    Closes: #219049: stat warning: '-l' is deprecated in logfiles
+    Closes: #126220: log to stderr
+    Closes: #157780: shouldn't depend on ash
+    Closes: #161448: ash is depreciated
+
+ -- Chris Halls <halls@debian.org>  Mon, 12 Apr 2004 21:14:05 +0200
+
 apt-proxy (1.9.7) experimental; urgency=low
 
   * Plug the recent file descriptor leak.
