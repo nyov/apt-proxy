@@ -9,7 +9,7 @@ If you have installed apt-proxy using the Debian package, you now need to
 do the following:
 
 1. Edit apt-proxy.conf to select the nearest backend servers for you.  See
-   the apt-proxy.conf(5) manpage for details.
+   the apt-proxy.conf(5) manpage and the supplied apt-proxy.conf for details.
 2. Point your apt clients to the proxy.  See the apt-proxy(8) manpage for
    details.  The supplied apt-proxy.conf contains example lines for
    sources.list along with the backend examples.

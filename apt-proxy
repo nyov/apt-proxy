@@ -1,7 +1,7 @@
 #!/bin/ash
 # (You may safely change the above to /bin/sh if you do not have ash available)
 #
-# $Id: apt-proxy,v 1.44.2.4 2002/09/12 11:01:27 haggai Exp $
+# $Id: apt-proxy,v 1.44.2.5 2002/11/15 15:30:49 haggai Exp $
 # Copyright Paul Russell <rusty@samba.org>
 # Released under the GPL version 2 or later
 #	Fixed by Stephen Rothwell <sfr@canb.auug.org.au>
@@ -14,7 +14,7 @@
 #	`Perl!!!  Please?' -- Martin Schwenke
 #       `Python and twisted!' -- Moshe Zadka
 #       'Lets do it, ranty!' -- Chris Halls
-APT_PROXY_VERSION=1.3.4
+APT_PROXY_VERSION=1.3.5
 
 # Default values
 APT_PROXY_LOGFILE=/dev/null
@@ -204,6 +204,8 @@ download_url()
 
     debug "download_url:$DL_URL dest:$DL_DESTDIR file:$DL_DESTFILE [realname:$DL_REALNAME] IsDir:[$DL_DIR]"
 
+    [ "$KEEP_STATS" -a ! "$DL_DIR" ] && log "Downloading: $DL_URL"
+
     DL_LOG=$DL_FILE.log
 
     case "$DL_URL" in
@@ -234,6 +236,7 @@ download_url()
 		else
 		    # Remove empty file created by wget
 		    rm -f $DL_TEMPFILE
+		    [ "$KEEP_STATS" ] && log "Download failure: `egrep 'fail|ERROR' $DL_LOG`"
 		fi
 	    else
 	    	# Directory

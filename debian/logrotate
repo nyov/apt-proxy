@@ -1,8 +1,13 @@
+## Logrotate for apt-proxy
 /var/log/apt-proxy.log {
 	rotate 4
 	compress
 	weekly
 	delaycompress
 	missingok
-        create 640 aptproxy adm
+
+## If you would like logrotate to recreate the logfile (in case it gets deleted
+## accidentally), uncomment the following line.  This assumes that you have
+## configured apt-proxy to run under the user aptproxy.
+#        create 640 aptproxy adm
 }
