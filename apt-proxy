@@ -190,7 +190,9 @@ check_symlinks()
 # Given URL, sets $FRONT (local frontend file)
 # Also FRONT_BASE, URL_REST, URL_SUBDIR and BACKS
 # Creates directories up to $FRONT if neccessary.
-#	resolve_url(url)
+# If iscontrolfile is set, then return backend they want control files
+# to come from.
+#	resolve_url(url, iscontrolfile)
 resolve_url()
 {
     for try in $APT_PROXY_BACKENDS; do
@@ -200,9 +202,13 @@ resolve_url()
 	    # +1 for \n.
 	    PREFIXLEN=`echo $PREFIX | wc -c`
 	    URL_REST="`echo $1 | cut -c${PREFIXLEN}-`"
-	    debug Resolved "$1" to "$try" \(rest = "$URL_REST"\)
 	    FRONT_BASE="`echo $try | cut -d, -f2`"
-	    BACKS="`echo $try | cut -d, -f3- | tr , ' '`"
+	    BACKS="`echo $try|cut -d, -f3-|tr , \\\n`"
+	    if [ -n "$2" ] && echo "$BACKS" | grep -q '^+'; then
+		BACKS="`echo \"$BACKS\" | grep '^+'``echo \"$BACKS\" | grep -v '^+'`"
+	    fi
+	    # Remove bogus +'s.
+	    BACKS="`echo \"$BACKS\" | sed s/^+//`"
 	    FRONT="$FRONT_BASE$URL_REST"
 	    URL_SUBDIR="`dirname \"$URL_REST\"`"
 	    mkdir_maybe_symlinks "$FRONT_BASE" "$URL_SUBDIR" $BACKS
@@ -237,7 +243,7 @@ my_lockfile()
 	    fi
 	    rm -f $1.stale
 	fi
-    fi
+    fi 2>/dev/null
     set +C
 
     return $ret
@@ -283,6 +289,7 @@ rsync_unlock()
 	    rm -f $RSU_FAIL
 	    break;
 	fi
+	debug `tail -1 < $RSU_FAIL`
     done
     rm -f $RSU_FRONT.lock
 }
@@ -310,7 +317,7 @@ fetch_file_start()
 	# Need >/dev/null otherwise our caller (waiting for stdout)
 	# waits for rsync_unlock to finish.
 	my_lockfile $FF_FRONT.lock &&
-	    rsync_unlock $FF_FRONT $FF_URL_REST $@ >/dev/null &
+	    (rsync_unlock $FF_FRONT $FF_URL_REST $@ &) >/dev/null
 
 	FF_WILD="`rsync_wildcard $FF_FRONT`"
 	while [ -f $FF_FRONT.lock ]; do
@@ -350,7 +357,9 @@ fetch_file_start()
 #	can_suppress(file timeout)
 can_suppress()
 {
-    find $1 -cmin -$2 2>/dev/null | fgrep -q -x $1
+    find $1 -cmin -$2 2>/dev/null | fgrep -q -x $1 && return 0
+    find $1.nonexist -mmin -$2 2>/dev/null|fgrep -q -x $1.nonexist && return 0
+    return 1
 }
 
 # Like fetch_file_start, but doesn't bother if within last BACKEND_FREQ.
@@ -360,7 +369,9 @@ fetch_file_maybe()
     if can_suppress $2$1 ${BACKEND_FREQ:-0}; then debug Suppressing $2$1
     else
 	# This is expensive, only do for Packages (first file apt asks for)
-	echo $1 | fgrep Packages && check_symlinks "$@"
+	echo $1 | fgrep -q Packages && check_symlinks "$@"
+	# Refresh nonexist.
+	touch -c $2$1.nonexist 2>/dev/null
 	fetch_file_start "$@"
     fi
 }
@@ -449,19 +460,21 @@ sweep_clean_unlock()
 #	find_and_cat(filename front-basedir subdir)
 find_and_cat()
 {
-    FAC_DIR=$2$3/
-    FAC_STOP=`dirname $2`
-    while [ $FAC_DIR != $FAC_STOP ]; do
-	if [ -f $FAC_DIR$1 ]; then
-	    debug Found $FAC_DIR$1
-	    cat $FAC_DIR$1
+    # Could be a /binary-all/ (no Packages/Sources file).
+    FAC_DIR=`echo $3 | sed s:/binary-all/:/binary-*/:`
+    FAC_DIR=`echo $FAC_DIR | cut -d' ' -f1`
+    
+    for d in `directories $FAC_DIR | sort -r`; do
+	debug Looking for $2$d/$1
+	if [ -f $2/$d/$1 ]; then
+	    debug Found $2/$d/$1
+	    cat $2/$d/$1
 	    return 0
-	elif [ -f $FAC_DIR$1.gz ]; then
-	    debug Found $FAC_DIR$1.gz
-	    zcat $FAC_DIR$1.gz
+	elif [ -f $2/$d/$1.gz ]; then
+	    debug Found $2/$d/$1.gz
+	    zcat $2/$d/$1.gz
 	    return 0
         fi
-	FAC_DIR=`echo $FAC_DIR | sed 's:/[^/]*/$:/:'`
     done
 }
 
@@ -470,201 +483,202 @@ find_and_cat()
 #. /etc/apt-proxy/apt-proxy.conf
 . $CONFIG_FILE
 
-# Ignore that keepalive crap.  I'm an sh script, not a miracle worker, dammit!
-while read PREFIX LINE
-do
-    LC_PREFIX="`echo $PREFIX | tr -d '\015' | tr '[A-Z]' '[a-z]'`"
-    case "$LC_PREFIX" in
-    get)
-	REQUEST="`echo $LINE | cut -d\  -f1 | sed 's/%5[Ff]/_/g'`"
-	;;
-    if-modified-since:)
-	IMS_DATE=$LINE
-	debug "If-Modified-Since $IMS_DATE"
-	IMS_DATE=`date -u -d "$IMS_DATE" '+%s'`
-	;;
-    '')
-	debug Finished processing request
-	break
-	;;
-    *)
-	debug Got line "$PREFIX $LINE"
-	;;
-    esac
-done
+# For all the requests in a particular session
+while true; do
+    unset DO_CLEANUP SIZE_FILE IMS_DATE UNCOMPRESS REQUEST
 
-INSANE="[^A-Za-z0-9_./+=:-]"
-echo "$REQUEST" | grep -q "$INSANE" &&
-    bad_url "$REQUEST" Malformed chars: `echo \"$REQUEST\" | tr -d \"$INSANE\"`
-
-log `date` Request "$REQUEST"
-
-case $REQUEST in
-'')
-    log Empty request $REQUEST ignored.
-    exit 0
-    ;;
-*..*)
-    log Bad file requested $REQUEST
-    exit 0
-    ;;
-# We always keep the Packages and Release files uptodate: derive the .gz.
-*Packages.gz|*Release.gz|*Sources.gz)
-    # Rsync uncompressed files and derive.
-    debug Updating compressed file \`$REQUEST\'
-    FILE=`echo $REQUEST | sed 's/\.gz$//'`
-    resolve_url $FILE
-
-    # If we already have an uncompressed file, rsync it.
-    if [ -f $FRONT ]; then
-	STREAM="`fetch_file_maybe $URL_REST $FRONT_BASE $BACKS`"
-	# Can't stream, we need to compress.
-	if wait_for_stream $FRONT; then
-	    STREAM=""
-	    if [ ! -f $FRONT.gz -o $FRONT -nt $FRONT.gz ]; then
-		gzip -9 < $FRONT > $FRONT.gz
-		touch -r $FRONT $FRONT.gz
-	    fi
-	fi
-    else
-	# Some unofficial backends don't do uncompressed Packages files
-	# and there's not usually an uncompressed Sources file.
-
-	# If this is first time around, derive uncompressed if it exists on
-	# a back end.
-	if [ ! -f $FRONT.gz ]; then
-	    for back in $BACKS; do
-		if rsync $back$URL_REST 2>/dev/null >/dev/null; then
-		    UNCOMPRESS=$FRONT
-		else
-		    log $back does not have `basename $FRONT`.
-		fi
-	    done
-	fi
-        STREAM="`fetch_file_maybe $URL_REST.gz $FRONT_BASE $BACKS`"
-    fi
-    FRONT=$FRONT.gz
-
-    contype=text/plain
-    conenc=x-gzip
-    ;;
-
-*Packages|*Release|*Sources)
-    debug Updating file \`$REQUEST\'
-    resolve_url $REQUEST
-    STREAM="`fetch_file_maybe $URL_REST $FRONT_BASE $BACKS`"
-
-    contype=text/plain
-    conenc=
-    ;;
-
-*.deb)
-    debug Looking for file \`$REQUEST\'
-    resolve_url $REQUEST
-    # Only if it doesn't exist.
-    [ -f $FRONT ] ||
-	STREAM="`fetch_file_start $URL_REST $FRONT_BASE $BACKS`"
-    [ -n "$CLEANUP_DAYS" ] && DO_CLEANUP=1
-
-    SIZE_FILE=Packages
-    contype=application/dpkg
-    conenc=
-    ;;
-
-*.diff.gz|*.tar.gz)
-    resolve_url "$REQUEST"
-    # Only if it doesn't exist.
-    [ -f $FRONT ] || STREAM="`fetch_file_start $URL_REST $FRONT_BASE $BACKS`"
-    [ -n "$CLEANUP_DAYS" ] && DO_CLEANUP=1
-
-    SIZE_FILE=Sources
-    contype=application/x-gzip
-    conenc=
-    ;;
-
-*.dsc)
-    resolve_url "$REQUEST"
-    # Only if it doesn't exist.
-    [ -f $FRONT ] || STREAM="`fetch_file_start $URL_REST $FRONT_BASE $BACKS`"
-    [ -n "$CLEANUP_DAYS" ] && DO_CLEANUP=1
-
-    SIZE_FILE=Sources
-    contype=text/plain
-    conenc=
-    ;;
-
-*)
-    bad_url "$REQUEST" Unknown extension.
-    ;;
-esac
-
-# Beware race.
-if [ -f "$STREAM" ]; then
-    if [ -n "$SIZE_FILE" ]; then
-	# Damn.  Don't hit server again to get length: backtrace and find.
-	BASEFILE_NAME=`basename $REQUEST`
-	case $SIZE_FILE in
-	Packages)
-	    SIZE=`find_and_cat Packages $FRONT_BASE $URL_SUBDIR | grep-dctrl -e -F Filename "/$BASEFILE_NAME$" -s Size | cut -d\  -f2`
+    while read PREFIX LINE
+    do
+	LC_PREFIX="`echo $PREFIX | tr -d '\015' | tr '[A-Z]' '[a-z]'`"
+	case "$LC_PREFIX" in
+	get)
+	    REQUEST="`echo $LINE | cut -d\  -f1 | sed 's/%5[Ff]/_/g'`"
 	    ;;
-	Sources)
-	    PACKAGE_NAME="`basename $REQUEST | cut -d_ -f1`"
-	    SIZE=`find_and_cat Sources $FRONT_BASE $URL_SUBDIR | grep-dctrl -X -P  "$PACKAGE_NAME" -s Files | fgrep $BASEFILE_NAME | cut -d\  -f3`
+	if-modified-since:)
+	    IMS_DATE=$LINE
+	    debug "If-Modified-Since $IMS_DATE"
+	    IMS_DATE=`date -u -d "$IMS_DATE" '+%s'`
+	    ;;
+	'')
+	    debug Finished processing request
+	    break
+	    ;;
+	*)
+	    debug Got line "$PREFIX $LINE"
 	    ;;
 	esac
-    fi
-else
-    # Race: wait for lock to vanish (may have to move file)
-    while [ -f $FRONT.lock ]; do sleep 1; done
+    done
 
-    if [ -f $FRONT ]; then
-	# File already exists in entirity.  Give local answers.
-	# wc -c avoids symlink problem.
-	SIZE=`wc -c < $FRONT`
-	DATE="`date -u -R -r $FRONT`"
-	# Turn date into seconds. 
-	FILE_DATE=`date -u '+%s' -d "$DATE"`
-	if [ -n "$IMS_DATE" ] && [ $IMS_DATE -ge $FILE_DATE ]; then
-	    write_header "304 HIT"
-	    exit 0
+    INSANE="[^A-Za-z0-9_./+=:-]"
+    echo "$REQUEST" | grep -q "$INSANE" &&
+	bad_url "$REQUEST" Malformed chars:`echo \"$REQUEST\"|tr -dc "$INSANE"`
+
+    [ -n "$REQUEST" ] && log `date` Request "$REQUEST"
+
+    case $REQUEST in
+    '')
+	# Otherwise we send RSTs to some clients.
+	sleep 1
+	exit 0
+	;;
+    *..*)
+	log Bad file requested $REQUEST
+	exit 0
+	;;
+    # We always keep the Packages and Release files uptodate: derive the .gz.
+    *Packages.gz|*Release.gz|*Sources.gz)
+	# Rsync uncompressed files and derive.
+	debug Updating compressed file \`$REQUEST\'
+	FILE=`echo $REQUEST | sed 's/\.gz$//'`
+	resolve_url $FILE 1
+
+	# If we already have an uncompressed file, rsync it.
+	if [ -f $FRONT ]; then
+	    fetch_file_maybe $URL_REST $FRONT_BASE $BACKS > /dev/null
+	    STREAM=""
+	    # Can't stream, we need to compress.
+	    if wait_for_stream $FRONT; then
+		if [ ! -f $FRONT.gz -o $FRONT -nt $FRONT.gz ]; then
+		    gzip -9 < $FRONT > $FRONT.gz
+		    touch -r $FRONT $FRONT.gz
+		fi
+	    fi
+	else
+	    # Some unofficial backends don't do uncompressed Packages files
+	    # and there's not usually an uncompressed Sources file.
+
+	    # If this is first time around, derive uncompressed if it
+	    # exists on a back end.
+	    if [ ! -f $FRONT.gz ]; then
+		for back in $BACKS; do
+		    if rsync $back$URL_REST 2>/dev/null >/dev/null; then
+			UNCOMPRESS=$FRONT
+		    else
+			log $back does not have `basename $FRONT`.
+		    fi
+		done
+	    fi
+	    STREAM="`fetch_file_maybe $URL_REST.gz $FRONT_BASE $BACKS`"
+	fi
+	FRONT=$FRONT.gz
+
+	contype=text/plain
+	conenc=x-gzip
+	;;
+
+    *Packages|*Release|*Sources)
+	debug Updating file \`$REQUEST\'
+	resolve_url $REQUEST 1
+	STREAM="`fetch_file_maybe $URL_REST $FRONT_BASE $BACKS`"
+
+	contype=text/plain
+	conenc=
+	;;
+
+    *.deb)
+	debug Looking for file \`$REQUEST\'
+	resolve_url $REQUEST
+	[ -f $FRONT ] ||
+	    STREAM="`fetch_file_start $URL_REST $FRONT_BASE $BACKS`"
+	debug STREAM: $STREAM
+	[ -n "$CLEANUP_DAYS" ] && DO_CLEANUP=1
+
+	SIZE_FILE=Packages
+	contype=application/dpkg
+	conenc=
+	;;
+
+    *.diff.gz|*.tar.gz)
+	resolve_url $REQUEST
+	[ -f $FRONT ] ||
+	    STREAM="`fetch_file_start $URL_REST $FRONT_BASE $BACKS`"
+	[ -n "$CLEANUP_DAYS" ] && DO_CLEANUP=1
+
+	SIZE_FILE=Sources
+	contype=application/x-gzip
+	conenc=
+	;;
+
+    *.dsc)
+	resolve_url $REQUEST
+	[ -f $FRONT ] ||
+	    STREAM="`fetch_file_start $URL_REST $FRONT_BASE $BACKS`"
+	[ -n "$CLEANUP_DAYS" ] && DO_CLEANUP=1
+
+	SIZE_FILE=Sources
+	contype=text/plain
+	conenc=
+	;;
+
+    *)
+	bad_url $REQUEST Unknown extension.
+	;;
+    esac
+
+    # Beware race.
+    if [ -f "$STREAM" ]; then
+	rm -f $FRONT.nonexist
+	if [ -n "$SIZE_FILE" ]; then
+	    # Damn.  Don't hit server again to get length: backtrace and find.
+	    BASEFILE_NAME=`basename $REQUEST`
+	    case $SIZE_FILE in
+	    Packages)
+		SIZE=`find_and_cat Packages $FRONT_BASE $URL_SUBDIR | grep-dctrl -e -F Filename "/$BASEFILE_NAME$" -s Size | cut -d\  -f2`
+		;;
+	    Sources)
+		PACKAGE_NAME="`basename $REQUEST | cut -d_ -f1`"
+		SIZE=`find_and_cat Sources $FRONT_BASE $URL_SUBDIR | grep-dctrl -X -P  "$PACKAGE_NAME" -s Files | fgrep $BASEFILE_NAME | cut -d\  -f3`
+		;;
+	    esac
+	    debug Derived size: $SIZE
 	fi
     else
-	# Golly!
-	CAUSE=`fgrep -v -x 'client: nothing to do' $FRONT.fail 2>/dev/null`
-	rm -f $FRONT.fail
-	bad_url $REQUEST "${CAUSE:-was not found on this server}"
-	exit 1
+	# Race: wait for lock to vanish (may have to move file)
+	while [ -f $FRONT.lock ]; do sleep 1; done
+
+	if [ -f $FRONT ]; then
+	    # File already exists in entirity.  Give local answers.
+	    rm -f $FRONT.nonexist
+	    # wc -c avoids symlink problem.
+	    SIZE=`wc -c < $FRONT`
+	    DATE="`date -u -R -r $FRONT`"
+	    # Turn date into seconds. 
+	    FILE_DATE=`date -u '+%s' -d "$DATE"`
+	    if [ -n "$IMS_DATE" ] && [ $IMS_DATE -ge $FILE_DATE ]; then
+		write_header "304 HIT"
+		continue
+	    fi
+	else
+	    # Golly!
+	    CAUSE=`fgrep -v -x 'client: nothing to do' $FRONT.fail 2>/dev/null`
+	    rm -f $FRONT.fail
+	    # Often Release files really don't exist: cache the `miss'.
+	    case "$FRONT" in *Release|*Release.gz)
+		[ ! -f $FRONT.nonexist ] && touch $FRONT.nonexist;;
+	    esac
+	    bad_url $REQUEST "${CAUSE:-was not found on this server}"
+	fi
     fi
-fi
 
-write_header "200 OK" "$contype" "$SIZE" "$DATE" "$conenc" "$REQUEST"
-stream_file "$STREAM" "$FRONT"
+    write_header "200 OK" "$contype" "$SIZE" "$DATE" "$conenc" "$REQUEST"
+    stream_file "$STREAM" "$FRONT"
 
-# If we close fd with data still pending, we send a RST.  If we do
-# that without having sent all data out, other end gets short read.
-# Drain next request.
-(while read LINE && [ "`echo x$LINE | tr -d '\015'`" != x ]; do :; done) &
-DRAINER_PID=$!
-sleep 1
-
-# Now, derive the uncompressed file.
-if [ -n "$UNCOMPRESS" ]; then
-    gunzip < $FRONT > $UNCOMPRESS
-    touch -r $FRONT $UNCOMPRESS
-fi
-
-[ -n "$DO_CLEANUP" ] && cleanup_old $FRONT $CLEANUP_DAYS
-
-# Do async once in a very long while (fails if $CLEAN_SWEEP not set).
-if [ -n "$CLEAN_SWEEP" ]; then
-    if [ ! -f $FRONT_BASE/.apt-proxy ] ||
-	find $FRONT_BASE/.apt-proxy -mtime +$CLEAN_SWEEP |
-	    fgrep -q -x $FRONT_BASE/.apt-proxy
-    then
-	my_lockfile $FRONT_BASE/.apt-proxy &&
-	    sweep_clean_unlock $FRONT_BASE $CLEAN_SWEEP &
+    # Now, derive the uncompressed file.
+    if [ -n "$UNCOMPRESS" ]; then
+	gunzip < $FRONT > $UNCOMPRESS
+	touch -r $FRONT $UNCOMPRESS
     fi
-fi
 
-kill $DRAINER_PID
-exit 0
+    [ -n "$DO_CLEANUP" ] && cleanup_old $FRONT $CLEANUP_DAYS
+
+    # Do async once in a very long while.
+    if [ -n "$CLEAN_SWEEP" ]; then
+	if [ ! -f $FRONT_BASE/.apt-proxy ] ||
+	    find $FRONT_BASE/.apt-proxy -mtime +$CLEAN_SWEEP |
+		fgrep -q -x $FRONT_BASE/.apt-proxy
+	then
+	    my_lockfile $FRONT_BASE/.apt-proxy &&
+		sweep_clean_unlock $FRONT_BASE $CLEAN_SWEEP &
+	fi
+    fi
+done
