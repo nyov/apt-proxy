@@ -81,7 +81,7 @@ fi
 if [ -n "${WGET_TIMEOUT}" ] && [ "${RSYNC_TIMEOUT}" != "${WGET_TIMEOUT}" ]; then
 	warn "WGET_TIMEOUT differs from RSYNC_TIMEOUT, using RSYNC_TIMEOUT"
 fi
-timeout="timeout = ${RSYNC_TIMEOUT}"
+timeout="timeout = ${RSYNC_TIMEOUT:30}"
 
 cache_dir="cache_dir = ${APT_PROXY_CACHE}"
 

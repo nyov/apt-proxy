@@ -1,6 +1,8 @@
 apt-proxy (1.9.18+CVS) UNRELEASED; urgency=low
 
   * Fix format in apt-proxy.conf(5). (closes: #272153)
+  * Add default to 30 in timeout parameter when importing from version
+    1. (closes: 266776)
 
  -- Otavio Salvador <otavio@debian.org>  Sat, 18 Sep 2004 11:19:04 -0300
 
