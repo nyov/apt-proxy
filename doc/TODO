@@ -3,11 +3,6 @@
 ## Talk to moshez before releasing ##
 #####################################
 
-Mirror house-keeping:support apt-proxy-import operations again (DONE?)
-	Consider using a little heuristic for unknown versions.
-		Look for all versions of the package on the listings and move
-		it to the path of the version just on top of it.
-
 ---------------- "Not so urgent" mark ---------------------------
 
 Mirror house-keeping:MAX_VERSIONS

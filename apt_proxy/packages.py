@@ -252,15 +252,17 @@ def closest_match(info, others):
             match = path
             break
     if not match:
+        if not others:
+            return None
         match = others[-1][1]
 
     dirname=re.sub(r'/[^/]*$', '', match)
     version=re.sub(r'^[^:]*:', '', info['Version'])
     if dirname.find('/pool/') != -1:
-        return "%s/%s_%s_%s.deb"%(dirname, info['Package'],
+        return "/%s/%s_%s_%s.deb"%(dirname, info['Package'],
                                   version, info['Architecture'])
     else:
-        return "%s/%s_%s.deb"%(dirname, info['Package'], version)
+        return "/%s/%s_%s.deb"%(dirname, info['Package'], version)
 
 
     
@@ -278,12 +280,17 @@ def import_debs(factory, dir):
                 log.msg("WARNING: multiple ocurrences", 'import')
                 log.msg(str(paths), 'import')
             path = paths[0]
-            
+        else:
+            log.msg("Not found, trying to guess", 'import')
+            path = closest_match(AptDpkgInfo(dir+'/'+file),
+                                 get_mirror_versions(factory, dir+'/'+file))
+        if path:
             log.msg("MIRROR_PATH:"+ path, 'import')
             spath = dir+'/'+file
             dpath = factory.cache_dir+path
             if not os.path.exists(dpath):
                 log.msg("IMPORTING:"+spath, 'import')
+                dpath = re.sub(r'/\./', '/', dpath)
                 if not os.path.exists(dirname(dpath)):
                     os.makedirs(dirname(dpath))
                 f = open(dpath, 'w')
