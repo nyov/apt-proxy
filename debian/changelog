@@ -7,7 +7,7 @@ apt-proxy (1.9.12.pre13) experimental; urgency=low
   * Fix spelling error in apt_proxy.py comment (Otavio).
   * Improved debug information when somebody try to use a not implemented
     method (Otavio).
-  * Add some misssing filetypes (.txt, .html and .gz) (Otavio).
+  * Add some missing filetypes (.txt, .html and .gz) (Otavio).
   * Fix problem with numeric ports when used in backends, thanks to
     Philipp Weis <pweis@pweis.com> (Otavio). (closes: #257507)
 
