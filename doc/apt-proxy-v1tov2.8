@@ -1,0 +1,30 @@
+.TH APT-PROXY-V1TOV2 "8" "November 2002" "Debian GNU/Linux" " "
+.SH NAME
+apt-proxy-v1tov2 - Updates apt-proxy configuration to the new format.
+.SH SYNOPSIS
+.B apt-proxy-v1tov2
+[v1_conf [v2_sample_conf]] > v2_conf
+
+.SH DESCRIPTION
+apt-proxy-v1tov2 tries to update \fIv2_sample_conf\fR with the configuration
+found in \fIv1_conf\fR and writes the result to \fIstdout\fR.
+
+By default, it will use /etc/apt-proxy/apt-proxy.conf for \fIv1_conf\fR and
+/etc/apt-proxy/apt-proxy-v2.conf for \fIv2_sample_conf\fR.
+
+.SH NOTES
+Hopefully the package maintainer scripts have already run this for you.
+
+.SH FILES
+/etc/apt-proxy/apt-proxy\&.conf
+.br
+/etc/apt-proxy/apt-proxy-v2\&.conf
+.SH AUTHORS
+Manuel Estrada Sainz <ranty@debian.org>
+.SH "SEE ALSO"
+.na
+.nh
+.BR apt-proxy (8),
+.BR apt-proxy.conf (5)
+.hy
+.ad
