@@ -243,13 +243,11 @@ class Fetcher:
     """
     gzip_convert = re.compile(r"/Packages$")
     post_convert = re.compile(r"/Packages.gz$")
-    proxy_client = None
     status_code = http.OK
     status_message = None
     requests = None
     request = None
     length = None
-    running_client = None
         
     def insert_request(self, request):
         """
@@ -443,7 +441,6 @@ class FetcherDummy(Fetcher):
     """
     gzip_convert = re.compile(r"^Nothing should match this$")
     post_convert = re.compile(r"^Nothing should match this$")
-    proxy_client = None
     status_code = http.INTERNAL_SERVER_ERROR
     status_message = None
         
@@ -484,7 +481,6 @@ class FetcherDummy(Fetcher):
         self.requests = [request]
         self.factory = request.factory
         self.request = request
-        self.running_client = None
 
         request.apFetcher = self
         if self.factory.runningFetchers.has_key(request.uri):
