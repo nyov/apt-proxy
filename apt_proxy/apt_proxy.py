@@ -369,8 +369,10 @@ class Fetcher:
             del self.factory.runningFetchers[self.request.uri]
         except exceptions.KeyError:
             log.debug("We are not on runningFetchers!!!",'client')
-            log.debug(str(self.factory.runningFetchers),'client')
-            raise exceptions.KeyError
+            log.debug("Class is not in runningFetchers: "+str(self.__class__) 
+                       + ' URI:' + request.uri, 'fetcher_activate')
+            log.debug('Running fetchers: ' +str(self.factory.runningFetchers),'client')
+            #raise exceptions.KeyError
         for req in self.requests[:]:
             self.remove_request(req)
 
@@ -608,6 +610,8 @@ class FetcherFtp(Fetcher, protocol.Protocol):
         if not request.apFetcher:
             return
 
+        self.passive_ftp = self.request.backend.passive_ftp
+        
         self.remote_file = (self.request.backend.path + "/" 
                             + self.request.backend_uri)
 
@@ -621,6 +625,14 @@ class FetcherFtp(Fetcher, protocol.Protocol):
 
     def controlConnectionMade(self, ftpclient):
         self.ftpclient = ftpclient
+        
+        if(self.passive_ftp):
+            log.debug('Got control connection, using passive ftp', 'ftp_client')
+            self.ftpclient.passive = 1
+        else:
+            log.debug('Got control connection, using active ftp', 'ftp_client')
+            self.ftpclient.passive = 0
+
         if log.isEnabled('ftp_client'):
             self.ftpclient.debug = 1
 
@@ -711,6 +723,7 @@ class FetcherFtp(Fetcher, protocol.Protocol):
         def apFtpFetchFinish(msg, code, status, fetcher):
             __pychecker__ = 'unusednames=msg,status'
             fetcher.ftpFinish(code)
+        log.debug('ftpFetchFile: ' + self.remote_file, 'ftp_client')
         d = self.ftpclient.retrieveFile(self.remote_file, self)
         d.addCallbacks(apFtpFetchFinish, apFtpFetchFinish,
                        (http.OK, "good", self), None,
@@ -1036,6 +1049,7 @@ class Backend:
         doesn't match this backend.
         """
         if re.search("^/"+self.base+"/", path):
+            #log.debug("check_path " + path + " = " + path[len(self.base)+2:] )
             return  path[len(self.base)+2:]
         else:
             return None
@@ -1144,17 +1158,58 @@ class Request(http.Request):
         self.factory=channel.factory
         http.Request.__init__(self, channel, queued)
 
-    def connectionLost(self, reason=None):
+    def process(self):
         """
-        The connection with the client was lost, remove this request from its
-        Fetcher.
+        Each new request begins processing here
         """
-        __pychecker__ = 'unusednames=reason'
-        #If it is waiting for a file verification it may not have an
-        #apFetcher assigned
-        if self.apFetcher:
-            self.apFetcher.remove_request(self)
-        self.finish()
+        log.debug("Request: " + self.method + " " + self.uri);
+        # Clean up URL
+        self.uri = self.simplify_path(self.uri)
+
+        self.local_file = self.factory.cache_dir + self.uri
+
+        if self.factory.disable_pipelining:
+            self.setHeader('Connection','close')
+            self.channel.persistent = 0
+
+        if self.method != 'GET':
+            #we currently only support GET
+            log.debug("abort - not implemented")
+            self.finishCode(http.NOT_IMPLEMENTED)
+            return
+
+        if re.search('/\.\./', self.uri):
+            log.debug("/../ in simplified uri ("+self.uri+")")
+            self.finishCode(http.FORBIDDEN)
+            return
+
+        self.backend = None
+        for backend in self.factory.backends:
+            uri = backend.check_path(self.uri)
+            if uri:
+                self.backend = backend
+                self.backend_uri = uri
+
+        if not self.backend:
+            log.debug("abort - non existent Backend")
+            self.finishCode(http.NOT_FOUND, "NON-EXISTENT BACKEND")
+            return
+
+        self.filetype = findFileType(self.uri)
+
+        if not self.filetype:
+            log.debug("abort - unknown extension")
+            self.finishCode(http.NOT_FOUND)
+            return
+
+        self.setHeader('content-type', self.filetype.contype)
+
+        if os.path.isdir(self.local_file):
+            log.debug("abort - Directory listing not allowed")
+            self.finishCode(http.FORBIDDEN)
+            return
+
+        self.fetch()
 
     def fetch(self, serve_cached=1):
         """
@@ -1235,60 +1290,20 @@ class Request(http.Request):
                            (dummyFetcher, 0, running,), None)
             d.arm()
             return None
-
-    def process(self):
+        
+    def connectionLost(self, reason=None):
         """
-        Each new request begins processing here
+        The connection with the client was lost, remove this request from its
+        Fetcher.
         """
-        log.debug("Request: " + self.method + " " + self.uri);
-        # Clean up URL
-        self.uri = self.simplify_path(self.uri)
+        __pychecker__ = 'unusednames=reason'
+        #If it is waiting for a file verification it may not have an
+        #apFetcher assigned
+        if self.apFetcher:
+            self.apFetcher.remove_request(self)
+        self.finish()
 
-        self.local_file = self.factory.cache_dir + self.uri
-
-        if self.factory.disable_pipelining:
-            self.setHeader('Connection','close')
-            self.channel.persistent = 0
-
-        if self.method != 'GET':
-            #we currently only support GET
-            log.debug("abort - not implemented")
-            self.finishCode(http.NOT_IMPLEMENTED)
-            return
-
-        if re.search('/\.\./', self.uri):
-            log.debug("/../ in simplified uri ("+self.uri+")")
-            self.finishCode(http.FORBIDDEN)
-            return
-
-        self.backend = None
-        for backend in self.factory.backends:
-            uri = backend.check_path(self.uri)
-            if uri:
-                self.backend = backend
-                self.backend_uri = uri
-
-        if not self.backend:
-            log.debug("abort - non existent Backend")
-            self.finishCode(http.NOT_FOUND, "NON-EXISTENT BACKEND")
-            return
-
-        self.filetype = findFileType(self.uri)
-
-        if not self.filetype:
-            log.debug("abort - unknown extension")
-            self.finishCode(http.NOT_FOUND)
-            return
-
-        self.setHeader('content-type', self.filetype.contype)
-
-        if os.path.isdir(self.local_file):
-            log.debug("abort - Directory listing not allowed")
-            self.finishCode(http.FORBIDDEN)
-            return
-
-        self.fetch()
-
+        
 class LoopbackRequest(Request):
     """
     This is just a fake Request so a Fetcher can attach to another
@@ -1436,7 +1451,7 @@ class Factory(protocol.ServerFactory):
         Remove entries for package versions which are not in cache, and delete
         some files if needed to respect the max_versions configuration.
 
-        NOTE: This should probably be done per distribution.
+        TODO: This must be properly done per distribution.
         """
         if self.max_versions == None:
             #max_versions is disabled
@@ -1469,6 +1484,7 @@ class Factory(protocol.ServerFactory):
         packages.sort(compare)
         log.debug(str(packages), 'max_versions')
         while len(packages) > self.max_versions:
+            log.debug("Removing " + cache_dir +'/'+ packages[0], 'max_versions')
             os.unlink(cache_dir +'/'+ packages[0])
             del packages[0]
 
