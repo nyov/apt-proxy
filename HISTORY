@@ -1,0 +1,10 @@
+1.1.0:
+	Added keep-alive support: large speedup.
+	Added `+' prefix for preferred backends for control files.
+	Suppress spurious messages in logs.
+	Fix streaming.
+	Cache misses on Release files.
+	Deal with streaming out of binary-all/ (SIZE found correctly).
+	Avoid runaway apt-proxy processes.
+	Added KEEP_STATS option and copy potentially similar files.
+	
