@@ -4,13 +4,13 @@
 # Released under the GPL version 2 or later
 #	Fixed by Stephen Rothwell <sfr@canb.auug.org.au>
 #       Stuff by Martin Schwenke <martin@meltin.net>
-#	Additional fixes by Chris Halls <chris.halls@nikocity.de> for Debian
+#	Maintained and packaged for Debian by Chris Halls <chris.halls@nikocity.de>
 #
 #	`perl!' -- Anton Blanchard
 #	`I was joking!' -- Paul Mackerras
 #	`Note that Rusty's name is at the top' -- Stephen Rothwell.
 #	`Perl!!!  Please?' -- Martin Schwenke
-APT_PROXY_VERSION=1.1.4
+APT_PROXY_VERSION=1.2.0
 
 # Default values
 APT_PROXY_LOGFILE=/dev/null
@@ -84,7 +84,10 @@ if tail -c +10 /dev/null 2>/dev/null; then
     {
 	dpf_start=`expr $2 + 1`
 	if [ -n "$3" ]; then
-	    tail -c +$dpf_start "$1" | head -c $3
+	    # The tail version doesn't seem to return an error code
+	    # if the file no longer exists
+	    # tail -c +$dpf_start "$1" | head -c $3
+	    dd ibs=1 obs=16384 skip=$2 count=$3 if="$1" 2>/dev/null
 	else
 	    tail -c +$dpf_start "$1"
 	fi
@@ -93,7 +96,7 @@ else
     dump_part_file()
     {
 	if [ -n "$3" ]; then
-	    dd ibs=1 obs=16384 skip=$2 count=$3 if="$1"
+	    dd ibs=1 obs=16384 skip=$2 count=$3 if="$1" 2>/dev/null
 	else
 	    (dd bs=1 count=$2 of=/dev/null 2>/dev/null && cat) < "$1"
 	fi
@@ -853,6 +856,33 @@ find_filesize()
    return 0
 }
 
+# Verify cache file integrity
+# Returns 0 if file OK, or file exists but we don't know how to verify it
+# 1 if not found, 2 if corrupted
+verify_file()
+{
+    debug verify_file $1
+
+    [ -f "$1" ] || return 1 # file not found
+
+    case $1 in
+    *.deb)
+        MSG=`ar -t "$1" 2>&1` && return 0
+	debug "verify_file $1 corrupted:$MSG"
+	return 2
+	;;
+    *.gz)
+    	MSG=`gunzip -t "$1" 2>&1` && return 0
+	debug "verify_file $1 corrupted:$MSG"
+	return 2
+	;;
+    *)
+    	return 0
+	;;
+    esac
+    
+}
+
 ################################# MAIN START ##############################
 # Read our configuration
 #. /etc/apt-proxy/apt-proxy.conf
@@ -970,7 +1000,7 @@ while true; do
     *.deb)
 	debug Looking for file \`$REQUEST\'
 	resolve_url $REQUEST
-	[ -f $FRONT ] ||
+	verify_file $FRONT ||
 	    STREAM="`fetch_file_start $URL_REST $FRONT_BASE $BACKS`"
 	[ -n "$CLEANUP_DAYS" ] && DO_CLEANUP=1
 	[ -n "$MAX_VERSIONS" ] && DO_REMOVE_EXTRA_VERSIONS=1
@@ -982,7 +1012,7 @@ while true; do
 
     *.diff.gz|*.tar.gz)
 	resolve_url $REQUEST
-	[ -f $FRONT ] ||
+	verify_file $FRONT ||
 	    STREAM="`fetch_file_start $URL_REST $FRONT_BASE $BACKS`"
 	[ -n "$CLEANUP_DAYS" ] && DO_CLEANUP=1
 
