@@ -11,7 +11,7 @@
 #	`I was joking!' -- Paul Mackerras
 #	`Note that Rusty's name is at the top' -- Stephen Rothwell.
 #	`Perl!!!  Please?' -- Martin Schwenke
-APT_PROXY_VERSION=1.2.9.7
+APT_PROXY_VERSION=1.2.9.8
 
 # Default values
 APT_PROXY_LOGFILE=/dev/null
@@ -120,7 +120,7 @@ write_header()
     
     # apt sometimes barfs if this isn't in a single packet.
     # That cost me about a week of debugging 8(.
-    WH_HEADER="HTTP/1.0 $1\r\nDate: `date -u -R`\r\nServer: Apt-proxy $APT_PROXY_VERSION\r\n"
+    WH_HEADER="HTTP/1.1 $1\r\nDate: `date -u -R`\r\nServer: Apt-proxy $APT_PROXY_VERSION\r\n"
     # Say whether we are keeping the connection open or not
     WH_HEADER="${WH_HEADER}Connection: $2\r\n"
     [ -n "$3" ] && WH_HEADER="${WH_HEADER}Content-Type: $3\r\n"
@@ -155,7 +155,7 @@ The configuration file $CONFIG_FILE is $@.<P>\r
 # Called from config script to add back ends.
 # APT_PROXY_BACKENDS is a list of backends seperated by spaces.
 #  Whitespace from the add_backend command is replaced by commas
-#	add_backend(url-prefix, file-prefix, rsync-prefix...)
+#	add_backend(url-prefix, file-prefix, backend-prefix...)
 add_backend()
 {
     [ $# -ge 3 ] || bad_config Bad add_backend "$@".
@@ -164,26 +164,27 @@ add_backend()
 }
 
 # Download a file.  url is a directory if followed by a trailing slash
-#  download_url(url, destinationDirectory, destinationFile)
+#  download_url(url, destinationDirectory, destinationFile [, realName])
 download_url()
 {
     unset RET DL_DIR
 
-
     # DL_URL: URL to download				(http://ftp.debian.org/pool/a/aaa-a.deb)
     # DL_DESTDIR: Destination directory for file	(/var/cache/apt-proxy/debian/pool/a)
-    # DL_DESTFILE: Destination filename			(aaa-a.deb)
-    # DL_FILE: Complete pathname for destination file	(/var/cache/apt-proxy/debian/pool/a/aaa-a.deb)
+    # DL_DESTFILE: Destination filename			(aaa-a.deb.partial)
+    # DL_REALNAME: Original filename			(/var/cache/apt-proxy/debian/pool/a/aaa-a.deb)
+    # DL_FILE: Complete pathname for destination file	(/var/cache/apt-proxy/debian/pool/a/aaa-a.deb.partial)
     DL_URL=$1
     DL_DESTDIR=$2
     DL_DESTFILE=$3
+    DL_REALNAME=$4
     DL_FILE=$DL_DESTDIR/$DL_DESTFILE
 
     case $DL_URL in
       */) DL_DIR=y;;
     esac
 
-    debug "download_url:$DL_URL dest:$DL_DESTDIR file:$DL_DESTFILE IsDir:[$DL_DIR]"
+    debug "download_url:$DL_URL dest:$DL_DESTDIR file:$DL_DESTFILE [realname:$DL_REALNAME] IsDir:[$DL_DIR]"
 
     DL_LOG=$DL_FILE.log
 
@@ -207,6 +208,7 @@ download_url()
 		    if [ -s $DL_TEMPFILE ]; then
 			# move file to final location
 			mv $DL_TEMPFILE $DL_FILE
+			debug "got file: `ls -l $DL_FILE`"
 		    else
 			rm -f $DL_TEMPFILE
 		    fi
@@ -227,18 +229,30 @@ download_url()
 		$WGET_CMD -O /dev/null $DL_URL/ > $DL_LOG 2>&1
 	        RET=$?
 		if [ $RET = 0 ];then
+		    debug "got file: `ls -l $DL_FILE`"
 		    # Success - create directory
 		    mkdir $DL_FILE && rm $DL_LOG
 		fi
 	    fi
 	    debug "wget: `cat $DL_LOG`"
-	    debug "got file: `ls -l $DL_FILE`"
 	    ;;
 	*::*)
 	    RSYNC_CMD="$RSYNC -v --perms --links --times --partial"
 
 	    if [ -z "$DL_DIR" ];then
-	        # File
+	        # rsync file
+
+		# If this is the first rsync backend, get an older copy to
+		# rsync against.
+		if [ ! -f "$DL_FILE" ]; then
+		    # If file exists (eg. Packages file), copy it to partial.
+		    # In that case, don't get Packages if it's NEWER.
+		    if [ -f "$DL_REALNAME" ]; then
+			cp -p $DL_REALNAME $DL_FILE
+		    else
+			copy_best_match $DL_REALNAME $DL_FILE
+		    fi
+		fi
 
 		# Try to rsync uncompressed version?
 		case $DL_URL in
@@ -266,14 +280,14 @@ download_url()
 		esac
 
 		if [ -z "$RET" ]; then
-		    # Retrieve normally
+		    # Retrieve normal file (not uncompressed control file)
 		    debug $RSYNC_CMD $DL_URL $DL_FILE 
 		    $RSYNC_CMD $DL_URL $DL_FILE > $DL_LOG 2>&1
 		    RET=$?
 		fi
 
             else
-	        # Directory
+	        # rsync directory
 	        debug $RSYNC_CMD $DL_URL
 	        $RSYNC_CMD $DL_URL > $DL_LOG 2>&1
 	        RET=$?
@@ -327,7 +341,7 @@ is_sane()
 }
 
 # Tries all backends for a link.
-#	rsync_link(linkname, backends...)
+#	download_link(linkname, backends...)
 rsync_link_old()
 {
     RSL_LINK=$1
@@ -344,7 +358,7 @@ rsync_link_old()
     return 1
 }
 
-rsync_link()
+download_link()
 {
     RSL_LINK=$1
     RSL_SUBDIR=$2
@@ -382,7 +396,7 @@ mkdir_maybe_symlinks_old()
 
     for mms_d in `directories $MMS_SUBDIR`; do
 	if [ ! -d "$MMS_FRONTBASE$mms_d" ]; then
-	    MMS_L="`rsync_link \"$mms_d\" \"$@\"`" ||
+	    MMS_L="`download_link \"$mms_d\" \"$@\"`" ||
 		bad_url close "$mms_d" "directory does not exist on any server"
 	    if [ -n "$MMS_L" ]; then
 		if is_sane "$MMS_L"; then
@@ -418,7 +432,7 @@ mkdir_maybe_symlinks()
 
     for mms_d in `directories $MMS_SUBDIR`; do
 	if [ ! -d "$MMS_FRONTBASE$mms_d" ]; then
-	    rsync_link $mms_d $MMS_FRONTBASE $@ ||
+	    download_link $mms_d $MMS_FRONTBASE $@ ||
 	     bad_url close "$mms_d" "directory does not exist on any server"
 
 	    [ ! -d "$MMS_FRONTBASE$mms_d" ] &&
@@ -442,7 +456,7 @@ check_symlinks()
 	if [ -L "$CS_FRONTBASE$cs_d" ]; then
 	    CS_FRONTL="`readlink $CS_FRONTBASE$cs_d`"
 	    # If this fails, simply abort check.
-	    CS_BACKL="`rsync_link $cd_d $@`" || return
+	    CS_BACKL="`download_link $cd_d $@`" || return
 	    debug Link "$cs_d": mine "$CS_FRONTL" back "$CS_BACKL"
 	    if [ "$CS_FRONTL" != "$CS_BACKL" ]; then
 		log Updating link "$cs_d" from "$CS_FRONTL" to "$CS_BACKL"
@@ -551,6 +565,26 @@ my_lockfile()
     return $ret
 }
 
+# Delete lockfile
+# Return 0 if successful
+# remove_lockfile(lockfile)
+remove_lockfile()
+{
+    if [ -f $1 ]; then
+	if rm -f $1; then
+	    debug -- Removed lock $1
+	else
+	    debug Could not remove lockfile $1
+	    return 1
+	fi
+    else
+	debug remove_lockfile lockfile not found: $1
+	return 1
+    fi
+
+    return 0
+}
+
 # Wait for lockfile with stale lock detection
 #	wait_for_lock(lockfile)
 wait_for_lock()
@@ -605,7 +639,7 @@ create_packages_filelist ()
 	done >$OUTFILE
 	touch -r $1 $OUTFILE
 	debug "Created filelist for $1"
-	rm -f $CPF_LOCKFILE
+	remove_lockfile $CPF_LOCKFILE
     fi
 }
 
@@ -728,7 +762,7 @@ deb_all_versions ()
 }
 	
 
-# Find a decent match to base rsync on. 
+# Find a decent match to base download on. 
 #	copy_best_match(front partial)
 copy_best_match()
 {
@@ -747,55 +781,52 @@ copy_best_match()
     fi
 }
 
-# Do rsync, drop lock.
-#	rsync_unlock(front url-rest lockfile backends...)
-rsync_unlock()
+# Do download, drop lock.
+#	download_unlock(front url-rest lockfile backends...)
+download_unlock()
 {
-    RSU_FRONT=$1
-    RSU_REST=$2
-    RSU_LOCK=$3
+    DLU_FRONT=$1
+    DLU_REST=$2
+    DLU_LOCK=$3
     shift 3
-    case $RSU_FRONT in
+    case $DLU_FRONT in
       */)
         # Directory
-        RSU_PART="`echo $RSU_FRONT | sed 's|/$||'`"
-	RSU_FAIL=$RSU_PART.fail
+        DLU_PART="`echo $DLU_FRONT | sed 's|/$||'`"
+	DLU_FAIL=$DLU_PART.fail
 	;;
       *)
-        RSU_PART=$RSU_FRONT.partial
-        RSU_FAIL=$RSU_FRONT.fail
+        DLU_PART=$DLU_FRONT.partial
+        DLU_FAIL=$DLU_FRONT.fail
 	;;
     esac
     
-    RSU_OPTS="-v --perms --links --times --partial"
-
-    # If file exists (eg. Packages file), copy it to partial.
-    # In that case, don't get Packages if it's NEWER.
-    if [ -f "$RSU_FRONT" ]; then
-	cp -p $RSU_FRONT $RSU_PART
-	RSU_OPTS="$RSU_OPTS --update"
-    elif [ ! -f "$RSU_PART" ]; then
-	copy_best_match $RSU_FRONT $RSU_PART
-    fi
-    for rsu_b in $@; do
-	debug Trying $rsu_b...
-	#debug $RSYNC $RSU_OPTS $rsu_b$RSU_REST $RSU_PART
-	if download_url $rsu_b$RSU_REST `dirname $RSU_FRONT` `basename $RSU_PART` ;then
-	#if $RSYNC $RSU_OPTS $rsu_b$RSU_REST $RSU_PART >$RSU_FAIL 2>&1; then
-	    case $RSU_FRONT in
+    for DLU_b in $@; do
+	debug Trying $DLU_b...
+	if download_url $DLU_b$DLU_REST `dirname $DLU_FRONT` `basename $DLU_PART` $DLU_FRONT ;then
+	    # Download successful
+	    case $DLU_FRONT in
 	      */)
-	          ;;
+		      ;;
 	      *)
-	          mv $RSU_PART $RSU_FRONT
-		  ;;
+		      if [ -s $DLU_PART ]; then 
+			  mv $DLU_PART $DLU_FRONT
+		      else
+		          # File was not modified - update ctime
+			  cp -a $DLU_FRONT $DLU_PART && rm $DLU_FRONT && 
+			    mv $DLU_PART $DLU_FRONT
+		      fi
+		      ;;
 	    esac
-	    #[ -n "$KEEP_STATS" ] && log $RSU_REST `tail -2 $RSU_FAIL`
-	    #rm -f $RSU_FAIL
+	    #[ -n "$KEEP_STATS" ] && log $DLU_REST `tail -2 $DLU_FAIL`
+	    #rm -f $DLU_FAIL
 	    break;
+	else
+	    # Download failed
+	    touch $DLU_FAIL
 	fi
-	#debug `tail -2 < $RSU_FAIL`
     done
-    rm -f $RSU_LOCK
+    remove_lockfile $DLU_LOCK
 }
 
 # Given filename, return wildcard which rsync would use.
@@ -805,7 +836,7 @@ rsync_wildcard()
     echo `dirname $1`/.`basename $1`.partial."*"
 }
 
-# Returns when actual file (not symlink!) has begun rsync.
+# Returns when actual file (not symlink!) has begun download.
 # If it has found a stream, returns stream name.
 #	fetch_file_start(url-rest frontend-base backends...)
 fetch_file_start()
@@ -818,13 +849,13 @@ fetch_file_start()
     FF_LOCK="`echo $FF_FRONT | sed 's|/$||'`.lock"
     while true; do
 
-	# Start rsync process in the background so we can watch its progress
+	# Start download process in the background so we can watch its progress
 	# Need >/dev/null otherwise our caller (waiting for stdout)
-	# waits for rsync_unlock to finish.
+	# waits for download_unlock to finish.
 	if my_lockfile $FF_LOCK ;then
 	    debug Fetching $FF_FRONT from $@
 
-	    (rsync_unlock $FF_FRONT $FF_URL_REST $FF_LOCK $@ &) >/dev/null
+	    (download_unlock $FF_FRONT $FF_URL_REST $FF_LOCK $@ &) >/dev/null
 
 	    FF_WILD="`rsync_wildcard $FF_FRONT`"
 	    while test_lockfile $FF_LOCK ; do
@@ -852,7 +883,7 @@ fetch_file_start()
 	# Dangling symlink?  Follow.
 	LINK="`readlink $FF_FRONT`"
 	if [ -n "$LINK" ]; then
-	    debug rsync gave a link...
+	    debug download gave a link...
 	    if is_sane $LINK; then :
 	    else
 		log Bogus symlink $LINK from $@ rejected.
@@ -863,7 +894,7 @@ fetch_file_start()
 	    FF_URL_REST=`dirname $FF_URL_REST`/$LINK
 	    mkdir_maybe_symlinks $FF_FRONT_BASE `dirname $FF_URL_REST` $@
 	else
-	    # rsync failed to give a result.
+	    # download failed to give a result.
 	    return 1
 	fi
     done
@@ -873,6 +904,7 @@ fetch_file_start()
 #	can_suppress(file timeout)
 can_suppress()
 {
+    # Check status change time
     find $1 -cmin -$2 2>/dev/null | fgrep -q -x $1 && return 0
     find $1.nonexist -mmin -$2 2>/dev/null|fgrep -q -x $1.nonexist && return 0
     return 1
@@ -921,12 +953,17 @@ stream_file()
     # Race: wait for lock to vanish (may have to move file)
     wait_for_lock $2.lock 
 
-    # Dump the rest.
-    if dump_part_file "$2" $SF_OFFSET >&3; then
-	log Delivered partial file "$2", from offset $SF_OFFSET.
+    # Does file exist?
+    if [ -f "$2" ]; then
+	# Dump the rest.
+	if dump_part_file "$2" $SF_OFFSET >&3; then
+	    log Delivered partial file "$2", from offset $SF_OFFSET.
+	else
+	    log "Error dumping file ($2), aborting"
+	    bad_config Error writing file
+	fi
     else
-	log "Error dumping file ($2), aborting"
-	bad_config Error writing file
+	debug "stream_file: file does not exist, not dumped"
     fi
 
 }
@@ -953,7 +990,7 @@ remove_extra_versions ()
     REC_LOCKFILE=${PREFIX}.apt-proxy-filelists/.lock
     my_lockfile ${REC_LOCKFILE} || return
     REC_CURRENT=`grep -r -F -h "${REC_BASEDEB}" ${PREFIX}.apt-proxy-filelists | awk '{print $1}' | debs_filter_arch $REC_ARCH | debs_sort_uniq`
-    rm -f ${REC_LOCKFILE}
+    remove_lockfile ${REC_LOCKFILE}
     [ -n "$REC_CURRENT" ] || return  # Or should this remove all of them?  :-)
 
     # Place sorted list of current .debs in positional parameters so we can use shift.
@@ -1035,7 +1072,7 @@ sweep_clean_unlock()
     done
 
     touch $SW_FILE
-    rm -f $SW_FILE.lock
+    remove_lockfile $SW_FILE.lock
 }
 
 # Look back directories up to front-basedir until filename or
@@ -1110,6 +1147,9 @@ debug Backends:$APT_PROXY_BACKENDS
 # Set rsync/wget timeouts if specified in config file
 [ -n "$RSYNC_TIMEOUT" ] && RSYNC="$RSYNC --timeout=$RSYNC_TIMEOUT"
 [ -n "$WGET_TIMEOUT" ] && WGET="$WGET --timeout=$WGET_TIMEOUT"
+
+# Set KEEP_STATS if debug is on
+[ -n "$DEBUG" ] && KEEP_STATS=1
 
 # For all the requests in a particular session
 while true; do

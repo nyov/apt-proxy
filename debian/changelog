@@ -2,8 +2,16 @@ apt-proxy (1.2.9.8) sourceforge; urgency=low
 
   * Add a FAQ section to README with some problems that users have
     encountered.
+  * apt-get update && apt-get update now sends 304 HITs the second time for
+    HTTP backends like it does for rsync
+  * Change HTTP protocol version to 1.1 (it was still 1.0!)
+  * Don't copy an older version using copy_best_match when using wget
+  * Turn on KEEP_STATS when DEBUG is on
+  * In debug mode, log lockfile release
+  * Fix some error messages when file is already current version
+  * Rename some rsync* functions to download* to make it less confusing
 
- -- Chris Halls <chris.halls@gmx.de>  Tue,  2 Apr 2002 14:56:17 +0200
+ -- Chris Halls <chris.halls@gmx.de>  Tue,  2 Apr 2002 18:14:18 +0200
 
 apt-proxy (1.2.9.7) sourceforge; urgency=low
 
