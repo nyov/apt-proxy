@@ -62,8 +62,8 @@ case "$1" in
 	# We changed the database backend so rebuild all database.
 	if dpkg --compare-versions "$PREV" lt-nl 1.9.22; then
 	    if [ -d /var/cache/apt-proxy/.apt-proxy ]; then
-		echo "Removing previous database as the format has change."
-		rm -rf /var/cache/apt-proxy/.apt-proxy
+		echo "Fixing database owner."
+		chown -R aptproxy.nogroup /var/cache/apt-proxy/.apt-proxy
 	    fi
 	fi
         ;;

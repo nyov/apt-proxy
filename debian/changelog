@@ -1,3 +1,9 @@
+apt-proxy (1.9.22.pre23) unstable; urgency=low
+
+  * Improve upgrade from previous database format. (Otavio)
+
+ -- Otavio Salvador <otavio@debian.org>  Fri,  3 Dec 2004 13:43:52 -0200
+
 apt-proxy (1.9.22) unstable; urgency=low
 
   * Load database when requested. Closes: #283685. (Otavio)

@@ -1625,7 +1625,7 @@ class Factory(protocol.ServerFactory):
 
     def __getattr__ (self, name):
         def open_shelve(filename):
-            from bsddb3 import db,dbshelve
+            from bsddb3 import db,dbshelve,DBInvalidArgError
             log.debug('Opening database ' + filename)
 
             shelve = dbshelve.DBShelf()
@@ -1636,7 +1636,18 @@ class Factory(protocol.ServerFactory):
                     os.rename(filename, filename+'.error')
                     log.msg(filename+' could not be opened, moved to '+filename+'.error','db', 1)
                     log.msg('Recreating '+ filename,'db', 1)
-            shelve = dbshelve.open(filename)
+            try:
+                shelve = dbshelve.open(filename)
+
+            # Handle upgrade to new format included on 1.9.20.
+            except DBInvalidArgError:
+                import bsddb
+                os.rename(filename, filename + '.previous')
+                previous_shelve = bsddb.dbshelve.open(filename + '.previous')
+                shelve = dbshelve.open(filename)
+
+                for k previous_shelve.keys():
+                    shelve[k] = previous_shelve[k]
                     
             return shelve
 
