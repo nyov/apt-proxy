@@ -19,8 +19,10 @@ test -r $application || exit 0
 case "$1" in
     start)
 	echo -n "Starting apt-proxy"
-	[ ! -d $rundir ] && mkdir $rundir && chown $user:$group $rundir
-	[ ! -f $logfile ] && touch $logfile && chown $user:$group $logfile
+	[ ! -d $rundir ] && mkdir $rundir
+	[ ! -f $logfile ] && touch $logfile
+	chown $user:$group $rundir $logfile 
+	[ -f $pidfile ] && chown $user:$group $pidfile
 	start-stop-daemon --start --quiet --exec $twistd --chuid $user:$group -- \
             --pidfile=$pidfile 	--rundir=$rundir --python=$application \
 	    --logfile=$logfile 	--no_save
@@ -36,6 +38,7 @@ case "$1" in
 
     restart)
 	$0 stop
+	sleep 1
 	$0 start
     ;;
     
