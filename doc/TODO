@@ -14,6 +14,25 @@ Revise debian packing:
 
 It seams to get stuck some times on packages download.
 
+---------------- "Before experimental" mark ---------------------------
+
+I guess that for now I could trap the "database corrupted" exception and
+rebuild it automatically.
+
+Verification times out with big files and considers them corrupted even if
+they are OK.
+	- We could have three levels of checking.
+		1) stat results if we have
+		2) md5sum if we have and stat check fails
+		3) current checking otherwise.
+
+	 - when we find that stat doesn't match, we schedule a check and serve
+	   anyway. We don't check before serving.
+
+To get streaming from rsync without the LD_PRELOAD hack:
+	- Since we know the pid, we can read from /proc/$pid/fd/3 and get the
+	  streaming from there ala 'tail -f'
+
 ---------------- "Not so urgent" mark ---------------------------
 
 Support /etc/init.d/apt-proxy reload as kill -HUP
