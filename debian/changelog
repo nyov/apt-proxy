@@ -1,4 +1,4 @@
-apt-proxy (1.9.13pre14) unstable; urgency=low
+apt-proxy (1.9.14) unstable; urgency=low
 
   * Add some missing files in clean target (Otavio).
   * Add Build-dependencie of python-apt (Otavio). (closes: #258147)
@@ -14,7 +14,7 @@ apt-proxy (1.9.13pre14) unstable; urgency=low
   * Restart inet.d if upgrading from some version earlier then 1.9.0
     (Otavio). (closes: #259009)
 
- -- Otavio Salvador <otavio@debian.org>  Thu,  8 Jul 2004 12:01:32 -0300
+ -- Otavio Salvador <otavio@debian.org>  Tue, 13 Jul 2004 16:31:16 -0300
 
 apt-proxy (1.9.13) unstable; urgency=low
 
