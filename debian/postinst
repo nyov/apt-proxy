@@ -1,6 +1,5 @@
 #! /bin/sh
 
-PYVER=2.3
 NAME=apt-proxy
 APTPROXY_USER=aptproxy
 APTPROXY_LOGFILE=/var/log/$NAME.log
