@@ -100,7 +100,7 @@ filetypes = (
 
 class FileVerifier(protocol.ProcessProtocol):
     """
-    It trys to verify the integrity of a file by running an external
+    Verifies the integrity of a file by running an external
     command.
 
     self.deferred: a deferred that will be triggered when the command
@@ -120,7 +120,7 @@ class FileVerifier(protocol.ProcessProtocol):
     """
     def __init__(self, request):
         self.factory = request.factory
-        self.deferred = defer.Deferred()
+        self.deferred = defer.Deferred() # Deferred that passes status back
         self.path = request.local_file
 
         if re.search(r"\.deb$", self.path):
@@ -133,9 +133,21 @@ class FileVerifier(protocol.ProcessProtocol):
             exe = '/usr/bin/bunzip2'
             args = (exe, '--test', self.path)
         else:
-            exe = '/bin/sh'
-            args = (exe, '-c', "echo unknown file: not verified 1>&2")
+            # Unknown file, just check it is not 0 size
+            try:
+                filesize = os.stat(self.path)[stat.ST_SIZE]
+            except:
+                filesize = 0
+            
+            if(os.stat(self.path)[stat.ST_SIZE]) < 1:
+                log.debug('Verification failed for ' + self.path)
+                self.failed()
+            else:
+                log.debug('Verification skipped for ' + self.path)
+                self.deferred.callback(None)
+            return
 
+        log.debug("starting verification: " + exe + " " + str(args))
         self.process = reactor.spawnProcess(self, exe, args)
         self.laterID = reactor.callLater(self.factory.timeout, self.timedout)
 
@@ -414,7 +426,8 @@ class Fetcher:
 
     def apEndCached(self):
         """
-        Serve my requests from the cache.
+        A backend has indicated that this file has not changed,
+        so serve the file from the disk cache
         """
         self.apEndTransfer(FetcherFile)
         
@@ -430,9 +443,9 @@ class Fetcher:
         #dummyFetcher.apEnd()
         #fetcher.activate(req)
 
-        self.setResponseCode(http.OK)
+        #self.setResponseCode(http.OK)
         requests = self.requests[:]
-        self.apEnd()
+        self.apEnd()  # Remove requests from this fetcher
         fetcher = None
         for req in requests:
             if (fetcher_class != FetcherFile or req.serve_if_cached):
@@ -594,7 +607,7 @@ class FetcherHttp(Fetcher, http.HTTPClient):
 
     def handleEndHeaders(self):
         if self.status_code == http.NOT_MODIFIED:
-            log.debug("NOT_MODIFIED",'http_client')
+            log.debug("NOT_MODIFIED " + str(self.status_code),'http_client')
             self.apEndCached()
 
     def rawDataReceived(self, data):
@@ -603,6 +616,7 @@ class FetcherHttp(Fetcher, http.HTTPClient):
     def handleResponse(self, buffer):
         if self.length == 0:
             self.setResponseCode(http.NOT_FOUND)
+        #print "length: " + str(self.length), "response:", self.status_code
         self.apDataEnd(self.transfered)
 
     def lineReceived(self, line):
@@ -1115,22 +1129,26 @@ class FetcherFile(Fetcher):
             self.apEnd()
             return
 
-        log.debug("Serving from cache: " + self.local_file + " size:" + str(self.size))
-        file = open(self.local_file,'rb')
-        fcntl.lockf(file.fileno(), fcntl.LOCK_SH)
-        
-        request.setHeader("Content-Length", request.local_size)
-        request.setHeader("Last-modified",
-                          http.datetimeToString(request.local_mtime))
-        basic.FileSender().beginFileTransfer(file, request) \
-                          .addBoth(self.file_transfer_complete, request) \
-                          .addBoth(lambda r: file.close()) \
-                          .addBoth(lambda r: request.transport.loseConnection())
-        
+        if self.size:
+            log.debug("Serving from cache: " + self.local_file + " size:" + str(self.size), 'FetcherFile')
+            file = open(self.local_file,'rb')
+            fcntl.lockf(file.fileno(), fcntl.LOCK_SH)
+            
+            request.setHeader("Content-Length", request.local_size)
+            request.setHeader("Last-modified",
+                            http.datetimeToString(request.local_mtime))
+            basic.FileSender().beginFileTransfer(file, request) \
+                            .addBoth(self.file_transfer_complete, request) \
+                            .addBoth(lambda r: file.close())
+#                            .addBoth(lambda r: request.transport.loseConnection())
+        else:
+            log.debug("Zero length file! " + self.local_file, 'FetcherFile')
+            self.file_transfer_complete(None, request)
+            request.transport.loseConnection
 
     # A file transfer has completed
     def file_transfer_complete(self, result, request):
-        #log.debug("transfer complete")
+        log.debug("transfer complete", 'FetcherFile')
         # Remove this client from request list
         self.remove_request(request)
         if len(self.requests) == 0:
@@ -1422,19 +1440,20 @@ class Request(http.Request):
 
             log.debug(msg, 'fetch_real')
             fetcher = dummyFetcher.apEndTransfer(fetcher_class)
-            if (fetcher and fetcher.post_convert.search(req.uri)
-                and not running.has_key(req.uri[:-3])):
-                log.debug("post converting: "+req.uri,'convert')
-                loop = LoopbackRequest(req)
-                loop.uri = req.uri[:-3]
-                loop.local_file = req.local_file[:-3]
-                loop.process()
-                loop.serve_if_cached=0
-                #FetcherGzip will attach as a request of the
-                #original Fetcher, efectively waiting for the
-                #original file if needed
-                gzip = FetcherGzip()
-                gzip.activate(loop, postconverting=1)
+			# Postconvert routine disabled until properly debugged
+#             if (fetcher and fetcher.post_convert.search(req.uri)
+#                 and not running.has_key(req.uri[:-3])):
+#                 log.debug("post converting: "+req.uri,'convert')
+#                 loop = LoopbackRequest(req)
+#                 loop.uri = req.uri[:-3]
+#                 loop.local_file = req.local_file[:-3]
+#                 loop.process()
+#                 loop.serve_if_cached=0
+#                 #FetcherGzip will attach as a request of the
+#                 #original Fetcher, efectively waiting for the
+#                 #original file if needed
+#                 gzip = FetcherGzip()
+#                 gzip.activate(loop, postconverting=1)
 
         self.serve_if_cached = serve_cached
         running = self.factory.runningFetchers
