@@ -1,3 +1,12 @@
+apt-proxy (1.2.9.6) sourceforge; urgency=low
+
+  * Fix race if two clients request the same file, with help from Sacha to
+    reproduce.
+  * I would like to upload to Debian unstable once 1.2.2 hits Woody in 5 days.
+    Please let me know if you are aware of any remaining issues!
+
+ -- Chris Halls <chris.halls@gmx.de>  Wed, 27 Mar 2002 16:16:52 +0100
+
 apt-proxy (1.2.9.5) sourceforge; urgency=low
 
   * Fix directory support so apt-proxies can be chained again

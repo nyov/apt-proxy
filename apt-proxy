@@ -11,7 +11,7 @@
 #	`I was joking!' -- Paul Mackerras
 #	`Note that Rusty's name is at the top' -- Stephen Rothwell.
 #	`Perl!!!  Please?' -- Martin Schwenke
-APT_PROXY_VERSION=1.2.9.5
+APT_PROXY_VERSION=1.2.9.6
 
 # Default values
 APT_PROXY_LOGFILE=/dev/null
@@ -538,7 +538,7 @@ my_lockfile()
 {
     # noclobber
     set -C
-    echo $$ > $1
+    echo $$ 2>/dev/null > $1
     ret=$?
     set +C
 
@@ -739,17 +739,17 @@ copy_best_match()
 	deb_compare_versions $CBM_BEST lt $1 && break
     done
 
+# There's a problem in here - trace the code for logging
+set -o xtrace
     debug Found best basis for ${1}: $CBM_BEST
     if [ -n "$CBM_BEST" ] ;then
         # Save the access time of file because we use it during cache cleaning
-# There's a problem in here - trace the code for logging
-set -o xtrace
     	touch --reference $CBM_BEST $CBM_BEST.timestamp
         cp $CBM_BEST $2
 	touch --reference $CBM_BEST.timestamp $CBM_BEST
 	rm $CBM_BEST.timestamp
-set +o xtrace
     fi
+set +o xtrace
 }
 
 # Do rsync, drop lock.
@@ -822,24 +822,29 @@ fetch_file_start()
     FF_FRONT=$FF_FRONT_BASE$FF_URL_REST
     FF_LOCK="`echo $FF_FRONT | sed 's|/$||'`.lock"
     while true; do
-	debug Fetching $FF_FRONT from $@
 
 	# Start rsync process in the background so we can watch its progress
 	# Need >/dev/null otherwise our caller (waiting for stdout)
 	# waits for rsync_unlock to finish.
-	my_lockfile $FF_LOCK &&
+	if my_lockfile $FF_LOCK ;then
+	    debug Fetching $FF_FRONT from $@
+
 	    (rsync_unlock $FF_FRONT $FF_URL_REST $FF_LOCK $@ &) >/dev/null
 
-	FF_WILD="`rsync_wildcard $FF_FRONT`"
-	while test_lockfile $FF_LOCK ; do
-	    # A stream?
-	    FF_STREAM="`echo $FF_WILD`"
-	    if [ "$FF_STREAM" != "$FF_WILD" ]; then
-		echo $FF_STREAM
-		return 0
-	    fi
-	    sleep 1
-	done
+	    FF_WILD="`rsync_wildcard $FF_FRONT`"
+	    while test_lockfile $FF_LOCK ; do
+		# A stream?
+		FF_STREAM="`echo $FF_WILD`"
+		if [ "$FF_STREAM" != "$FF_WILD" ]; then
+		    echo $FF_STREAM
+		    return 0
+		fi
+		sleep 1
+	    done
+	else
+	    debug Another process is already downloading this file - waiting for lock $FF_LOCK
+	    wait_for_lock $FF_LOCK
+	fi
 
 	# File, or non-dangling symlink?
 	[ -f $FF_FRONT ] && return 0
