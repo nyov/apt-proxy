@@ -1,7 +1,7 @@
 #!/bin/ash
 # (You may safely change the above to /bin/sh if you do not have ash available)
 #
-# $Id: apt-proxy,v 1.44.2.8 2003/01/22 10:23:14 haggai Exp $
+# $Id: apt-proxy,v 1.44.2.9 2004/11/03 17:42:21 haggai Exp $
 # Copyright Paul Russell <rusty@samba.org>
 # Released under the GPL version 2 or later
 #	Fixed by Stephen Rothwell <sfr@canb.auug.org.au>
@@ -14,7 +14,7 @@
 #	`Perl!!!  Please?' -- Martin Schwenke
 #       `Python and twisted!' -- Moshe Zadka
 #       'Lets do it, ranty!' -- Chris Halls
-APT_PROXY_VERSION=1.3.6
+APT_PROXY_VERSION=1.3.7
 
 # Default values
 APT_PROXY_LOGFILE=/dev/null
@@ -23,6 +23,7 @@ RSYNC=rsync
 WGET=wget
 STAT=/usr/bin/stat
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+CONNECT_TIMEOUT=10
 
 # Parse commandline
 while [ $# -gt 0 ]; do
@@ -96,6 +97,22 @@ else
     }
 fi
 
+# Sleep for a specified number of seconds
+# GNU sleep can do non-integer sleeps
+#   dosleep(seconds)
+if [ -z "`sleep 0.0 2>&1`" ]; then
+    dosleep()
+    {
+    	sleep $1
+    }
+else
+    dosleep()
+    {
+        truncsec="`echo $1 | cut -f1 -d.`"
+        sleep $(( $truncsec + 1 ))
+    }
+fi
+
 # Dump the chunk of a file skipping $1 bytes for an
 # optional length (to end of file if missing)
 #	dump_part_file(file name, start[, length])
@@ -103,7 +120,7 @@ fi
 if tail -c +10 /dev/null 2>/dev/null; then
     dump_part_file()
     {
-	dpf_start=`expr $2 + 1`
+	dpf_start=$(( $2 + 1 ))
 	if [ -n "$3" ]; then
 	    # The tail version doesn't seem to return an error code
 	    # if the file no longer exists
@@ -167,6 +184,23 @@ The configuration file $CONFIG_FILE is $@.<P>\r
     exit 1
 }
 
+# Write out error message to client and exit
+#	fatal_error <HTTP error code> <Header text> <error description>
+fatal_error()
+{
+    log fatal_error: "$@"
+    mesg="<HTML><HEAD>\r
+<TITLE>$1 $2</TITLE>\r
+</HEAD><BODY>\r
+<H1>$1 $2</H1>\r
+$3<P>\r
+<P>\r
+</BODY></HTML>\r\n"
+    write_header "$1 $2" close text/html `printf %b "$mesg" | wc -c`
+    printf "%b" "$mesg" 1>&3
+    exit 1
+}
+
 # Called from config script to add back ends.
 # APT_PROXY_BACKENDS is a list of backends seperated by spaces.
 #  Whitespace from the add_backend command is replaced by commas
@@ -221,6 +255,7 @@ download_url()
 		debug $WGET_CMD -O $DL_TEMPFILE $DL_URL
 		$WGET_CMD -O $DL_TEMPFILE $DL_URL > $DL_LOG 2>&1
 	        RET=$?
+	        debug "wget: `cat $DL_LOG`"
 		if [ $RET = 0 ];then
 		    # Success
 
@@ -229,7 +264,7 @@ download_url()
 		    if [ -s $DL_TEMPFILE ]; then
 			# move file to final location
 			mv $DL_TEMPFILE $DL_FILE
-			debug "got file: `ls -l $DL_FILE`"
+			debug "file complete: `ls -l $DL_FILE`"
 		    else
 			rm -f $DL_TEMPFILE
 		    fi
@@ -250,15 +285,15 @@ download_url()
 		debug $WGET_CMD -O /dev/null $DL_URL
 		$WGET_CMD -O /dev/null $DL_URL > $DL_LOG 2>&1
 	        RET=$?
+	        debug "wget directory: `cat $DL_LOG`"
 		if [ $RET = 0 ];then
 		    # Success - create directory
 		    mkdir $DL_FILE
 		fi
 	    fi
-	    debug "wget: `cat $DL_LOG`"
 	    ;;
 	*::*)
-	    RSYNC_CMD="$RSYNC -v --perms --times --partial"
+	    RSYNC_CMD="$RSYNC -v --perms --times --partial -T $DL_DESTDIR"
 
 	    if [ -z "$DL_DIR" ];then
 	        # rsync file
@@ -302,7 +337,6 @@ download_url()
 			    touch -r $TMP_FILE $DL_FILE
 			    RET=0
 			fi
-	    		[ -n "$KEEP_STATS" ] && log rsync $TMP_DESTFILE: `tail -2 $DL_LOG`
 		    fi
 		    ;;
 		esac
@@ -555,6 +589,8 @@ my_lockfile()
     	debug Lockfile detected: $1
 	# Run test_lockfile to clean up lockfile if it is stale
 	test_lockfile $1
+	# Try again if lockfile has now gone
+	[ $? -eq 1 ] && my_lockfile $1
     fi
 
     return $ret
@@ -587,8 +623,9 @@ wait_for_lock()
     LOCKFILE=$1
     if test_lockfile $LOCKFILE  ; then
         while
-	   sleep 1
+	   dosleep 0.5
 	   test_lockfile $LOCKFILE
+	   #debug wait_for_lock:$1
 	do : ; done
         debug Lock was released: $LOCKFILE
     fi
@@ -860,7 +897,7 @@ fetch_file_start()
 		    echo $FF_STREAM
 		    return 0
 		fi
-		sleep 1
+		dosleep 0.5
 	    done
 	else
 	    debug Another process is already downloading this file - waiting for lock $FF_LOCK
@@ -942,7 +979,7 @@ stream_file()
 	    dump_part_file "$1" $SF_OFFSET $SF_COUNT >&3 || break
 	    SF_OFFSET=$SF_LEN
 	fi
-	sleep 1
+	dosleep 0.5
     done 2>/dev/null
 
     # Race: wait for lock to vanish (may have to move file)
@@ -1137,7 +1174,7 @@ verify_file()
 #. /etc/apt-proxy/apt-proxy.conf
 . $CONFIG_FILE
 
-debug apt-proxy $APT_PROXY_VERSION
+log apt-proxy $APT_PROXY_VERSION: new connection
 
 # Set rsync/wget timeouts if specified in config file
 [ -n "$RSYNC_TIMEOUT" ] && RSYNC="$RSYNC --timeout=$RSYNC_TIMEOUT"
@@ -1149,16 +1186,16 @@ debug apt-proxy $APT_PROXY_VERSION
 # For all the requests in a particular session
 while true; do
     unset DO_CLEANUP DO_REMOVE_EXTRA_VERSIONS DO_UPDATE_PACKAGES_LIST \
-	SIZE SIZE_FILE IMS_DATE UNCOMPRESS REQUEST KEEP_ALIVE REQHOST
+	SIZE SIZE_FILE IMS_DATE UNCOMPRESS REQUEST KEEP_ALIVE REQHOST STREAM
     KEEP_ALIVE=close
 
     while read PREFIX LINE
     do
     	debug "$PREFIX $LINE"
-	LC_PREFIX="`echo $PREFIX | tr -d '\015' | tr '[A-Z]' '[a-z]'`"
+	LC_PREFIX="`echo "$PREFIX" | tr -d '\015' | tr '[A-Z]' '[a-z]'`"
 	case "$LC_PREFIX" in
 	get|head)
-	    REQUEST="`echo $LINE | cut -d\  -f1 | sed -e 's/%5[Ff]/_/g'`"
+	    REQUEST="`echo "$LINE" | cut -d\  -f1 | sed -e 's/%5[Ff]/_/g'`"
 
 	    #Simplify ocurrences of '/dirname/../' into '/'
 	    #this won't work if ocurrences are too near.
@@ -1166,7 +1203,7 @@ while true; do
 	    #	http://foo/ddD/../blah/../	-> http://foo/blah/../
 	    #	http://foo/ddD/..//blah/../	-> http://foo//
 	    #	http://foo/dd/../pp/blah/../	-> http://foo/pp/
-	    REQUEST="`echo $REQUEST | sed -e 's|/[^/]\+/\+\.\./|/|g'`"
+	    REQUEST="`echo "$REQUEST" | sed -e 's|/[^/]\+/\+\.\./|/|g'`"
 	    ;;
 	if-modified-since:)
 	    IMS_DATE=$LINE
@@ -1174,11 +1211,11 @@ while true; do
 	    IMS_DATE=`date -u -d "$IMS_DATE" '+%s'`
 	    ;;
 	connection:)
-	    KEEP_ALIVE="`echo $LINE | tr -d '\015' | tr '[A-Z]' '[a-z]'`"
+	    KEEP_ALIVE="`echo "$LINE" | tr -d '\015' | tr '[A-Z]' '[a-z]'`"
 	    debug "Connection $KEEP_ALIVE"
 	    ;;
 	host:)
-	    REQHOST="`echo $LINE | tr -d '\015' | tr '[A-Z]' '[a-z]'`"
+	    REQHOST="`echo "$LINE" | tr -d '\015' | tr '[A-Z]' '[a-z]'`"
 	    ;;
 	'')
 	    debug Finished processing request
@@ -1333,6 +1370,9 @@ while true; do
 	;;
     esac
 
+    debug Destination file in cache:$FRONT
+    debug File to stream:$STREAM
+
     # Beware race.
     if [ -f "$STREAM" ]; then
 	rm -f $FRONT.nonexist
@@ -1447,3 +1487,6 @@ while true; do
     fi
     if [ "$KEEP_ALIVE" '!=' keep-alive ]; then break; fi
 done
+
+debug client connection closed, exit.
+

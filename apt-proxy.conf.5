@@ -16,6 +16,11 @@ The configuration file is a shell script, which is sourced from
 apt-proxy; in effect your configuration file becomes part of the
 apt-proxy program\&.
 .PP
+Changes made to the configuration file will take effect for new connections to
+apt-proxy; you do not need to restart or reload inetd for them to take
+affect\&.
+
+.PP
 
 .PP
 .SH "BACKEND SERVERS"
@@ -157,6 +162,21 @@ is misbehaving\&.
 WGET_TIMEOUT, if set, sets a maximum I/O timeout in seconds for wget
 to connect to a http/ftp backend server\&.
 
+.TP
+.B WGET
+.br
+WGET, if set, lets you specify the path to wget and to add extra options\&.
+For example, if you are behind a firewall that does not allow active FTP, use
+WGET="wget --passive-ftp"\&. (Note the enclosing `\fB"\fP'; without them
+options to wget are ignored\&.)
+
+.TP
+.B DEBUG
+.br
+DEBUG=true will log information about apt-proxy's behaviour, the wget/rsync
+commands it is executing to fetch files and about what it is doing\&.  Debug
+information is logged to apt-proxy's logfile: /var/log/apt-proxy\&.log
+
 .br
 .SH "CLEANUP OPTIONS"
 .TP
@@ -165,7 +185,8 @@ CLEANUP_DAYS, if set, indicates that if we serve a package or
 source file, and there are older versions of the same file which have
 not been accessed in this many days (beware backup programs which read
 all files), they will be deleted, and the result logged.  This is very
-conservative and cheap\&.
+conservative and cheap, but is not very intelligent and does not distinguish
+between files from separate distributions such as stable, testing, unstable.
 
 .TP
 .B CLEAN_SWEEP
@@ -180,10 +201,11 @@ sources\&.
 .TP
 .B MAX_VERSIONS
 MAX_VERSIONS, if set, limits the number of versions of each package
-to keep in the cache directory to keep\&.  Version purging is carried out
-immediately after a new version is downloaded\&.  If, for example, you have
-MAX_VERSIONS=3 and are tracking both potato and woody, the maximum number
-of files in the cache for one package will be 6\&.
+to keep in the cache directory\&.  Version purging is carried out immediately
+after a new version is downloaded\&.  Unlike CLEANUP_DAYS and CLEAN_SWEEP, this
+parameter uses the Packages files to track each distribution separately\&.  For
+example, if you have MAX_VERSIONS=3 and are tracking both woody and sarge, the
+maximum number of files in the cache for one package will be 6\&.
 
 .SH "FINDING NEW RSYNC BACKEND SERVERS"
 .B Old documentation!

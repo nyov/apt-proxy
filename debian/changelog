@@ -1,3 +1,28 @@
+apt-proxy (1.3.7) testing-proposed-updates; urgency=low
+
+  * Resurrect version 1 for Sarge, because version 2 is still not
+    stable enough to go into stable
+  * When GNU sleep is available, sleep for smaller periods of time.  This
+    increases apt-proxy's responsiveness on faster machines.
+  * Explicitly tell rsync which directory to use for its temporary files.
+    (closes: #187094)
+  * Add See also: apt-proxy-import to apt-proxy(8)
+  * Fix apt-proxy.conf path in French manpage, thanks to Julien Louis
+  * Prevent shell expansion of input lines
+  * Add section about backing up the apt-proxy cache to FAQ
+  * Update apt-proxy.conf manpage:
+     - Clarify that MAX_VERSIONS is the only parameter that uses Packages
+       files
+     - Document WGET option, thanks Andree Leidenfrost (closes: #190926)
+     - Document DEBUG option (closes: #194185)
+     - Make it clear that apt-proxy does not need to be reloaded for changes
+       to take effect
+  * Update README:
+     - Remove section about Debian Potato
+     - Add FAQ about backing up apt-proxy cache
+
+ -- Chris Halls <halls@debian.org>  Wed,  3 Nov 2004 17:39:10 +0000
+
 apt-proxy (1.3.6) unstable; urgency=low
 
   * Correct example proxy lines in apt-proxy.conf (closes: #169658, #177514)

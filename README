@@ -27,14 +27,6 @@ improvements are going into version 2, which is implemented in Python using the
 Twisted.net framework.  See the web page for more details and how to download
 version 2.
 
-Using apt-proxy with Debian Potato
-----------------------------------
-Since I modified the build scripts to use debhelper 3, it is no longer possible
-to build this package on Potato.  However, you can still install and use a
-package that has been built on a Woody system, or downloaded from the Woody
-archives.  (Thanks to Thorsten Gunkel for testing this and other aspects of the
-package.)
-
 Frequently Asked Questions
 --------------------------
 Here are some of the issues that have been raised about apt-proxy:
@@ -146,4 +138,20 @@ A4: pbuilder, which also uses debootstrap.  Add this to /etc/pbuilderrc:
         MIRRORSITE=http://APTPROXY:9999/main
         NONUSMIRRORSITE=http://APTPROXY:9999/non-US
 
-September 2002
+- Backing up apt-proxy -
+Q: Is /var/cache/apt-proxy self contained? If I back up that directory,
+   together with /etc/apt-proxy, can I then just reinstall apt-proxy and unpack
+   those 2 to be back where I was? Or are there some indexes or something
+   hidden away?
+
+A: Backing up those two directories is all you need.  There are some indexes in
+   'hidden' directories, but those are under /var/cache/apt-proxy/<backend>.
+   So backing up those two trees should be all you need.
+
+   One thing to note: apt-proxy uses the last access time (atime) of the files
+   to determine when they should be cleaned up.  If your backup/restore does
+   not save those (e.g. tar does not, star can save them), you may find that
+   some files stay around for longer than you expect.  This is probably only a
+   concern if your disk space is limited.
+
+February 2003
