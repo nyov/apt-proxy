@@ -1,4 +1,4 @@
-/var/log/apt-proxy.log {
+/var/log/apt-proxy-v2.log {
 	rotate 4
 	compress
 	weekly

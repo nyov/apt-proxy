@@ -1,0 +1,105 @@
+
+#####################################
+## Talk to moshez before releasing ##
+#####################################
+#read Twisted/doc/howto/plugin.html #
+#####################################
+
+Generate Packages from Packages.gz and viceversa (DONE)
+
+Mirror house-keeping:support apt-proxy-import operations again
+	Consider using apt-listchanges' python modules to parse the .deb files
+	Or the old dpkg-python (This I would have to adopt and fix first)
+
+Mirror house-keeping:last used (DONE?)
+	only files which apt-proxy fetched or accessed at least once are taken
+	into acount.
+	
+Mirror house-keeping:MAX_VERSIONS (DONE?)
+	version numbers are not properly taken into account
+	keep track of versions per distro (potato/woody/sid)
+		python-apt should help on that
+
+actually implement timeouts, defaults are currently used everywhere. (DONE)
+
+Real config file handler (DONE)
+
+---------------- "Not so urgent" mark ---------------------------
+Take care of python-apt memory leak:
+	deb http://ftp.uk.debian.org/debian/ sid main non-free contrib
+		1200 iterations (load, unload)
+		leak 528KB (3676-4204) in increments of 36 kB
+		0.44KB per iteration.
+	deb http://ftp.uk.debian.org/debian/ sid contrib
+		2300 iterations (load, unload)
+		leak 360KB (3676-4036) in increments of 36 kB
+		0.15KB per iteration.
+
+
+If we overwrite a cached file while it is being read by an static.FileTransfer
+things may go wrong.
+
+Cleanup orphan entries in packages.db also
+
+Implement HEAD method
+
+Parse options:
+	--conf
+	...
+
+allow time to be specified like "3m" or "2h"
+
+per backend 'min_age'
+	we won't bother to update a Packages file before it is "min_age" old
+
+Multi server backends.
+
+rsync only Packages files, for the rest only ftp and http
+	updating a corrupt .deb is probably rare enough not to be worth it.
+
+Consider "Pargma: no-cache" and "Cache-Control: no-cache" to make the client
+	do "verify_file" and tell us that the file is corrupt
+
+on ftp: list for mtime and use it for if-modified-since purposes
+
+try to use libapt's backend clients
+
+look at python-apt
+
+generate a config file from sources.list
+
+Is process.Process a producer? 
+
+Use bsddb dictionary to keep last request dates and such.
+
+Mirror house-keeping:Generate Packages/Release/... for the currently available
+	stuff
+	
+auto generate a sample sources.list for clients
+
+autogenerate backend configuration using netselect-apt or similar
+
+Consider implementing rproxy
+	- for cascading apt-proxy.
+	- to access mirrors which may have it.
+	- sincronizing two caches
+
+---------------- OLD LIST from v1 ---------------------------
+TODO list for apt-proxy
+
+- Return a better error message if the backend servers do not exist, rather
+  than 'directory does not exist'
+
+- Make it more clear that apt-proxy should not be configured as an http proxy,
+  but as an http server, or support using apt-proxy as a proxy...
+
+- Add debconf questions for default user and cache directory
+
+- Add more possible servers to default config file.  I would be grateful if
+  people who are using alternative servers would file a wishlist bug containing
+  their apt-proxy.conf, and I'll integrate it into the distribution.
+
+- Work through the remaining wishlist bugs in the BTS.  Keep those reports
+  coming in folks!
+
+Chris Halls, April 2002

@@ -1,0 +1,10 @@
+export LD_PRELOAD=$PWD/rsync_hack.so
+FILE=dists/sid/Contents-i386.gz 
+#FILE=dists/sid/Release 
+#FILE=.du-s
+#	--quiet \
+rsync \
+	--progress \
+	--verbose \
+	ftp.uk.debian.org::debian/$FILE $*
+echo $?

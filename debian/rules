@@ -1,14 +1,6 @@
 #!/usr/bin/make -f
-# Sample debian/rules that uses debhelper. 
-# GPL copyright 1997 to 1999 by Joey Hess.
-#
-# This version is for packages that are architecture independent.
 
-# Uncomment this to turn on verbose mode.
-#export DH_VERBOSE=1
-
-# This is the debhelper compatability version to use.
-export DH_COMPAT=3
+export DH_COMPAT=4
 
 build: build-stamp
 build-stamp:
@@ -20,11 +12,11 @@ build-stamp:
 clean:
 	dh_testdir
 	dh_testroot
-	rm -f build-stamp
-
+	rm -f build-stamp install-stamp
 	dh_clean
 
-install: build
+install: install-stamp
+install-stamp: build-stamp
 	dh_testdir
 	dh_testroot
 	dh_clean -k
@@ -36,9 +28,16 @@ install: build
 		apt-proxy-import debian/apt-proxy/usr/sbin/apt-proxy-import
 	install -g root -o root -m 644 \
 		apt-proxy.conf debian/apt-proxy/etc/apt-proxy/apt-proxy.conf
+	# Add here commands to install the package into debian/tmp.
+	cp apt-proxy.tap debian/tmp/etc/
+	cp debian/init.d debian/tmp/etc/init.d/twisted-apt-proxy
+	cp debian/default debian/tmp/etc/default/twisted-apt-proxy
+	cp debian/copyright debian/tmp/usr/share/doc/twisted-apt-proxy/
+	cp debian/README.Debian debian/tmp/usr/share/doc/twisted-apt-proxy/
+	touch install-stamp
 
+binary-arch: build install
 
-# Build architecture-independent files here.
 binary-indep: build install
 	dh_testdir
 	dh_testroot
@@ -48,16 +47,17 @@ binary-indep: build install
 	dh_installman
 	dh_installchangelogs
 	dh_installlogrotate
+	dh_strip
 	dh_compress
 	dh_fixperms
 	dh_installdeb
+	dh_shlibdeps
 	dh_gencontrol
 	dh_md5sums
 	dh_builddeb
 
-# Build architecture-dependent files here.
-binary-arch: build install
-# We have nothing to do by default.
+source diff:                                                                  
+	@echo >&2 'source and diff are obsolete - use dpkg-source -b'; false
 
 binary: binary-indep binary-arch
 .PHONY: build clean binary-indep binary-arch binary install

@@ -1,0 +1,6 @@
+#!/bin/sh
+debdir="`pwd`"
+[ -d tmp ] || mkdir tmp
+cd tmp
+PYTHONPATH=$debdir $debdir/bin/apt-proxy
+cd $debdir

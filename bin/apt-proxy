@@ -1,0 +1,12 @@
+#!/usr/bin/python
+
+from twisted.internet.app import Application
+import apt_proxy
+from apt_proxy_conf import aptProxyFactoryConfig
+from apt_proxy import AptProxyFactory
+
+factory = AptProxyFactory()
+aptProxyFactoryConfig(factory)
+app = Application("AptProxy")
+app.listenTCP(factory.proxy_port, factory)
+app.run(0)

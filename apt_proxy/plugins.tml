@@ -1,0 +1,7 @@
+register("apt-proxy TAP Builder",
+         "apt_proxy.apt_proxytap",
+         description="""
+         apt-proxy TAP module 
+         """,
+         type="tap",
+         tapname="apt-proxy")
