@@ -1,3 +1,13 @@
+apt-proxy (1.2.9.3) sourceforge; urgency=low
+
+  * Always use ash instead of sh, because this makes apt-proxy much faster.
+  * Fix ftp backend permission problem
+  * If a file to be downloaded was not newer, wget would not download a file
+    and the apt client would receive a zero length file.
+  * Return an error if a file does not exist on any server
+
+ -- Chris Halls <chris.halls@nikocity.de>  Mon, 11 Mar 2002 15:42:05 +0100
+
 apt-proxy (1.2.9.2) sourceforge; urgency=low
 
   * Only download uncompressed packages files when rsyncing.  Do not attempt

@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/bin/ash
+# (You may safely change the above to /bin/sh if you do not have ash available)
 #
 # Copyright Paul Russell <rusty@samba.org>
 # Released under the GPL version 2 or later
@@ -10,7 +11,7 @@
 #	`I was joking!' -- Paul Mackerras
 #	`Note that Rusty's name is at the top' -- Stephen Rothwell.
 #	`Perl!!!  Please?' -- Martin Schwenke
-APT_PROXY_VERSION=1.2.9.2
+APT_PROXY_VERSION=1.2.9.3
 
 # Default values
 APT_PROXY_LOGFILE=/dev/null
@@ -54,7 +55,7 @@ debug()
 #	log([string ...])
 log()
 {
-    echo "$@" >> $APT_PROXY_LOGFILE
+    echo "[$$ `date +%X`] " "$@" >> $APT_PROXY_LOGFILE
 }
 
 # Determine the size of a file
@@ -184,37 +185,50 @@ download_url()
 
     case "$DL_URL" in
         http://*|ftp://*)
-	    DL_TEMPFILE=$DL_DESTDIR/.`echo $DL_DESTFILE | tr -s / _`.wget
+	    #WGET_CMD="$WGET --non-verbose --timestamping --no-host-directories \
+	    WGET_CMD="$WGET --timestamping --no-host-directories \
+			--no-directories -P $DL_DESTDIR"
 	    if [ -z "$DL_DIR" ];then
 	    	# File
-		debug $WGET --non-verbose --timestamping --no-host-directories \
-		     --no-directories -O $DL_TEMPFILE $DL_URL
-		$WGET --non-verbose --timestamping --no-host-directories \
-		     --no-directories -O $DL_TEMPFILE $DL_URL > $DL_LOG 2>&1
+	    	DL_TEMPFILE=$DL_DESTDIR/.`echo $DL_DESTFILE | tr -s / _`.wget
+
+		debug $WGET_CMD -O $DL_TEMPFILE $DL_URL
+		$WGET_CMD -O $DL_TEMPFILE $DL_URL > $DL_LOG 2>&1
 	        RET=$?
 		if [ $RET = 0 ];then
-		    # Success - move file to final location
-		    mv $DL_TEMPFILE $DL_FILE
+		    # Success
+
+		    # If the remote file is not newer than the local file, the
+		    # output file is zero length
+		    if [ -s $DL_TEMPFILE ]; then
+			# move file to final location
+			mv $DL_TEMPFILE $DL_FILE
+		    else
+			rm -f $DL_TEMPFILE
+		    fi
+
 		else
 		    # Remove empty file created by wget
 		    rm -f $DL_TEMPFILE
 		fi
 	    else
 	    	# Directory
-		debug $WGET --non-verbose --timestamping --no-host-directories \
-		     --no-directories -O $DL_TEMPFILE $DL_URL/
-		$WGET --non-verbose --timestamping --no-host-directories \
-		     --no-directories -O $DL_TEMPFILE $DL_URL/ > $DL_LOG 2>&1
+
+		# Note: ftp using wget will create a .listing file in the parent
+		#  directory.  Theoretically, two concurrent wgets could conflict
+		#  with this file, even though the contents would be the same.
+		#  (I couldn't make this happen, but this is just a note in
+		#  case this actually happens sometime)
+		debug $WGET_CMD -O /dev/null $DL_URL/
+		$WGET_CMD -O /dev/null $DL_URL/ > $DL_LOG 2>&1
 	        RET=$?
 		if [ $RET = 0 ];then
 		    # Success - create directory
 		    mkdir $DL_FILE && rm $DL_LOG
-		else
-		    # Remove empty file created by wget
-		    rm -f $DL_TEMPFILE
 		fi
 	    fi
 	    debug "wget: `cat $DL_LOG`"
+	    debug "got file: `ls -l $DL_FILE`"
 	    ;;
 	*::*)
 	    RSYNC_CMD="$RSYNC -v --perms --links --times --partial"
@@ -880,8 +894,8 @@ stream_file()
     wait_for_lock $2.lock 
 
     # Dump the rest.
-    dump_part_file "$2" $SF_OFFSET >&3 || {
-	log Delivered partial file "$2".
+    dump_part_file "$2" $SF_OFFSET >&3 && {
+	log Delivered partial file "$2", from offset $SF_OFFSET.
     }
 }
 
@@ -1248,13 +1262,23 @@ while true; do
 	fi
     fi
 
-    # If we do not have a size, close the connection on completion
-    [ -z "$SIZE" ] && KEEP_ALIVE=close
+    if [ -n "$STREAM" -o -f $FRONT ]; then
+	# We have a file to send back
+	# If we do not have a size, close the connection on completion
+	[ -z "$SIZE" ] && KEEP_ALIVE=close
 
-    debug Header - 200 OK, keep-alive:$KEEP_ALIVE content:$contype size:$SIZE \
-    	  date:$DATE enc:$conenc request:$REQUEST
-    write_header "200 OK" "$KEEP_ALIVE" "$contype" "$SIZE" "$DATE" "$conenc" "$REQUEST"
-    stream_file "$STREAM" "$FRONT"
+	debug Header - 200 OK, keep-alive:$KEEP_ALIVE content:$contype size:$SIZE \
+	      date:$DATE enc:$conenc request:$REQUEST
+	write_header "200 OK" "$KEEP_ALIVE" "$contype" "$SIZE" "$DATE" "$conenc" "$REQUEST"
+	stream_file "$STREAM" "$FRONT"
+    else
+	# File not found
+	bad_url keep-alive $REQUEST "File does not exist on any server"
+
+	# Do not do any post processing
+	unset DO_UPDATE_PACKAGES_LIST DO_CLEANUP DO_REMOVE_EXTRA_VERSIONS
+    fi
+
 
     # Now, derive the uncompressed file.
 #    if [ -n "$UNCOMPRESS" ]; then

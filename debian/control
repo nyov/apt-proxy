@@ -7,7 +7,7 @@ Build-Depends-Indep: debhelper (>> 3.0.0)
 
 Package: apt-proxy
 Architecture: all
-Depends: wget | rsync, grep-dctrl, tcpd, netbase
+Depends: wget | rsync, grep-dctrl, tcpd, netbase, ash
 Recommends: apt
 Description: Debian archive proxy and partial mirror builder
  apt-proxy automatically builds a Debian HTTP mirror based
