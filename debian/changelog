@@ -1,9 +1,12 @@
 apt-proxy (1.9.15+SVN20040728) unstable; urgency=low
 
-  * Woraround when found a wrong server (Otavio).  (closes: #260788)
+  * Workaround when found a wrong server (Otavio).  (closes: #260788)
   * Applied patch from Jason Thomas <jason@debian.org> to add RPM support
     (Otavio). (closes: #261943)
-
+  * Handle username and password in URI (Otavio). (closes: #263112)
+  * Debconf Translations:
+    - Portuguese (Brazil) (pt_BR.po) by Andre Luis Lopes
+    - French (fr.po) by Olivier Trichet (closes: #263040)
  -- Otavio Salvador <otavio@debian.org>  Wed, 28 Jul 2004 20:17:44 -0300
 
 apt-proxy (1.9.15) unstable; urgency=low

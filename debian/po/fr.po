@@ -1,0 +1,100 @@
+#
+#    Translators, if you are not familiar with the PO format, gettext
+#    documentation is worth reading, especially sections dedicated to
+#    this format, e.g. by running:
+#         info -n '(gettext)PO Files'
+#         info -n '(gettext)Header Entry'
+#    Some information specific to po-debconf are available at
+#            /usr/share/doc/po-debconf/README-trans
+#         or http://www.debian.org/intl/l10n/po-debconf/README-trans#
+#    Developers do not need to manually edit POT or PO files.
+# Olivier Trichet <olivier.trichet@freesurf.fr>, 2004.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: apt-proxy_1.9.15\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2004-07-16 10:00-0300\n"
+"PO-Revision-Date: 2004-07-23 15:00+0200\n"
+"Last-Translator: Olivier Trichet <olivier.trichet@freesurf.fr>\n"
+"Language-Team: French <debian-l10n-french@lists.debian.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=ISO-8859-15\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: KBabel 1.3.1\n"
+
+#. Type: note
+#. Description
+#: ../templates:3
+msgid "Upgrading from pre-v1.9 packages."
+msgstr "Mise à niveau depuis une version antérieure à 1.9"
+
+#. Type: note
+#. Description
+#: ../templates:3
+msgid "You seem to be upgrading from a version of apt-proxy previous to v1.9."
+msgstr ""
+"La mise à niveau en cours s'applique à une version d'apt-proxy antérieure à "
+"1.9."
+
+#. Type: note
+#. Description
+#: ../templates:3
+msgid ""
+"apt-proxy has been rewritten in python and the new configuration file format "
+"is incompatible with previous version. Hopefully you will like the new "
+"format better :)"
+msgstr ""
+"Apt-proxy a été réécrit en python et le nouveau format du fichier de "
+"configuration est incompatible avec l'ancien."
+
+#. Type: note
+#. Description
+#: ../templates:3
+msgid ""
+"I will build /etc/apt-proxy/apt-proxy-v2.conf based on your old settings if "
+"you did't already have such file. In any case, a backup file will be written "
+"to /etc/apt-proxy/apt-proxy-v2.conf.backup"
+msgstr ""
+"Le fichier de configuration /etc/apt-proxy/apt-proxy-v2.conf va être "
+"construit à partir de votre ancien fichier de configuration, s'il existe. "
+"Dans ce cas, une copie de sauvegarde en sera faite dans /etc/apt-proxy/"
+"apt-proxy-v2.conf.backup."
+
+#. Type: note
+#. Description
+#: ../templates:3
+msgid ""
+"There are also other issues documented in /usr/share/doc/apt-proxy/UPGRADING"
+msgstr ""
+"D'autres problèmes liés à cette mise à niveau sont documentés dans /usr/share/"
+"doc/apt-proxy/UPGRADING."
+
+#. Type: note
+#. Description
+#: ../templates:19
+msgid "Upgrading issues"
+msgstr "Problèmes lors de la mise à niveau"
+
+#. Type: note
+#. Description
+#: ../templates:19
+msgid ""
+"The upgrading script dumped some warnings and they have been mailed to "
+"root@localhost."
+msgstr ""
+"Le script de mise à niveau a émis des messages d'avertissements. Ils ont été "
+"envoyés par courriel à root@localhost."
+
+
+#. Type: note
+#. Description
+#: ../templates:19
+msgid ""
+"You should read those warnings and /usr/share/doc/apt-proxy/UPGRADING and "
+"revise your configuration (/etc/apt-proxy/apt-proxy-v2.conf)"
+msgstr ""
+"Il est recommandé de lire ces avertissements ainsi que le fichier /usr/"
+"share/doc/apt-proxy/UPGRADING et d'adapter la configuration qui se trouve "
+"dans le fichier /etc/apt-proxy/apt-proxy-v2.conf."
+

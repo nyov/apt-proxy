@@ -665,7 +665,11 @@ class FetcherFtp(Fetcher, protocol.Protocol):
 
         from twisted.internet.protocol import ClientCreator
 
-        creator = ClientCreator(reactor, ftp.FTPClient, passive=0)
+        if not request.backend.username:
+            creator = ClientCreator(reactor, ftp.FTPClient, passive=0)
+        else:
+            creator = ClientCreator(reactor, ftp.FTPClient, request.backend.username,
+                                    request.backend.password, passive=0)
         d = creator.connectTCP(request.backend.host, request.backend.port,
                                request.backend.timeout)
         d.addCallback(self.controlConnectionMade)
@@ -1161,6 +1165,9 @@ class Backend:
         self.scheme, netloc, self.path, parameters, \
                      query, fragment = urlparse.urlparse(uri)
 
+        if '@' in netloc:
+            auth, netloc = netloc.split('@')
+            self.username, self.password = auth.split(':')
         if ':' in netloc:
             self.host, self.port = netloc.split(':')
         else:
