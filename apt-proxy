@@ -1,8 +1,9 @@
-#! /bin/sh
+#!/bin/sh
 #
 # Copyright Paul Russell <rusty@samba.org>
 # Released under the GPL version 2 or later
 #	Fixed by Stephen Rothwell <sfr@canb.auug.org.au>
+#	Additional fixes by Chris Halls <chris.halls@nikocity.de> for Debian
 #       Stuff by Martin Schwenke <martin@meltin.net>
 #
 #	`perl!' -- Anton Blanchard
@@ -16,12 +17,13 @@ APT_PROXY_LOGFILE=${1:-/dev/null}
 exec 3>&1 1>>$APT_PROXY_LOGFILE 2>&1
 
 CONFIG_FILE=/etc/apt-proxy/apt-proxy.conf
+RSYNC=rsync
 
 # Write a debug message to the log if debug is enabled
 #	debug([string ...])
 debug()
 {
-    [ -n "$DEBUG" ] && echo "$$": "$@" >> $APT_PROXY_LOGFILE
+    [ -n "$DEBUG" ] && echo "[$$ `date +%X`]": "$@" >> $APT_PROXY_LOGFILE
 }
 
 # Write a message to the log.
@@ -37,7 +39,7 @@ log()
 if [ -x "/usr/bin/stat" ]; then
     file_size()
     {
-	[ -z "$1" ] && return 1
+	[ -z "$1" -o ! -f "$1" ] && return 1
 	set -- `/usr/bin/stat -tl "$1"`
 	[ -z "$2" ] && return 1
 	echo $2
@@ -45,7 +47,7 @@ if [ -x "/usr/bin/stat" ]; then
 else
     file_size()
     {
-	[ -z "$1" ] && return 1
+	[ -z "$1" -o ! -f "$1" ] && return 1
 	echo `wc -c < "$1"`
     }
 fi
@@ -76,26 +78,29 @@ else
 fi
 	
 # Write a http reply header
-#	write_header(response code, [content type] [content length]
+#	write_header(response code, keep-alive, connection type, [content type] [content length]
 #			[last modified time] [content encoding]
 #			[filename])
 #
 write_header()
 {
+    debug "write_header $1, keep-alive:$2 content:$3 size:$4 date:$5 enc:$6 request:$7"
+    
     # apt sometimes barfs if this isn't in a single packet.
     # That cost me about a week of debugging 8(.
     WH_HEADER="HTTP/1.0 $1\r\nDate: `date -u -R`\r\nServer: Apt-proxy $APT_PROXY_VERSION\r\n"
-    [ -n "$2" ] && WH_HEADER="${WH_HEADER}Content-Type: $2\r\n"
-    [ -n "$3" ] && WH_HEADER="${WH_HEADER}Content-Length: $3\r\n"
-    [ -n "$4" ] && WH_HEADER="${WH_HEADER}Last-Modified: $4\r\n"
-    [ -n "$5" ] && WH_HEADER="${WH_HEADER}Content-Encoding: $5\r\n"
-    [ -n "$6" ] && [ -n "$DEBUG" ] &&
-	WH_HEADER="${WH_HEADER}X-You-Wanted: $6\r\n"
+    # Say whether we are keeping the connection open or not
+    WH_HEADER="${WH_HEADER}Connection: $2\r\n"
+    [ -n "$3" ] && WH_HEADER="${WH_HEADER}Content-Type: $3\r\n"
+    [ -n "$4" ] && WH_HEADER="${WH_HEADER}Content-Length: $4\r\n"
+    [ -n "$5" ] && WH_HEADER="${WH_HEADER}Last-Modified: $5\r\n"
+    [ -n "$6" ] && WH_HEADER="${WH_HEADER}Content-Encoding: $6\r\n"
+    [ -n "$7" ] && [ -n "$DEBUG" ] &&
+	WH_HEADER="${WH_HEADER}X-You-Wanted: $7\r\n"
 
-    # printf will f*** with all %'s in URL :-(
-    WH_HEADER=`echo "$WH_HEADER" | sed -e 's/%/%%/g'`
     # dd forces it to sane blocks.
-    printf "$WH_HEADER\r\n" | dd 2>/dev/null >&3
+    printf "%b\r\n" "$WH_HEADER" | dd 2>/dev/null >&3
+
 }
 
 # Write out bad config file HTTP response, and exits.
@@ -110,9 +115,8 @@ bad_config()
 The configuration file $CONFIG_FILE is $@.<P>\r
 <P>\r
 </BODY></HTML>\r\n"
-    mesg=`echo "$mesg" | sed -e 's/%/%%/g'`
-    write_header "500 Bad configuration" text/html `printf "$mesg" | wc -c`
-    printf "$mesg" 1>&3
+    write_header "500 Bad configuration" close text/html `printf %b "$mesg" | wc -c`
+    printf "%b" "$mesg" 1>&3
     exit 1
 }
 
@@ -121,14 +125,17 @@ The configuration file $CONFIG_FILE is $@.<P>\r
 add_backend()
 {
     [ $# -ge 3 ] || bad_config Bad add_backend "$@".
-    [ -d $2 ] || bad_config apt-proxy directory "$2" doesn\'t exist\!
+    [ -d "$2" ] || mkdir -p "$2" || bad_config apt-proxy directory "$2" doesn\'t exist\!
     APT_PROXY_BACKENDS="$APT_PROXY_BACKENDS`echo $@ | tr -s ' \t' ,` "
 }
 
-# Takes URL, reason, spits out 404 and exits.
-#	bad_url(url, reason...)
+# Takes URL, reason, spits out 404 and exits if keep-alive=close.
+#	bad_url(keep-alive, url, reason...)
 bad_url()
 {
+    keepalive=$1
+    shift
+
     log Bad URL "$@"
     URL="$1"
     shift
@@ -138,10 +145,12 @@ bad_url()
 <H1>Not Found</H1>\r
 While serving the requested URL $URL: $@.<P>\r
 Really.<P>\r
-</BODY></HTML>\r"
-    write_header "404 `echo \"$@\" | tail -1`" text/html
-    echo "$mesg\n" 1>&3
-    exit 1
+</BODY></HTML>\r\n"
+    write_header "404 `echo \"$@\" | tail -1`" $keepalive text/html `printf %b "$mesg" | wc -c`
+    printf "%b\n" "$mesg" 1>&3                                                                                   
+
+    # Exit if no keep alive
+    [ "$keepalive" = "close" ] && exit 1
 }
 
 # Relative or same directory is OK.
@@ -159,7 +168,7 @@ rsync_link()
     shift
 
     for rsl_back in $@; do
-	if rsl_link="`rsync -l $rsl_back$RSL_LINK`"; then
+	if rsl_link="`$RSYNC -l $rsl_back$RSL_LINK`"; then
 	    # Ignore server messages.
 	    echo "$rsl_link" | tail -1 | grep '^l.*->' | sed 's/.*-> //'
 	    return 0
@@ -191,14 +200,14 @@ mkdir_maybe_symlinks()
     for mms_d in `directories $MMS_SUBDIR`; do
 	if [ ! -d "$MMS_FRONTBASE$mms_d" ]; then
 	    MMS_L="`rsync_link \"$mms_d\" \"$@\"`" ||
-		bad_url "$mms_d" "directory does not exist on any server"
+		bad_url close "$mms_d" "directory does not exist on any server"
 	    if [ -n "$MMS_L" ]; then
 		if is_sane "$MMS_L"; then
 		    log Making symbolic link "$MMS_FRONTBASE$mms_d" '->' "$MMS_L"
 		    rm -f "$MMS_FRONTBASE$mms_d"
 		    ln -s "$MMS_L" "$MMS_FRONTBASE$mms_d"
 		else
-		    bad_url "$mms_d" "is a bad symlink $MMS_L on server"
+		    bad_url close "$mms_d" "is a bad symlink $MMS_L on server"
 		fi
 		# Don't support nested directory symlinks.  Mail rusty.
 		[ -d "$MMS_FRONTBASE$mms_d" ] ||
@@ -266,7 +275,7 @@ resolve_url()
 	;;
 	esac
     done
-    bad_url "$1" "is not serviced by this server"
+    bad_url close "$1" "is not serviced by this server"
 }
 
 # Prints file-prefix that corresponds to the module containing the
@@ -286,34 +295,67 @@ resolve_file()
     log "$1" "is bogus file in resolve_file"
 }
 
-# Let's not use procmail's lockfile; avoid dependency.
+# Test for lockfile with stale lock detection
+# return 1 if no lockfile
+#	test_lockfile(lockfile)
+test_lockfile()
+    LOCKFILE=$1
+
+    [ -f $LOCKFILE ] || return 1
+
+    # Stale lock detection.
+    if kill -0 "`cat $LOCKFILE`"; then
+        # Lockfile is current
+	return 0
+    else
+	debug Lock $LOCKFILE is stale
+	ret=1
+	if ! ln $LOCKFILE $LOCKFILE.stale 2>/dev/null; then
+	    # Someone may have cleaned this up between above lines.
+	    if ! kill -0 "`cat $LOCKFILE`"; then
+		# Someone else cleaned up the lockfile and created a new one
+		return 0
+	    fi
+	fi
+	rm -f $LOCKFILE.stale
+	return 1
+    fi
+}
+
+# Try to create a lockfile with our process ID
+# Return 0 if successful
 #	my_lockfile(lockfile)
 my_lockfile()
 {
-    ret=1
-
     # noclobber
     set -C
-    if echo $$ > $1; then ret=0
-    else
-	# Stale lock detection.
-	if kill -0 "`cat $1`"; then :
-	else
-	    debug Lock $1 stale...
-	    if ln $1 $1.stale 2>/dev/null; then
-		# Someone may have cleaned this up between above lines.
-		if kill -0 "`cat $1`"; then :
-		else
-		    echo $$ > "$1"
-		    ret=0
-		fi
-	    fi
-	    rm -f $1.stale
-	fi
-    fi 2>/dev/null
+    echo $$ > $1
+    ret=$?
     set +C
 
+    if [ $ret -eq 0 ]; then
+        debug -- Created lock $1
+    else
+    	debug Lockfile detected: $1
+	# Run test_lockfile to clean up lockfile if it is stale
+	test_lockfile $1
+    fi
+
     return $ret
+}
+
+# Wait for lockfile with stale lock detection
+#	wait_for_lock(lockfile)
+wait_for_lock()
+{
+    LOCKFILE=$1
+    if test_lockfile $LOCKFILE  ; then
+        while
+	   sleep 1
+	   test_lockfile $LOCKFILE
+	do : ; done
+        debug Lock was released: $LOCKFILE
+    fi
 }
 
 # General a list of files from the given Packages file.
@@ -473,6 +515,7 @@ deb_all_versions ()
 	ls ${DAV_BASEDEB}*$DAV_EXT | debs_filter_arch $DAV_ARCH | debs_sort_uniq
     fi
 }
+	
 
 # Find a decent match to base rsync on. 
 #	copy_best_match(front partial)
@@ -509,7 +552,8 @@ rsync_unlock()
     fi
     for rsu_b in $@; do
 	debug Trying $rsu_b...
-	if rsync $RSU_OPTS $rsu_b$RSU_REST $RSU_PART >$RSU_FAIL 2>&1; then
+	debug $RSYNC $RSU_OPTS $rsu_b$RSU_REST $RSU_PART
+	if $RSYNC $RSU_OPTS $rsu_b$RSU_REST $RSU_PART >$RSU_FAIL 2>&1; then
 	    mv $RSU_PART $RSU_FRONT
 	    [ -n "$KEEP_STATS" ] && log $RSU_REST `tail -1 $RSU_FAIL`
 	    rm -f $RSU_FAIL
@@ -541,13 +585,14 @@ fetch_file_start()
     while true; do
 	debug Fetching $FF_FRONT from $@
 
+	# Start rsync process in the background so we can watch its progress
 	# Need >/dev/null otherwise our caller (waiting for stdout)
 	# waits for rsync_unlock to finish.
 	my_lockfile $FF_LOCK &&
 	    (rsync_unlock $FF_FRONT $FF_URL_REST $FF_LOCK $@ &) >/dev/null
 
 	FF_WILD="`rsync_wildcard $FF_FRONT`"
-	while [ -f $FF_FRONT.lock ]; do
+	while test_lockfile $FF_LOCK ; do
 	    # A stream?
 	    FF_STREAM="`echo $FF_WILD`"
 	    if [ "$FF_STREAM" != "$FF_WILD" ]; then
@@ -607,7 +652,7 @@ fetch_file_maybe()
 #	wait_for_stream(file)
 wait_for_stream()
 {
-    while [ -f $1.lock ]; do sleep 1; done
+    wait_for_lock $1.lock 
     # Return value based on whether file exists.
     [ -f $1 ]
 }
@@ -617,6 +662,7 @@ wait_for_stream()
 stream_file()
 {
     SF_OFFSET=0
+    debug stream_file: $1, $2
 
     while SF_LEN=`file_size "$1"`; do
 	SF_COUNT=`expr $SF_LEN - $SF_OFFSET`
@@ -629,12 +675,11 @@ stream_file()
     done 2>/dev/null
 
     # Race: wait for lock to vanish (may have to move file)
-    while [ -f "$2.lock" ]; do sleep 1; done
+    wait_for_lock $2.lock 
 
     # Dump the rest.
     dump_part_file "$2" $SF_OFFSET >&3 || {
 	log Delivered partial file "$2".
-	exit 1
     }
 }
 
@@ -782,10 +827,19 @@ find_and_cat()
 #. /etc/apt-proxy/apt-proxy.conf
 . $CONFIG_FILE
 
+# rsync command
+RSYNC=rsync
+
+# Set rsync timeout if specified in config file
+if [ -n "$RSYNC_TIMEOUT" ] ; then
+    RSYNC="$RSYNC --timeout=$RSYNC_TIMEOUT" 
+fi
+
 # For all the requests in a particular session
 while true; do
     unset DO_CLEANUP DO_REMOVE_EXTRA_VERSIONS DO_UPDATE_PACKAGES_LIST \
 	SIZE SIZE_FILE IMS_DATE UNCOMPRESS REQUEST KEEP_ALIVE
+    KEEP_ALIVE=close
 
     while read PREFIX LINE
     do
@@ -816,7 +870,7 @@ while true; do
 
     INSANE="[^A-Za-z0-9_./+=:-]"
     echo "$REQUEST" | grep -q "$INSANE" &&
-	bad_url "$REQUEST" Malformed chars:`echo \"$REQUEST\"|tr -dc "$INSANE"`
+	bad_url close "$REQUEST" Malformed chars:`echo \"$REQUEST\"|tr -dc "$INSANE"`
 
     [ -n "$REQUEST" ] && log `date` Request "$REQUEST"
 
@@ -857,7 +911,7 @@ while true; do
 	    # exists on a back end.
 	    if [ ! -f $FRONT.gz ]; then
 		for back in $BACKS; do
-		    if rsync $back$URL_REST 2>/dev/null >/dev/null; then
+		    if $RSYNC $back$URL_REST 2>/dev/null >/dev/null; then
 			UNCOMPRESS=$FRONT
 		    else
 			log $back does not have `basename $FRONT`.
@@ -887,7 +941,6 @@ while true; do
 	resolve_url $REQUEST
 	[ -f $FRONT ] ||
 	    STREAM="`fetch_file_start $URL_REST $FRONT_BASE $BACKS`"
-	debug STREAM: $STREAM
 	[ -n "$CLEANUP_DAYS" ] && DO_CLEANUP=1
 	[ -n "$MAX_VERSIONS" ] && DO_REMOVE_EXTRA_VERSIONS=1
 
@@ -939,7 +992,7 @@ while true; do
 	;;
 
     *)
-	bad_url $REQUEST Unknown extension.
+	bad_url close $REQUEST Unknown extension.
 	;;
     esac
 
@@ -962,7 +1015,7 @@ while true; do
 	fi
     else
 	# Race: wait for lock to vanish (may have to move file)
-	while [ -f $FRONT.lock ]; do sleep 1; done
+        wait_for_lock $FRONT.lock 
 
 	if [ -f $FRONT ]; then
 	    # File already exists in entirity.  Give local answers.
@@ -971,7 +1024,7 @@ while true; do
 	    # Turn date into seconds. 
 	    FILE_DATE=`date -u '+%s' -d "$DATE"`
 	    if [ -n "$IMS_DATE" ] && [ $IMS_DATE -ge $FILE_DATE ]; then
-		write_header "304 HIT"
+		write_header "304 HIT" keep-alive
 		continue
 	    fi
 	    SIZE=`file_size $FRONT`
@@ -983,11 +1036,14 @@ while true; do
 	    case "$FRONT" in *Release|*Release.gz)
 		[ ! -f $FRONT.nonexist ] && touch $FRONT.nonexist;;
 	    esac
-	    bad_url $REQUEST "${CAUSE:-was not found on this server}"
 	fi
     fi
 
-    write_header "200 OK" "$contype" "$SIZE" "$DATE" "$conenc" "$REQUEST"
+    # If we do not have a size, close the connection on completion
+    [ -z "$SIZE" ] && KEEP_ALIVE=close
+
+    debug Header - 200 OK, keep-alive:$KEEP_ALIVE content:$contype size:$SIZE date:$DATE enc:$conenc request:$REQUEST
+    write_header "200 OK" "$KEEP_ALIVE" "$contype" "$SIZE" "$DATE" "$conenc" "$REQUEST"
     stream_file "$STREAM" "$FRONT"
 
     # Now, derive the uncompressed file.
@@ -1033,7 +1089,5 @@ while true; do
 	    ) &
 	fi
     fi
-    if [ -z "$SIZE" ]; then log Aborting: Unknown size for $REQUEST; break; fi
     if [ "$KEEP_ALIVE" '!=' keep-alive ]; then break; fi
-#break
 done
