@@ -17,13 +17,22 @@ these files into apt-proxy as follows:
 .PP
 1. Update apt-proxy's filelists:
 .nf
-apt-get update
+    apt-get update
 .fi
 .PP
 2. Import files from apt's cache:
 .nf
-apt-proxy-import /var/cache/apt/archives
+    apt-proxy-import /var/cache/apt/archives
 .fi
+
+[IMPORTING APT-MOVE CACHE]
+You can import the apt-move generated cache into apt-proxy using the following command:
+.PP
+.nf
+    find /var/cache/apt-move -type d | xargs apt-proxy-import
+.fi
+.PP
+This runs apt-proxy-import in each directory in the apt-file cache.
 
 [FILES]
 \ /etc/apt-proxy/apt-proxy\&.conf
