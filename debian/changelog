@@ -1,3 +1,9 @@
+apt-proxy (1.9.16+SVN20040803) UNRELEASED; urgency=low
+
+  * Handle currupted files (Otavio). (closes: #263147)
+
+ -- Otavio Salvador <otavio@debian.org>  Tue,  3 Aug 2004 23:56:20 -0300
+
 apt-proxy (1.9.16) unstable; urgency=low
 
   * Workaround when found a wrong server (Otavio). (closes: #260788)

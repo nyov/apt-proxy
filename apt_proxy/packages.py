@@ -40,9 +40,7 @@ class AptDpkgInfo(UserDict.UserDict):
                 # Make sure that file is always closed.
                 filehandle.close()
         except SystemError:
-            import traceback
-            traceback.print_exc()
-            log.msg("Had problems reading: %s"%(filename), 'AptDpkgInfo')
+            log.debug("Had problems reading: %s"%(filename), 'AptDpkgInfo')
             raise
         for line in self.control.split('\n'):
             if line.find(': ') != -1:
@@ -306,7 +304,11 @@ def import_file(factory, dir, file):
         return
     
     log.debug("considering: " + dir + '/' + file, 'import')
-    paths = get_mirror_path(factory, dir+'/'+file)
+    try:
+        paths = get_mirror_path(factory, dir+'/'+file)
+    except SystemError:
+        log.msg(file + ' skipped - wrong format or corrupted', 'import')
+        return
     if paths:
         if len(paths) != 1:
             log.debug("WARNING: multiple ocurrences", 'import')
