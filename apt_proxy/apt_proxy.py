@@ -196,6 +196,12 @@ class TempFile (file):
         self.write(data)
     def size(self):
         return self.tell()
+    def read_from(self, size=-1, start=None):
+        if start != None:
+            self.seek(start, SEEK_SET)
+        data = file.read(self, size)
+        return data
+
 
 class Fetcher:
     """
@@ -241,7 +247,7 @@ class Fetcher:
         for name, value in self.request.headers.items():
             request.setHeader(name, value)
         if self.transfered.size() != 0:
-            request.write(self.transfered.read(start=0))
+            request.write(self.transfered.read_from(start=0))
 
     def remove_request(self, request):
         """
