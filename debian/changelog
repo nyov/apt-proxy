@@ -1,3 +1,11 @@
+apt-proxy (1.9.11.pre12) experimental; urgency=low
+
+  * Swap maintainer/uploaders until Manuel is back
+  * Fix method to redirect stdout when loading packages cache
+    with apt_pkg
+
+ -- Chris Halls <halls@debian.org>  Mon,  3 May 2004 09:40:13 +0200
+
 apt-proxy (1.9.11) experimental; urgency=low
 
   * Support Release.gpg for new apt, thanks Chris Lawrence (closes: #245895)

@@ -131,13 +131,12 @@ class AptPackages:
             self.packages[uri] = mtime
             self.unload()
         
-    def __fake_stdout(self):
-        import tempfile
-        null = tempfile.TemporaryFile()
-        self.real_stdout_fd = os.dup(sys.stdout.fileno())
-        os.dup2(null.fileno(), sys.stdout.fileno())
+    def __save_stdout(self):
+        self.real_stdout_fd = os.dup(1)
+        os.close(1)
+                
     def __restore_stdout(self):
-        os.dup2(self.real_stdout_fd, sys.stdout.fileno())
+        os.dup2(self.real_stdout_fd, 1)
         os.close(self.real_stdout_fd)
         del self.real_stdout_fd
 
@@ -146,6 +145,8 @@ class AptPackages:
         Regenerates the fake configuration and load the packages server.
         """
         if not self.loaded:
+            log.msg("Loading Packages database for "+self.status_dir,'apt_pkg')
+            
             shutil.rmtree(self.status_dir+'/apt/lists/')
             os.makedirs(self.status_dir+'/apt/lists/partial')
             sources = open(self.status_dir+'/'+'apt/etc/sources.list', 'w')
@@ -169,18 +170,18 @@ class AptPackages:
                 apt_pkg.Config[key] = value
             apt_pkg.InitSystem()
 
-            # Disabled.  What is this stuff??
-            # if log.isEnabled('apt'):
-            self.cache = apt_pkg.GetCache()
-            #else:
-            #    self.__fake_stdout()
-            #    self.cache = apt_pkg.GetCache()
-            #    self.__restore_stdout()
+            if log.isEnabled('apt'):
+                self.cache = apt_pkg.GetCache()
+            else:
+                # apt_pkg prints progress messages to stdout, disable
+                self.__save_stdout()
+                self.cache = apt_pkg.GetCache()
+                self.__restore_stdout()
 
             self.records = apt_pkg.GetPkgRecords(self.cache)
             self.loaded = 1
     def unload(self):
-        "Tryes to make the packages server quit."
+        "Tries to make the packages server quit."
         if self.loaded:
             del self.cache
             del self.records

@@ -1,8 +1,8 @@
 Source: apt-proxy
 Section: admin
 Priority: extra
-Maintainer: Manuel Estrada Sainz <ranty@debian.org>
-Uploaders: Chris Halls <halls@debian.org>
+Maintainer: Chris Halls <halls@debian.org>
+Uploaders: Manuel Estrada Sainz <ranty@debian.org>
 Standards-Version: 3.6.0
 Build-Depends-Indep: debhelper (>= 4.0.0), help2man, python2.3-twisted (>= 1.0.0), python2.3
 
