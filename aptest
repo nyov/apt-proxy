@@ -1,2 +1,2 @@
 #!/bin/sh
-PYTHONPATH="`pwd`" bin/apt-proxy
+PYTHONPATH="`pwd`" twistd -n -y bin/apt-proxy
