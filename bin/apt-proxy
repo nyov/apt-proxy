@@ -14,7 +14,7 @@ factoryConfig(factory, shell)
 application = service.Application("AptProxy")
 
 if shell.port:
-    internet.TCPServer(shell.proxy_port, shell, interface=factory.proxy_address).setServiceParent(application)
+    internet.TCPServer(shell.port, shell, interface=factory.proxy_address).setServiceParent(application)
 internet.TCPServer(factory.proxy_port, factory, interface=factory.proxy_address).setServiceParent(application)
 
 if __name__ == '__main__':
