@@ -299,9 +299,9 @@ def import_directory(factory, dir, recursive=0):
     
 def import_file(factory, dir, file):
     """
-    Import a .deb into cache from given filename
+    Import a .deb or .udeb into cache from given filename
     """
-    if file[-4:]!='.deb':
+    if file[-4:]!='.deb' and file[-5:]!='.udeb':
         log.msg("Ignoring (unknown file type):"+ file, 'import')
         return
     

@@ -9,8 +9,8 @@ update the package lists before running apt\-proxy\-import.
 
 [USING TO BOOTSTRAP A NEW APT-PROXY CACHE]
 If you have been using apt standalone, you probably have built up a
-large collection of .debs in apt's cache directory.  You can import 
-these files into apt\-proxy as follows:
+large collection of .debs or .udebs in apt's cache directory.  You
+can import these files into apt\-proxy as follows:
 .PP
 1. Update apt\-proxy's filelists:
 .nf
