@@ -10,8 +10,8 @@ apt-proxy \- A proxy for saving bandwidth to Debian servers
 .SH "DESCRIPTION"
 \fBapt-proxy\fP is an advanced shell script designed to be run out of
 inetd, and provides a clean, caching, intelligent proxy for
-\fBapt-get\fP, which speaks HTTP to apt-get clients, and rsync to the
-back-end server(s)\&.  Usually it is run on port 9999, mainly because
+\fBapt-get\fP, which speaks HTTP to apt-get clients, and http, rsync or ftp to
+the back-end server(s)\&.  Usually it is run on port 9999, mainly because
 that is the default configuration, and people are lazy\&.
 .PP
 .SH OPTIONS
@@ -47,27 +47,12 @@ example, non-US/ and helixcode/ actually retrieve files from different
 back-end servers\&.
 
 Note that you can also use the nicknames `unstable', `frozen' etc, but
-they will be slightly slower for `apt-get update'.
+they may be slightly slower for `apt-get update'.
 .PP
 .SH "SERVER CONFIGURATION"
 See
 .BR apt-proxy.conf (8)
 for details of how to set up apt-proxy to use backends near to you.
-.PP
-.SH "SYMLINKS AND DIRECTORIES"
-
-\fBapt-proxy\fP will copy symbolic links from the server, but it will
-never update them while they are still linked to a real file.  For
-most users, this will not matter.  The exception is that every time a
-Packages or Packages.gz file is served from a path which contains a
-directory, the back-end servers are probed to see if the symbolic link
-has changed (eg. `unstable/').  This is why it is slightly faster to
-use the real distribution names (eg. `woody/') in your
-\fBsources.list\fP.
-
-Directories are also created on demand, where they exist on the
-backend server.
-
 .PP
 .SH "CARE AND FEEDING OF MIRRORS"
 
@@ -75,7 +60,7 @@ backend server.
 by synchronizing uncompressed Packages files where possible (much
 cheaper than downloading the entire compressed file), by restricting
 the frequency of Packages, Releases and Sources file updates from the
-back end, by keeping partial transfers, and only doing a single rsync
+back end, by keeping partial transfers, and only doing a single fetch
 for any file, how ever many users request it from the proxy.
 .PP
 .SH "FILES"
@@ -89,10 +74,9 @@ for any file, how ever many users request it from the proxy.
 .ad
 .PP
 .SH "BUGS"
-It does not support http front ends, so apt-proxies cannot be chained.
-
-apt-get(8) does not like HTTP headers without a Content-Length:,
-making streaming cumbersome.
+http support is not yet streamlined.  In particular, uncompressed Packages
+files are requested if a previous Packages file is available in the apt-proxy
+cache.  This is because of the rsync logic, and will be fixed shortly.
 
 Packages are not compressed using gzip --rsyncable, which gives a 30%
 reduction in bytes transferred for binary packages, and much greater for
