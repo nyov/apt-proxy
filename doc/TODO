@@ -108,10 +108,6 @@ Some suggestions that were hashed out:
 16:56 < haggai> oh, not really.  My only suggestion is to avoid excessibe use of 'import', or maybe to split into smaller source files
 move 'import' to the place where it is needed if posible.
 
-- Move aptProxyClientDownload function -
-17:07 < haggai> I didn't understand why aptProxyClientDownload is a standalone function and not a member of AptProxy
-17:11 < ranty> thinking over, it could probably be part of AptProxyRequest instead.
-
 ---------------- OLD LIST from v1 ---------------------------
 TODO list for apt-proxy
 

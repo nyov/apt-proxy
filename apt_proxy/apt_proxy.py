@@ -155,84 +155,6 @@ def findFileType(name):
             return type
     return None
 
-def setupFetcher(request, serve_cached=1):
-    """
-    Serve 'request' from cache or through the appropriate Fetcher
-    depending on the asociated backend.
-
-    Use post_convert and gzip_convert regular expresions of the Fetcher to
-    gzip/gunzip file before and after download.
-
-    'serve_cached': this is somewhat of a hack only usefull for
-    LoopbackRequests (See LoopbackRequest class for more information).
-    """
-    def cached_cb(result, dummyFetcher):
-        """ This is called if the file is properly cached. """
-        log.debug("Using cached copy of %s"%(
-            dummyFetcher.request.local_file))
-        requests = dummyFetcher.requests[:]
-        dummyFetcher.apEnd()
-        for req in requests:
-            if req.loop_serve_if_cached:
-                req.send_cached()
-            else:
-                #warning, this may only be right for LoopbackRequest
-                req.finish()
-    def not_cached_cb(result, dummyFetcher, running):
-        """
-        The requested file was not there, didn't pass the integrity check or
-        may be outdated.
-        """
-        log.debug("Consulting server about %s"
-                  %(dummyFetcher.request.local_file))
-        if len(dummyFetcher.requests)==0:
-            #The request's are gone, the clients probably closed the conection
-            log.debug("THE REQUESTS ARE GONE (Clients closed conection)")
-            dummyFetcher.apEnd()
-            return
-        req = dummyFetcher.fix_ref_request()
-        fetcher_class = req.backend.fetcher
-        if fetcher_class.gzip_convert.search(req.uri):
-            fetcher = FetcherGzip()
-        else:
-            fetcher = fetcher_class()
-
-        dummyFetcher.transfer_requests(fetcher)
-        dummyFetcher.apEnd()
-        fetcher.activate(req)
-        
-        if (fetcher.post_convert.search(req.uri)
-            and not running.has_key(req.uri[:-3])):
-            log.debug("post converting: "+req.uri,'convert')
-            loop = LoopbackRequest(req)
-            loop.uri = req.uri[:-3]
-            loop.local_file = req.local_file[:-3]
-            loop.process()
-            #FetcherGzip will attach as a request of the
-            #original Fetcher, efectively waiting for the
-            #original file
-            FetcherGzip(loop)
-
-    request.loop_serve_if_cached = serve_cached
-    running = request.factory.runningFetchers
-    if (running.has_key(request.uri)):
-        #If we have an active fetcher just use that
-        log.debug("have active fetcher",'client')
-        running[request.uri].insert_request(request)
-        return running[request.uri]
-
-    else:
-        #we make a FetcherDummy instance to hold other requests for the
-        #same file while the check is in process. We will transfer all the
-        #requests to a real fetcher when the check is done.
-        dummyFetcher = FetcherDummy(request)
-        #Standard Deferred practice
-        d = request.check_cached()
-        d.addCallbacks(cached_cb, not_cached_cb,
-                       (dummyFetcher,), None,
-                       (dummyFetcher, running,), None)
-        d.arm()
-
 class Fetcher:
     """
     This is the base class for all Fetcher*, it tryies to hold as much
@@ -725,7 +647,7 @@ class FetcherGzip(Fetcher, protocol.ProcessProtocol):
     backend via LoopbackRequest to get the data and gzip's or gunzip's as
     needed.
 
-    NOTE: We use the serve_cached=0 parameter to setupFetcher so if
+    NOTE: We use the serve_cached=0 parameter to Request.fetch so if
     it is cached it doesn't get uselessly read, we just get it from the cache.
     """
     post_convert = re.compile(r"^Should not match anithing$")
@@ -754,7 +676,7 @@ class FetcherGzip(Fetcher, protocol.ProcessProtocol):
         loop.local_file = self.host_file
         loop.process()
         self.loop_req = loop
-        setupFetcher(loop, serve_cached=0)
+        loop.fetch(serve_cached=0)
 
     def host_transfer_done(self):
         """
@@ -819,7 +741,7 @@ class FetcherGzip(Fetcher, protocol.ProcessProtocol):
 
 class FetcherRsync(Fetcher, protocol.ProcessProtocol):
     """
-    I frequently am not called directly, setupFetcher makes the
+    I frequently am not called directly, Request.fetch makes the
     arrangement for FetcherGzip to use us and gzip the result if needed.
     
     NOTE: Here we LD_PRELOAD a rsync_hack.so to make rsync more friendly for
@@ -1137,6 +1059,85 @@ class Request(http.Request):
             self.apFetcher.remove_request(self)
         self.finish()
 
+    def fetch(self, serve_cached=1):
+        """
+        Serve 'self' from cache or through the appropriate Fetcher
+        depending on the asociated backend.
+    
+        Use post_convert and gzip_convert regular expresions of the Fetcher
+        to gzip/gunzip file before and after download.
+    
+        'serve_cached': this is somewhat of a hack only usefull for
+        LoopbackRequests (See LoopbackRequest class for more information).
+        """
+        def cached_cb(result, dummyFetcher):
+            """ This is called if the file is properly cached. """
+            log.debug("Using cached copy of %s"%(
+                dummyFetcher.request.local_file))
+            requests = dummyFetcher.requests[:]
+            dummyFetcher.apEnd()
+            for req in requests:
+                if req.loop_serve_if_cached:
+                    req.send_cached()
+                else:
+                    #warning, this may only be right for LoopbackRequest
+                    req.finish()
+        def not_cached_cb(result, dummyFetcher, running):
+            """
+            The requested file was not there, didn't pass the integrity
+            check or may be outdated.
+            """
+            log.debug("Consulting server about %s"
+                      %(dummyFetcher.request.local_file))
+            if len(dummyFetcher.requests)==0:
+                #The request's are gone, the clients probably closed the
+                #conection
+                log.debug(
+                    "THE REQUESTS ARE GONE (Clients closed conection)")
+                dummyFetcher.apEnd()
+                return
+            req = dummyFetcher.fix_ref_request()
+            fetcher_class = req.backend.fetcher
+            if fetcher_class.gzip_convert.search(req.uri):
+                fetcher = FetcherGzip()
+            else:
+                fetcher = fetcher_class()
+    
+            dummyFetcher.transfer_requests(fetcher)
+            dummyFetcher.apEnd()
+            fetcher.activate(req)
+            
+            if (fetcher.post_convert.search(req.uri)
+                and not running.has_key(req.uri[:-3])):
+                log.debug("post converting: "+req.uri,'convert')
+                loop = LoopbackRequest(req)
+                loop.uri = req.uri[:-3]
+                loop.local_file = req.local_file[:-3]
+                loop.process()
+                #FetcherGzip will attach as a request of the
+                #original Fetcher, efectively waiting for the
+                #original file
+                FetcherGzip(loop)
+
+        self.loop_serve_if_cached = serve_cached
+        running = self.factory.runningFetchers
+        if (running.has_key(self.uri)):
+            #If we have an active fetcher just use that
+            log.debug("have active fetcher",'client')
+            running[self.uri].insert_request(self)
+            return running[self.uri]
+        else:
+            #we make a FetcherDummy instance to hold other requests for the
+            #same file while the check is in process. We will transfer all
+            #the requests to a real fetcher when the check is done.
+            dummyFetcher = FetcherDummy(self)
+            #Standard Deferred practice
+            d = self.check_cached()
+            d.addCallbacks(cached_cb, not_cached_cb,
+                           (dummyFetcher,), None,
+                           (dummyFetcher, running,), None)
+            d.arm()
+
     def process(self):
         """
         Each new request begins processing here
@@ -1188,7 +1189,7 @@ class Request(http.Request):
             self.finishCode(http.FORBIDDEN)
             return
 
-        setupFetcher(self)
+        self.fetch()
 
 class LoopbackRequest(Request):
     """
