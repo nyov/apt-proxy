@@ -472,7 +472,7 @@ class FetcherHttp(Fetcher, http.HTTPClient):
         'last-modified',
         'content-length'
         ]
-    headers = None
+    log_headers = None
 
     def activate(self, request):
         Fetcher.activate(self, request)
@@ -543,10 +543,10 @@ class FetcherHttp(Fetcher, http.HTTPClient):
         have to give the 'self' parameter manualy.
         """
         #log.debug(line,'http_client')
-        if self.headers == None:
-            self.headers = line
+        if self.log_headers == None:
+            self.log_headers = line
         else:
-            self.headers += ", " + line;
+            self.log_headers += ", " + line;
         if not re.search('^Location:', line):
             http.HTTPClient.lineReceived(self, line)
 
@@ -557,9 +557,9 @@ class FetcherHttp(Fetcher, http.HTTPClient):
 
     def endHeaders(self):
         "log and handle to the base class."
-        if self.headers != None:
-            log.debug(" Headers: " + self.headers, 'http_client')
-            self.headers = None;
+        if self.log_headers != None:
+            log.debug(" Headers: " + self.log_headers, 'http_client')
+            self.log_headers = None;
         http.HTTPClient.endHeaders(self)
 
     def sendHeader(self, name, value):
@@ -1297,21 +1297,21 @@ class Channel(http.HTTPChannel):
     Each incomming request is passed to a new Request instance.
     """
     requestFactory = Request
-    headers = None
+    log_headers = None
 
     def headerReceived(self, line):
         "log and pass over to the base class"
         #log.debug("Header: " + line)
-        if self.headers == None:
-            self.headers = line
+        if self.log_headers == None:
+            self.log_headers = line
         else:
-            self.headers += ", " + line
+            self.log_headers += ", " + line
         http.HTTPChannel.headerReceived(self, line)
 
     def allContentReceived(self):
-        if self.headers != None:
-            log.debug("Headers: " + self.headers)
-            self.headers = None
+        if self.log_headers != None:
+            log.debug("Headers: " + self.log_headers)
+            self.log_headers = None
         http.HTTPChannel.allContentReceived(self)
 
     def connectionLost(self, reason=None):
