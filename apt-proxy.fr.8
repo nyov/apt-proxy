@@ -1,0 +1,96 @@
+.\" Relecture Gérard Delafond
+.\" Man page copied from apt.conf man page.
+.TH "apt-proxy" "8" "septembre 2002" "apt-proxy" ""
+.SH "NOM"
+apt-proxy \- Un mandataire pour économiser de la bande passante sur les serveurs
+Debian.
+.SH SYNOPSIS
+.B apt-proxy
+.I "[options] [fichier de log]"
+.br
+.PP
+.SH "DESCRIPTION"
+\fBapt-proxy\fP est un script shell avancé conçu pour être lancé en dehors
+d'inetd, et 
+donne un mandataire («\ proxy\ ») intelligent, propre et cachant pour
+\fBapt-get\fP, qui parle http aux clients apt-get et http, rsync ou ftp aux
+serveur(s) backend(s).
+Il est normalement lancé sur le port 9999, principalement parce que c'est la
+configuration par défaut
+et que les gens sont fainéants.
+.PP
+.SH OPTIONS
+Les options de la ligne de commande d'apt-proxy sont\ :
+.TP
+.B -c <fichier de configuration>
+Spécifie quel fichier est utilisé pour la sauvegarde de la configuration, par
+défaut /etc/apt-proxy.conf. 
+.TP
+.B -l <fichier de log>
+Spécifie le fichier dans lequel les journaux sont enregistrés, par défaut
+/var/log/apt-proxy.
+Le fichier de log peut aussi être spécifié en tant que premier paramètre (non
+optionnel) en ligne de commande.
+.TP
+.B -v, --version
+Affiche la version du programme.
+.br
+.SH "CONFIGURATION DU CLIENT"
+Une fois \fBapt-proxy\fP configuré, les utilisateurs éditent leur fichier 
+\fBsources\&.list\fP pour le faire pointer vers le mandataire (qui utilise le
+protocole
+http pour servir les clients) comme décrit ci-dessous\ :
+
+.nf
+deb http://SERVER:9999/main woody main contrib non-free
+deb http://SERVER:9999/non-US woody/non-US main contrib non-free
+deb-src http://SERVER:9999/main woody main contrib non-free
+deb-src http://SERVER:9999/non-US woody/non-US main contrib non-free
+
+deb http://SERVER:9999/openoffice/ woody main contrib
+.fi
+
+Le chemin devant être spécifié après le nom du serveur et le numéro de port
+dépend de la configuration d'\fBapt-proxy\fP (qui peut restreindre les chemins 
+et envoyer des chemins différents à différents serveurs)\&. Dans cet exemple,
+non-US/ et openoffice/ récupèrent finalement des fichiers de différents
+serveurs backends. 
+
+.PP
+.SH "CONFIGURATION DU SERVEUR"
+Voir
+.BR apt-proxy.conf (5)
+pour les détails pour configurer apt-proxy pour l'utilisation des backends
+proches de vous.
+.PP
+.SH "SOIN ET APPROVISIONNEMENT DE MIROIRS"
+
+\fBapt-proxy\fP réduit les nécessités en bande passante des miroirs Debian en
+synchronisant les fichiers Packages non comprimés quand c'est possible (beaucoup
+plus léger que de télécharger le fichier comprimé entier), en restreignant la
+fréquence de mise à jour des fichiers Packages, Releases et Sources à partir du
+backend, en gardant les transferts partiels, et en faisant seulement un unique
+fetch pour chaque fichier, quel que soit le nombre d'utilisateurs le demandant
+au mandataire.
+.PP
+.SH "FICHIERS"
+/etc/apt-proxy/apt-proxy\&.conf
+.PP
+.SH "VOIR AUSSI"
+.na
+.nh
+.BR apt-proxy.conf (5)
+.hy
+.ad
+.PP
+.SH "BOGUES"
+Les paquets ne sont pas comprimés en utilisant gzip --rsyncable, ce qui donne
+une réduction
+de 30\ % en terme d'octets transferés pour les paquets binaires, et beaucoup
+plus pour les paquets sources 
+et autres.
+.PP
+.SH "AUTEURS"
+apt-proxy a été écrit par le Apt-Proxy World Domination Project.
+.SH TRADUCTION
+Richard Bonichon <richard.bonichon@free.fr>.
