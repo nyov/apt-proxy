@@ -1,6 +1,6 @@
                  	apt-proxy README
 
-              Chris Halls <chris.halls@nikocity.de>
+              Chris Halls <chris.halls@gmx.de>
 
 This is part of the Debian GNU/Linux package for apt-proxy.
 
@@ -11,13 +11,9 @@ do the following:
    the apt-proxy.conf(5) manpage for details.
 2. Point your apt clients to the proxy.  See the apt-proxy(8) manpage for
    details.
-3. run apt-get update on a client, to initialise the archive directories and
-   filelists.
-4. If you have an apt cache directory full of .debs, you can use
-   apt-proxy-import(8) to copy them into the apt-proxy archive.
 
-If you are installing from the source tar.gz, for example on a non-Debian
-machine, have a look at INSTALL for manual installation instructions.
+If you are installing from scratch, for example on a non-Debian machine, have
+a look at INSTALL for manual installation instructions.
 
 Using apt-proxy with Debian Potato
 ----------------------------------
