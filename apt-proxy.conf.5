@@ -149,7 +149,7 @@ drwxr-xr-x        4096 2001/06/11 19:51:48 project
 Using this information, add backends to apt-proxy\&.conf\&.  For example:
 .PP
 .nf
-    add_backend /debian/              \e
+    add_backend /main/              \e
         $APT_PROXY_CACHE/debian/      \e
         ftp.us.debian.org::debian/
 .fi
@@ -158,8 +158,8 @@ You can use this backend with your \fBapt\fP
 clients by placing these lines in \fB/etc/apt/sources.list\fP:
 .PP
 .nf
-   deb http://\fIserver\fP:9999/debian woody main non-free contrib
-   deb-src http://\fIserver\fP:9999/debian woody main non-free contrib
+   deb http://\fIserver\fP:9999/main woody main non-free contrib
+   deb-src http://\fIserver\fP:9999/main woody main non-free contrib
 .fi
 .PP
 .SH "FILES"

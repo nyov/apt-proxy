@@ -1,8 +1,15 @@
-apt-proxy (1.3.0.0pre1.1) unstable; urgency=low
+apt-proxy (1.3.0.0pre1.2) unstable; urgency=low
 
-  * Update README with new hints and tips (closes: #141740)
+  * Accept requests in the form http://<hostname>/... to comply with
+    HTTP 1.1 (closes: #141740)
+  * Manuel Estrada Sainz: update apt-proxy-import manpage using
+    help2man; add help2man to build-depends
+  * Add usage example in apt-proxy-import manpage for importing apt-move cache
+  * Make apt-proxy-import output nicer when importing many directories
+  * Update README with new hints and tips
+  * Small apt-proxy.conf manpage correction
 
- -- Chris Halls <chris.halls@gmx.de>  Tue,  9 Apr 2002 16:30:51 +0200
+ -- Chris Halls <chris.halls@gmx.de>  Fri, 12 Apr 2002 13:26:36 +0200
 
 apt-proxy (1.3.0) unstable; urgency=low
 

@@ -1,7 +1,7 @@
 #!/bin/ash
 # (You may safely change the above to /bin/sh if you do not have ash available)
 #
-# $Id: apt-proxy,v 1.41 2002/04/04 14:23:52 haggai Exp $
+# $Id: apt-proxy,v 1.42 2002/04/12 16:57:25 haggai Exp $
 # Copyright Paul Russell <rusty@samba.org>
 # Released under the GPL version 2 or later
 #	Fixed by Stephen Rothwell <sfr@canb.auug.org.au>
@@ -12,7 +12,7 @@
 #	`I was joking!' -- Paul Mackerras
 #	`Note that Rusty's name is at the top' -- Stephen Rothwell.
 #	`Perl!!!  Please?' -- Martin Schwenke
-APT_PROXY_VERSION=1.3.0
+APT_PROXY_VERSION=1.3.1
 
 # Default values
 APT_PROXY_LOGFILE=/dev/null
@@ -1119,7 +1119,7 @@ debug apt-proxy $APT_PROXY_VERSION
 # For all the requests in a particular session
 while true; do
     unset DO_CLEANUP DO_REMOVE_EXTRA_VERSIONS DO_UPDATE_PACKAGES_LIST \
-	SIZE SIZE_FILE IMS_DATE UNCOMPRESS REQUEST KEEP_ALIVE
+	SIZE SIZE_FILE IMS_DATE UNCOMPRESS REQUEST KEEP_ALIVE REQHOST
     KEEP_ALIVE=close
 
     while read PREFIX LINE
@@ -1142,6 +1142,9 @@ while true; do
 	    KEEP_ALIVE="`echo $LINE | tr -d '\015' | tr '[A-Z]' '[a-z]'`"
 	    debug "Connection $KEEP_ALIVE"
 	    ;;
+	host:)
+	    REQHOST="`echo $LINE | tr -d '\015' | tr '[A-Z]' '[a-z]'`"
+	    ;;
 	'')
 	    debug Finished processing request
 	    break
@@ -1156,7 +1159,40 @@ while true; do
     echo "$REQUEST" | grep -q "$INSANE" &&
 	bad_url close "$REQUEST" Malformed chars:`echo \"$REQUEST\"|tr -dc "$INSANE"`
 
+    INSANEHOST="[^A-Za-z0-9_./+=:-]"
+    echo "$REQHOST" | grep -q "$INSANE" &&
+	bad_url close "$REQHOST" Malformed chars:`echo \"$REQHOST\"|tr -dc "$INSANE"`
+
     [ -n "$REQUEST" ] && log `date` Request "$REQUEST"
+
+    # Decide what sort of request we received
+    case $REQUEST in
+    http://*/*)
+	# If we receive a request in the form http://hostname:port/foo, chop off the
+	# initial http://hostname:port if the host header matches.  We must parse
+	# these requests to be HTTP 1.1 compliant
+	[ -z "$REQHOST" ] && bad_url close "a URI was requested without Host: header"
+
+	if [ "`echo $REQUEST | cut -d/ -f3`" = "$REQHOST" ];then
+	    # Host: <hostname> header equals GET http://<hostname> request
+	    # so strip the http://<hostname>
+	    REQUEST="/`echo $REQUEST | cut -d/ -f4-`"
+	else
+	    bad_url close "Host header does not match request hostname"
+	    exit 0
+	fi
+	;;
+    /*)
+	# Absolute pathname.  This is the usual request we see from apt and wget.
+	;;
+    '')
+	# Ignore
+	;;
+    *)
+	log Bad request syntax: requested $REQUEST
+	exit 0
+	;;
+    esac
 
     echo "$REQUEST" | grep -q "Packages\(.gz\)\?$" && DO_UPDATE_PACKAGES_LIST=1
 
