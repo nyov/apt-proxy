@@ -25,6 +25,7 @@ import time
 import string
 from twisted.python.failure import Failure
 import memleak
+from twisted.internet import error
 #from posixfile import SEEK_SET, SEEK_CUR, SEEK_END
 #since posixfile is considered obsolete I'll define the SEEK_* constants
 #myself.
@@ -420,12 +421,19 @@ class Fetcher:
         When multi-server backends are implemented we could change server and
         try again.
         """
-        log.msg('['+self.request.backend.base+']' + " Connection Failed: "
-                + self.request.backend.path + "/" + self.request.backend_uri)
-        if reason != None:
-            log.debug("Connection Failed: "+str(reason))
+        msg = '[%s] Connection Failed: %s/%s'%(
+            self.request.backend.base,
+            self.request.backend.path, self.request.backend_uri)
 
-        self.setResponseCode(http.SERVICE_UNAVAILABLE)
+        if reason:
+            msg = '%s (%s)'%(msg, reason.getErrorMessage())
+            log.debug("Connection Failed: "+str(reason))
+        log.msg(msg)
+
+        if reason.check(error.ConnectError):
+            self.setResponseCode(http.SERVICE_UNAVAILABLE, "Connect Error")
+        else:
+            self.setResponseCode(http.SERVICE_UNAVAILABLE)
         self.apDataReceived("")
         self.apDataEnd(self.transfered)
         #Because of a bug in tcp.Client we may be called twice,
@@ -716,8 +724,7 @@ class FetcherFtp(Fetcher, protocol.Protocol):
         Maybe we should do some recovery here, I don't know, but the Deferred
         should be enough.
         """
-        __pychecker__ = 'unusednames=reason'
-        log.debug("lost connection",'ftp_client')
+        log.debug("lost connection: %s"%(reason),'ftp_client')
 
 class FetcherGzip(Fetcher, protocol.ProcessProtocol):
     """

@@ -5,6 +5,9 @@ it looks like it is leaking FileVerifiers
 
 It doesn't deal well with servers that don't respond at all e.g.  turned off,
 unreachable
+	Not propper reporting, it should dump something usefull to the log and
+	tell apt-get what the problem really is.
+		"Test with apt-get update"
 
 Verification times out with big files and considers them corrupted even if
 they are OK.
