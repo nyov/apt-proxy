@@ -117,7 +117,7 @@ class FileVerifier(protocol.ProcessProtocol):
     def connectionMade(self):
         self.data = ''
 
-    def dataReceived(self, data):
+    def outReceived(self, data):
         #we only care about errors
         pass
     def errReceived(self, data):
@@ -706,7 +706,7 @@ class FetcherGzip(Fetcher, protocol.ProcessProtocol):
         else:
             self.process = reactor.spawnProcess(self, self.exe, self.args)
 
-    def dataReceived(self, data):
+    def outReceived(self, data):
         self.setResponseCode(http.OK)
         self.apDataReceived(data)
 
@@ -786,7 +786,7 @@ class FetcherRsync(Fetcher, protocol.ProcessProtocol):
     def connectionMade(self):
         pass
 
-    def dataReceived(self, data):
+    def outReceived(self, data):
         self.setResponseCode(http.OK)
         self.apDataReceived(data)
 
