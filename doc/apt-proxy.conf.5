@@ -1,170 +1,113 @@
 .\" Man page copied from apt.conf man page.
-.TH "apt-proxy\&.conf" "5" "05 Feb 2002" "apt-proxy" ""
+.TH "apt-proxy\&.conf" "5" "21 Nov 2002" "apt-proxy" ""
 .SH "NAME"
 apt-proxy\&.conf \- configuration file for apt-proxy
 .PP
 .SH "DESCRIPTION"
-\fBapt-proxy\&.conf\fP is the configuration file for apt-proxy; the
-only option which cannot be controlled using the configuration file is
-the position of the log (sometimes required before apt-proxy reads the
-config file).  When the apt-proxy program starts up, it will read
-\fB/etc/apt-proxy/apt-proxy\&.conf\fP\&.
+\fBapt-proxy\&.conf\fP is the configuration file for apt-proxy.
+When apt-proxy starts up, it will read \fB/etc/apt-proxy/apt-proxy\&.conf\fP\&.
+
+\fB/etc/apt-proxy/apt-proxy-v2\&.conf\fP will be read instead if it exists to
+make upgrading from v1 easier.
 .PP
-The configuration file is a shell script, which is sourced from
-apt-proxy; in effect your configuration file becomes part of the
-apt-proxy program\&.
+.SH [DEFAULT]
+This section holds options global to the whole apt-proxy:
+
+.TP
+.B port
+TCP port on which apt-proxy will listen for requests.
+
+.TP
+.B min_refresh_delay
+If different from \fBoff\fP, means that Packages and other control
+files will not be refreshed more frequently than this number of
+seconds\&.
+
+.TP
+.B timeout
+Maximum I/O timeout in seconds for backend transfers\&.
+
+.TP
+.B cache_dir
+Cache directory
+
+.TP
+.B cleanup_freq
+If different from \fBoff\fP, indicates the time between housekeeping attempts:
+delete files that have not been accessed in max_age, scan cache directories
+and update internal tables, ...
+
+.TP
+.B max_age
+If different from \fBoff\fP, indicates the maximum age of files before
+deletion from the cache.
+
+.TP
+.B max_versions
+If different from \fBoff\fP, indicates the maximum number of versions of a
+\&.deb to keep.
+
 .PP
-.SH "BACKEND SERVERS"
+.SH BACKENDS
+All other sections will be interpreted as backend names, and the options
+specified within are local to the backend.
+
 The supplied apt-proxy\&.conf will work out of the box, but I suggest you
 look for a mirror closer to you\&.  There are some in the default
 apt-proxy\&.conf and it may be enough just to reorder the lines in the file\&.
 See \fBFINDING NEW BACKEND SERVERS\fP for how to find and add new backends\&.
-.PP
+
 .TP
-.B add_backend \fIURI-prefix cache-path-prefix rsync-server|http-server|ftp-server ...\fP
-\fIURI-prefix\fP: if the start of the client URL begins
-with this string, then this backend configuration will be used\&.  They
-are examined in order, so list the most specific servers first\&.
+.B timeout
+Overrides the global timeout
 
-\fIcache-path-prefix\fP: the client URI will have the prefix chopped off and
-replaced by this to form the location of the cache file\&.
-
-\fIrsync-server\fP: Rsync-compatible server name(s): the
-client URI will have the prefix chopped off and replaced by this name to
-form the location of the back-end file\&.  If the rsync fails to the first
-server for any reason, it will fall back to successive servers\&.  If
-one of the server names is prepended by a `\fB+\fP', then it will always be
-preferred for fetching Packages, Sources and other control files\&.
-
-\fIhttp-server|ftp-server\fP: URL of server to be contacted using wget.
+.TP backends
+.B backends
+A list of backend URLs. NOTE: for the moment only the first URL will be used
+for the backend.
 
 .PP
-This example shows how to give clients access to the Helixcode Debian
-files (the backslashes at the end of the lines are important):
+This example shows how to give clients access to the main Debian
+archive:
 .nf
-add_backend /helixcode/						\\
-	$APT_PROXY_CACHE/helixcode/				\\
-	somelocalmirror::helixcode/debian/			\\
-	+spidermonkey.helixcode.com::http/distributions/debian/
-
+[debian]
+backends = http://ftp.us.debian.org/debian/
+           http://ftp.de.debian.org/debian/
 .fi
 
 .PP
 Using this configuration, the client would use a \fBsources.list\fP entry
 like:
 .nf
-deb http://server:9999/helixcode/ woody main
+
+    deb http://server:9999/debian/ woody main
+
 .fi
 And so the file request
-`/helixcode/woody/main/binary-i386/x11/foo_1-1.deb' would turn into a
+`/debian/woody/main/binary-i386/x11/foo_1-1.deb' would turn into a
 back-end request of first
-`somelocalmirror::helixcode/debian/woody/main/binary-i386/x11/foo_1-1.deb'
+.nf
+
+    `http://ftp.us.debian.org/debian/woody/main/binary-i386/x11/foo_1-1.deb'
+    
+.fi
 and if that failed,
-`spidermonkey.helixcode.com::http/distributions/debian/woody/main/binary-i38
-6/x1
-1/foo_1-1.deb'
+.nf
+
+    `http://ftp.de.debian.org/debian/woody/main/binary-i386/x11/foo_1-1.deb'
+    
+.nf
 and the file would be placed in
-`/home/ftp/pub/debian/helixcode/woody/main/binary-i386/x11/foo_1-1.deb'\&.
-
-.PP
-This example shows how to use an http backend, in this case for the Emdebian
-project apt archive:
-
 .nf
-add_backend /emdebian/						\\
-	$APT_PROXY_CACHE/emdebian/				\\
-	http://emdebian.sourceforge.net/emdebian/
-.fi
+    `/var/cache/apt-proxy/debian/debian/woody/main/binary-i386/x11/foo_1-1.deb'\&.
 
-.SH "OTHER OPTIONS"
-.TP
-.B BACKEND_FREQ
-BACKEND_FREQ, if set, means that Packages and other control
-files will not be synchronized more frequently than this number of
-minutes\&.
-
-.TP
-.B KEEP_STATS
-KEEP_STATS, if set, means that successful rsync transfers from
-the back-end server have their numbers printed to the log (total size
-and speedup factor)\&.
-
-.TP
-.B RSYNC_TIMEOUT
-RSYNC_TIMEOUT, if set, sets a maximum I/O timeout in seconds for rsync
-transfers\&.  This prevents apt-proxy from hanging if an rsync backend server
-is misbehaving\&.
-
-.TP
-.B WGET_TIMEOUT
-WGET_TIMEOUT, if set, sets a maximum I/O timeout in seconds for wget
-to connect to a http/ftp backend server\&.
-
-.br
-.SH "CLEANUP OPTIONS"
-.TP
-.B CLEANUP_DAYS
-CLEANUP_DAYS, if set, indicates that if we serve a package or
-source file, and there are older versions of the same file which have
-not been accessed in this many days (beware backup programs which read
-all files), they will be deleted, and the result logged.  This is very
-conservative and cheap\&.
-
-.TP
-.B CLEAN_SWEEP
-CLEAN_SWEEP, if set, indicates that once this number of days has
-passed, we should sweep through the base of the cache area (the third
-argument to \fIadd_backend\fP above), looking for packages and source
-files which have not been accessed in this many days\&. They will be
-deleted, and the result logged\&. This is very useful for avoiding the
-buildup of obsolete and very infrequently accessed files, such as
-sources\&.
-
-.TP
-.B MAX_VERSIONS
-MAX_VERSIONS, if set, limits the number of versions of each package
-to keep in the cache directory to keep\&.  Version purging is carried out
-immediately after a new version is downloaded\&.  If, for example, you have
-MAX_VERSIONS=3 and are tracking both potato and woody, the maximum number
-of files in the cache for one package will be 6\&.
-
-.SH "FINDING NEW RSYNC BACKEND SERVERS"
-If you need to find your backend server, you can look at what an rsync
-server is offering using \fBrsync -n <mirror address>::\fP to find available
-modules, and \fBrsync -n <mirror address>::<module-name>/\fP to look in
-subdirectories\&.  For example:
-
-.nf
-$ rsync -n ftp.debian.org::
-debian          Debian FTP Archive (~40 GB)
-debian-archive  Old Debian FTP Archive (~8 GB)
-
-$ rsync -n ftp.debian.org::debian/
-[...]
-drwxr-xr-x        4096 2001/11/04 19:12:56 dists
-drwxr-xr-x        4096 2000/12/19 21:10:49 pool
-drwxr-xr-x        4096 2001/06/11 19:51:48 project
-.fi
 .PP
-Using this information, add backends to apt-proxy\&.conf\&.  For example:
-.PP
-.nf
-    add_backend /main/              \e
-        $APT_PROXY_CACHE/debian/      \e
-        ftp.us.debian.org::debian/
-.fi
-.PP
-You can use this backend with your \fBapt\fP
-clients by placing these lines in \fB/etc/apt/sources.list\fP:
-.PP
-.nf
-   deb http://\fIserver\fP:9999/main woody main non-free contrib
-   deb-src http://\fIserver\fP:9999/main woody main non-free contrib
-.fi
-.PP
+For many more examples, see the supplied /etc/apt-proxy/apt-proxy\&.conf\&.
+
 .SH "FILES"
 /etc/apt-proxy/apt-proxy\&.conf
-.PP
+.br
+/etc/apt-proxy/apt-proxy-v2\&.conf
 .SH "SEE ALSO"
 .na
 .nh
@@ -174,7 +117,7 @@ clients by placing these lines in \fB/etc/apt/sources.list\fP:
 .ad
 .PP
 .SH "BUGS"
-Plently sure.  Please report.
+Plenty sure.  Please report.
 .PP
 .SH "AUTHOR"
-apt-proxy was written by the Apt-Proxy World Domination Project.
+apt-proxy v2 was written by Manuel Estrada Sainz <ranty@debian.org>\&.
