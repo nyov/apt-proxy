@@ -10,7 +10,7 @@
 #	`I was joking!' -- Paul Mackerras
 #	`Note that Rusty's name is at the top' -- Stephen Rothwell.
 #	`Perl!!!  Please?' -- Martin Schwenke
-APT_PROXY_VERSION=1.2.9
+APT_PROXY_VERSION=1.2.9.1
 
 # Default values
 APT_PROXY_LOGFILE=/dev/null
@@ -1287,7 +1287,7 @@ while true; do
 	    (
 		# close the sockets as this may take some time
 		exec 0>&- 3>&-
-		my_lockfile $FRONT_BASE/.apt-proxy &&
+		my_lockfile $FRONT_BASE/.apt-proxy.lock &&
 		    sweep_clean_unlock $FRONT_BASE $CLEAN_SWEEP
 	    ) &
 	fi
