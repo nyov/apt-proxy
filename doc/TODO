@@ -3,7 +3,12 @@
 ## Talk to moshez before releasing ##
 #####################################
 
+Make max_age=0 and/or max_age='off' mean 'infinity'.
+
 ---------------- "Not so urgent" mark ---------------------------
+
+Add a configuration parameter which says 'never delete the final version of
+a package, even if older than max_age'
 
 When a file transfer is finished, move the temporary file instead of coping
 it.
