@@ -586,7 +586,7 @@ class AptProxyClientFtp(AptProxyClient, protocol.Protocol):
                         pass
                 self.transport = dummy()
                 self.nextDeferred.errback(
-		  Failure(ftp.CommandFailed('Connection Failed')))
+                  Failure(ftp.CommandFailed('Connection Failed')))
                 self.apt_owner.connectionFailed()
             
         self.ftpclient = MyFTPClient(passive=0)
@@ -980,9 +980,9 @@ class AptProxyRequest(http.Request):
         while (new_path != path):
             path = new_path
             new_path = re.sub(r"/[^/]+/\.\./", "/", path)
-	if (new_path != old_path):
+        if (new_path != old_path):
             log.debug("simplified path from " + old_path + 
-		      " to " + new_path,'simplify_path')
+                      " to " + new_path,'simplify_path')
         return path
 
     def finishCode(self, responseCode, message=None):
@@ -1004,26 +1004,26 @@ class AptProxyRequest(http.Request):
         """
         def file_ok(result, deferred, self):
             """
-	    called if FileVerifier has determined that the file is cached and
-	    in good shape.
+            called if FileVerifier has determined that the file is cached and
+            in good shape.
 
-	    Now we check NOTE: The file may still be too old or not fresh
-	    enough.
+            Now we check NOTE: The file may still be too old or not fresh
+            enough.
             """
             stat_tuple = os.stat(self.local_file)
 
             self.local_mtime = stat_tuple[stat.ST_MTIME]
             self.local_size = stat_tuple[stat.ST_SIZE]
-	    log.debug("Modification time:" + 
-		      time.asctime(time.localtime(self.local_mtime)), 
-		      "file_ok")
+            log.debug("Modification time:" + 
+                      time.asctime(time.localtime(self.local_mtime)), 
+                      "file_ok")
             update_times = self.factory.update_times
 
             if update_times.has_key(self.uri): 
                 last_access = update_times[self.uri]
-		log.debug("last_access from db: " + 
-			  time.asctime(time.localtime(last_access)), 
-			  "file_ok")
+                log.debug("last_access from db: " + 
+                          time.asctime(time.localtime(last_access)), 
+                          "file_ok")
             else:
                 last_access = self.local_mtime
 
@@ -1032,17 +1032,17 @@ class AptProxyRequest(http.Request):
             min_time = cur_time - self.factory.max_freq
 
             if not self.filetype.mutable:
-		log.debug("file is immutable: "+self.local_file, 'file_ok')
+                log.debug("file is immutable: "+self.local_file, 'file_ok')
                 deferred.callback(None)
             elif last_access < min_time:
-		log.debug("file is not ok: "+self.local_file, 'file_ok')
+                log.debug("file is not ok: "+self.local_file, 'file_ok')
                 update_times[self.uri] = cur_time
                 deferred.errback()
             else:
-		log.debug("file is ok: "+self.local_file, 'file_ok')
+                log.debug("file is ok: "+self.local_file, 'file_ok')
                 deferred.callback(None)
 
-	log.debug("check_cached: "+self.local_file)
+        log.debug("check_cached: "+self.local_file)
         deferred = defer.Deferred()
         if os.path.exists(self.local_file):
             verifier = FileVerifier(self)
@@ -1097,10 +1097,10 @@ class AptProxyRequest(http.Request):
 
     def process(self):
         """
-	Each new request begins processing here
+        Each new request begins processing here
         """
-	log.debug("Request: " + self.method + " " + self.uri);
-	# Clean up URL
+        log.debug("Request: " + self.method + " " + self.uri);
+        # Clean up URL
         self.uri = self.simplify_path(self.uri)
 
         self.local_file = self.factory.cache_dir + self.uri
