@@ -4,6 +4,8 @@ apt-proxy (1.9.19+CVS) UNRELEASED; urgency=low
     Closes: #281156. (Otavio)
   * Change to use bsddb3 database library bacause it's thread safe and
     faster then python native version. Closes: #262097. (Otavio)
+  * Simple profiling: Run 'aptest profile' to get a function call dump
+    in ap-profile.log (Chris)
 
  -- Otavio Salvador <otavio@debian.org>  Thu, 18 Nov 2004 17:06:15 -0200
 
