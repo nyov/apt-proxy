@@ -56,18 +56,26 @@ def reapProcess(*args):
     UNIX has no way to be really sure that your process is going to
     go away w/o blocking.  I don't want to block.)
     """
-    try:
-        pid, status = os.waitpid(0,os.WNOHANG)
-        if reapProcessHandlers.has_key(pid):
+    for pid in reapProcessHandlers.keys():
+        try:
+            pid, status = os.waitpid(pid,os.WNOHANG)
+        except:
+            pid = None
+        if pid:
             reapProcessHandlers[pid].processEnded(status)
             del reapProcessHandlers[pid]
-    except:
-        pass
 
 def registerReapProccessHandler(pid, process):
     if reapProcessHandlers.has_key(pid):
         raise RuntimeError
-    reapProcessHandlers[process.pid] = process
+    try:
+        aux_pid, status = os.waitpid(pid,os.WNOHANG)
+    except:
+        aux_pid = None
+    if aux_pid:
+        process.processEnded(status)
+    else:
+        reapProcessHandlers[pid] = process
 
 def unregisterReapProccessHandler(pid, process):
     if not (reapProcessHandlers.has_key(pid)
@@ -220,7 +228,6 @@ class Process(abstract.FileDescriptor, styles.Ephemeral):
                     os.close(fd)
             os._exit(1)
         self.status = -1
-        registerReapProccessHandler(self.pid, self)
         for fd in stdout_write, stderr_write, stdin_read:
             os.close(fd)
         for fd in (stdout_read, stderr_read, stdin_write):
@@ -240,6 +247,7 @@ class Process(abstract.FileDescriptor, styles.Ephemeral):
             self.proto.makeConnection(self)
         except:
             log.deferr()
+        registerReapProccessHandler(self.pid, self)
 
     def closeStdin(self):
         """Call this to close standard input on this process.
