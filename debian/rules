@@ -2,11 +2,13 @@
 
 export DH_COMPAT=4
 
+PKGDIR=debian/apt-proxy-v2
+
 build: build-stamp
 build-stamp:
 	dh_testdir
 
-	$(MAKE) apt-proxy-import.8
+	# $(MAKE) apt-proxy-import.8
 	touch build-stamp
 
 clean:
@@ -21,19 +23,25 @@ install-stamp: build-stamp
 	dh_testroot
 	dh_clean -k
 	dh_installdirs
+	dh_install
+	dh_installdebconf
+	dh_installdocs
+	dh_installexamples
+	dh_installman
+	dh_installchangelogs
+	dh_installlogrotate
+	dh_installinit
 
-	install -g root -o root -m 755 \
-		apt-proxy debian/apt-proxy/usr/sbin/apt-proxy
-	install -g root -o root -m 755 \
-		apt-proxy-import debian/apt-proxy/usr/sbin/apt-proxy-import
-	install -g root -o root -m 644 \
-		apt-proxy.conf debian/apt-proxy/etc/apt-proxy/apt-proxy.conf
-	# Add here commands to install the package into debian/tmp.
-	cp apt-proxy.tap debian/tmp/etc/
-	cp debian/init.d debian/tmp/etc/init.d/twisted-apt-proxy
-	cp debian/default debian/tmp/etc/default/twisted-apt-proxy
-	cp debian/copyright debian/tmp/usr/share/doc/twisted-apt-proxy/
-	cp debian/README.Debian debian/tmp/usr/share/doc/twisted-apt-proxy/
+	#install -g root -o root -m 755 \
+	#	apt-proxy debian/apt-proxy/usr/sbin/apt-proxy
+	#install -g root -o root -m 755 \
+	#	apt-proxy-import debian/apt-proxy/usr/sbin/apt-proxy-import
+	#install -g root -o root -m 644 \
+	#	apt-proxy.conf debian/apt-proxy/etc/apt-proxy/apt-proxy.conf
+	
+	# Temporary rename to stop apt-proxy-v1 and -v2 clashing
+	mv $(PKGDIR)/usr/sbin/apt-proxy $(PKGDIR)/usr/sbin/apt-proxy-v2
+	#mv $(PKGDIR)/
 	touch install-stamp
 
 binary-arch: build install
@@ -41,12 +49,6 @@ binary-arch: build install
 binary-indep: build install
 	dh_testdir
 	dh_testroot
-	dh_installdebconf
-	dh_installdocs
-	dh_installexamples
-	dh_installman
-	dh_installchangelogs
-	dh_installlogrotate
 	dh_strip
 	dh_compress
 	dh_fixperms

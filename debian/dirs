@@ -1,3 +1,7 @@
 etc/apt-proxy
+etc/default
+etc/init.d
 usr/sbin
-var/cache/apt-proxy
+var/cache/apt-proxy-v2
+usr/share/doc/apt-proxy-v2
+usr/lib/apt-proxy
