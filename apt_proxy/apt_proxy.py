@@ -337,12 +337,42 @@ class Fetcher:
             self.remove_request(req)
 
     def apEndCached(self):
+        """
+        Serve my requests from the cache.
+        """
+        self.apEndTransfer(FetcherFile)
+        
+    def apEndTransfer(self, fetcher_class):
+        """
+        Remove this Fetcher and transfer all it's requests to a new instance of
+        'fetcher_class'.
+        """
+        #Consider something like this:
+        #req = dummyFetcher.fix_ref_request()
+        #fetcher = fetcher_class()
+        #dummyFetcher.transfer_requests(fetcher)
+        #dummyFetcher.apEnd()
+        #fetcher.activate(req)
+
         self.setResponseCode(http.OK)
         requests = self.requests[:]
-        self.apEnd()    
+        self.apEnd()
+        fetcher = None
         for req in requests:
-            req.send_cached()
-
+            if (self.__class__ != FetcherFile
+                or req.serve_if_cached):
+                running = req.factory.runningFetchers
+                if (running.has_key(req.uri)):
+                    #If we have an active Fetcher just use that
+                    log.debug("have active Fetcher",'file_client')
+                    running[req.uri].insert_request(req)
+                    fetcher = running[req.uri]
+                else:
+                    fetcher = fetcher_class(req)
+            else:
+                req.finish()
+        return fetcher
+            
     def connectionFailed(self):
         """
         Tell our requests that the connection with the server failed.
@@ -400,18 +430,6 @@ class FetcherDummy(Fetcher):
             
         return self.request
 
-    def activate(self, request):
-        log.debug(self.__class__)
-        self.requests = [request]
-        self.factory = request.factory
-        self.request = request
-
-        request.apFetcher = self
-        if self.factory.runningFetchers.has_key(request.uri):
-            raise 'There already is a running Fetcher'
-        self.factory.runningFetchers[request.uri]=self
-
-        
 class FetcherHttp(Fetcher, http.HTTPClient):
 
     forward_headers = [
@@ -944,6 +962,8 @@ class Request(http.Request):
     """
     local_mtime = None
     local_size = None
+    serve_if_cached = 1
+    
     def simplify_path(self, old_path):
         """
         change //+ with /
@@ -1033,19 +1053,6 @@ class Request(http.Request):
             deferred.errback()
         return deferred
 
-    def send_cached(self):
-        """
-        Serves the cached file.
-        """
-        running = self.factory.runningFetchers
-        if (running.has_key(self.uri)):
-            #If we have an active Fetcher just use that
-            log.debug("have active Fetcher",'file_client')
-            running[self.uri].insert_request(self)
-            return running[self.uri]
-
-        return FetcherFile(self)
-
     def __init__(self, channel, queued):
         self.factory=channel.factory
         http.Request.__init__(self, channel, queued)
@@ -1072,44 +1079,41 @@ class Request(http.Request):
         'serve_cached': this is somewhat of a hack only usefull for
         LoopbackRequests (See LoopbackRequest class for more information).
         """
-        def cached_cb(result, dummyFetcher):
-            """ This is called if the file is properly cached. """
-            log.debug("Using cached copy of %s"%(
-                dummyFetcher.request.local_file))
-            requests = dummyFetcher.requests[:]
-            dummyFetcher.apEnd()
-            for req in requests:
-                if req.loop_serve_if_cached:
-                    req.send_cached()
-                else:
-                    #warning, this may only be right for LoopbackRequest
-                    req.finish()
-        def not_cached_cb(result, dummyFetcher, running):
+        def fetch_real(result, dummyFetcher, cached, running):
             """
-            The requested file was not there, didn't pass the integrity
-            check or may be outdated.
+            This is called after verifying if the file is properly cached.
+            
+            If 'cached' the requested file is properly cached.
+            If not 'cached' the requested file was not there, didn't pass the
+            integrity check or may be outdated.
             """
-            log.debug("Consulting server about %s"
-                      %(dummyFetcher.request.local_file))
             if len(dummyFetcher.requests)==0:
                 #The request's are gone, the clients probably closed the
                 #conection
-                log.debug(
-                    "THE REQUESTS ARE GONE (Clients closed conection)")
+                log.debug("THE REQUESTS ARE GONE (Clients closed conection)")
                 dummyFetcher.apEnd()
                 return
-            req = dummyFetcher.fix_ref_request()
-            fetcher_class = req.backend.fetcher
-            if fetcher_class.gzip_convert.search(req.uri):
-                fetcher = FetcherGzip()
-            else:
-                fetcher = fetcher_class()
-    
-            dummyFetcher.transfer_requests(fetcher)
-            dummyFetcher.apEnd()
-            fetcher.activate(req)
+
+            req = dummyFetcher.request
             
-            if (fetcher.post_convert.search(req.uri)
+            if cached:
+                msg = ("Using cached copy of %s"
+                       %(dummyFetcher.request.local_file))
+                fetcher_class = FetcherFile
+            else:
+                msg = ("Consulting server about %s"
+                       %(dummyFetcher.request.local_file))
+                fetcher_class = req.backend.fetcher
+
+            if fetcher_class.gzip_convert.search(req.uri):
+                msg = ("Using gzip/gunzip to get %s"
+                       %(dummyFetcher.request.local_file))
+                fetcher_class = FetcherGzip
+
+            log.debug(msg, 'fetch_real')
+            fetcher = dummyFetcher.apEndTransfer(fetcher_class)
+            print "CONVERT:", fetcher.post_convert
+            if (fetcher and fetcher.post_convert.search(req.uri)
                 and not running.has_key(req.uri[:-3])):
                 log.debug("post converting: "+req.uri,'convert')
                 loop = LoopbackRequest(req)
@@ -1118,10 +1122,10 @@ class Request(http.Request):
                 loop.process()
                 #FetcherGzip will attach as a request of the
                 #original Fetcher, efectively waiting for the
-                #original file
+                #original file if needed
                 FetcherGzip(loop)
 
-        self.loop_serve_if_cached = serve_cached
+        self.serve_if_cached = serve_cached
         running = self.factory.runningFetchers
         if (running.has_key(self.uri)):
             #If we have an active fetcher just use that
@@ -1135,9 +1139,9 @@ class Request(http.Request):
             dummyFetcher = FetcherDummy(self)
             #Standard Deferred practice
             d = self.check_cached()
-            d.addCallbacks(cached_cb, not_cached_cb,
-                           (dummyFetcher,), None,
-                           (dummyFetcher, running,), None)
+            d.addCallbacks(fetch_real, fetch_real,
+                           (dummyFetcher, 1, running,), None,
+                           (dummyFetcher, 0, running,), None)
             d.arm()
 
     def process(self):
@@ -1215,15 +1219,6 @@ class LoopbackRequest(Request):
         self.backend_uri = self.backend.check_path(self.uri)
     def write(self, data):
         "We don't care for the data, just want to know then it is served."
-        pass
-    def send_cached(self):
-        """
-        If he wanted to know, tell dady that we are served.
-
-        This is redundant with the loop_serve_if_cached flag.
-        """
-        if self.finish_cb:
-            self.finish_cb()
         pass
     def finish(self):
         "If he wanted to know, tell dady that we are served."
