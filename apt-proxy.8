@@ -1,13 +1,13 @@
 .\" Man page copied from apt.conf man page.
-.TH "apt-proxy" "8" "09 Jan 2002" "apt-proxy" "" 
-.SH "Name" 
+.TH "apt-proxy" "8" "05 Feb 2002" "apt-proxy" ""
+.SH "Name"
 apt-proxy \- A proxy for saving bandwidth to Debian servers
 .SH SYNOPSIS
 .B apt-proxy
 .I "[options] [logfile]"
 .br
-.PP 
-.SH "DESCRIPTION" 
+.PP
+.SH "DESCRIPTION"
 \fBapt-proxy\fP is an advanced shell script designed to be run out of
 inetd, and provides a clean, caching, intelligent proxy for
 \fBapt-get\fP, which speaks HTTP to apt-get clients, and rsync to the
@@ -19,7 +19,7 @@ apt-proxy's command options are as follows:
 .TP
 .B -l <logfile>
 Specify the file to log to, defaults to /var/log/apt-proxy.
-The logfile can also be specified as the first (non-option) parameter 
+The logfile can also be specified as the first (non-option) parameter
 on the command line.
 .TP
 .B -c <configfile>
@@ -31,15 +31,13 @@ Once \fBapt-proxy\fP is configured, users then edit their
 \fBsources\&.list\fP file to point to the proxy (which uses the http
 protocol to serve clients), like so:
 
-.nf 
-
+.nf
 deb http://SERVER:9999/main woody main contrib non-free
 deb http://SERVER:9999/non-US woody/non-US main contrib non-free
 deb-src http://SERVER:9999/main woody main contrib non-free
 deb-src http://SERVER:9999/non-US woody/non-US main contrib non-free
 
 deb http://SERVER:9999/helixcode/ woody main
-
 .fi
 
 What path should be specified after the server name and port number
@@ -52,48 +50,9 @@ Note that you can also use the nicknames `unstable', `frozen' etc, but
 they will be slightly slower for `apt-get update'.
 .PP
 .SH "SERVER CONFIGURATION"
-NB If you are installing from the Debian package, please look in
-\fB/usr/share/doc/apt-proxy/README\fP, which contains up to date installation
-instructions.  This page will be revamped once the installation has been
-updated.
-
-Create a user (or perhaps use the ftp user) for the server to run as.  apt-user
-is currently the default.
-
-Place your backend server and cache directories in your
-\fBapt-proxy\&.conf\fP file.  The directories must exist and be
-writable by the user you chose above. If you have an older cache you
-wish to keep, you can simply use that.
-
-Add a line in \fB/etc/inetd.conf\fP which calls apt-proxy, like so:
-
-.nf 
-
-9999           stream  tcp     nowait.400      apt-user    /usr/sbin/tcpd  /usr/local/sbin/apt-proxy /var/log/apt-proxy.log
-
-.fi
-
-The final argument is the apt-proxy log file: if not specified, no log
-is kept.  The `nowait.400' allows up to 400 invocations a minute: the
-default of 40 is usually not enough for a reasonable size server (and
-inetd will disable apt-proxy for 5 minutes when it detects more than
-this many connections a minute).
-
-Or, if you are using the Debian package, enable the line that was added during
-install with the command:
-
-.nf
-# update-inetd --enable apt-proxy
-.fi
-
-Configure apt-proxy (see \fBapt-proxy\&.conf\fP(5)); you will have to
-make the root cache directory specified in this configuration file, and
-ensure it is writable by the user nominated in inetd.conf.  Once
-this is done, you are ready to use it.
-
-Note: I do not recommend exposing the apt-proxy to malicious users: if
-so you should run it within a chroot jail.
-
+See
+.BR apt-proxy.conf (8)
+for details of how to set up apt-proxy to use backends near to you.
 .PP
 .SH "SYMLINKS AND DIRECTORIES"
 
@@ -118,16 +77,18 @@ cheaper than downloading the entire compressed file), by restricting
 the frequency of Packages, Releases and Sources file updates from the
 back end, by keeping partial transfers, and only doing a single rsync
 for any file, how ever many users request it from the proxy.
-
-.PP 
-.SH "FILES" 
+.PP
+.SH "FILES"
 /etc/apt-proxy/apt-proxy\&.conf
-
-.PP 
-.SH "SEE ALSO" 
-apt-proxy.conf (5), /usr/share/doc/apt-proxy/README
-.PP 
-.SH "BUGS" 
+.PP
+.SH "SEE ALSO"
+.na
+.nh
+.BR apt-proxy.conf (5)
+.hy
+.ad
+.PP
+.SH "BUGS"
 It does not support http front ends, so apt-proxies cannot be chained.
 
 apt-get(8) does not like HTTP headers without a Content-Length:,
@@ -136,7 +97,6 @@ making streaming cumbersome.
 Packages are not compressed using gzip --rsyncable, which gives a 30%
 reduction in bytes transferred for binary packages, and much greater for
 source and other packages.
-
-.PP 
-.SH "AUTHOR" 
+.PP
+.SH "AUTHOR"
 apt-proxy was written by the Apt-Proxy World Domination Project.
