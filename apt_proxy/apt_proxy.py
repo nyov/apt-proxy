@@ -1274,7 +1274,7 @@ class AptProxyFactory(protocol.ServerFactory):
         # this is not the right way to do it, we should sort the list
         # by package version first or something
         while len(packages) > self.max_versions:
-            os.unlink(packages[0])
+            os.unlink(cache_dir +'/'+ packages[0])
             del packages[0]
 
     def clean_old_files(self):
