@@ -8,4 +8,4 @@ if [ "$1" = profile ]; then
 fi
 
 echo "----------- `date` -------------------" >> aptest.log
-PYTHONPATH="`pwd`" twistd2.3 $profile -n -y bin/apt-proxy | tee -a aptest.log
+PYTHONPATH="`pwd`" twistd $profile -n -y bin/apt-proxy | tee -a aptest.log

@@ -13,13 +13,13 @@ username = "aptproxy"
 factory = Factory()
 shell = ShellFactory()
 
-factoryConfig(factory, shell)
-
 pwent = pwd.getpwnam(username)
 uid = pwent[2]
 gid = pwent[3]
 
 application = service.Application("AptProxy", uid, gid)
+
+factoryConfig(factory, shell)
 
 for address in factory.proxy_address:
     if shell.port:

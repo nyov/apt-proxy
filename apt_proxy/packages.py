@@ -96,7 +96,6 @@ class AptPackages:
     def __init__(self, backend, factory):
         self.backend = backend
         self.factory = factory
-        backend.packages = self
         self.local_config = copy.copy(self.local_config)
 
         self.status_dir = (factory.cache_dir+'/'+ apt_proxy.status_dir
@@ -217,7 +216,7 @@ class AptPackages:
 
 def cleanup(factory):
     for backend in factory.backends:
-        backend.packages.cleanup()
+        backend.get_packages_db().cleanup()
 
 def get_mirror_path(factory, file):
     """
@@ -226,7 +225,7 @@ def get_mirror_path(factory, file):
     info = AptDpkgInfo(file)
     paths = []
     for backend in factory.backends:
-        path = backend.packages.get_mirror_path(info['Package'],
+        path = backend.get_packages_db().get_mirror_path(info['Package'],
                                                 info['Version'])
         if path:
             paths.append('/'+backend.base+'/'+path)
@@ -239,9 +238,9 @@ def get_mirror_versions(factory, package):
     """
     all_vers = []
     for backend in factory.backends:
-        vers = backend.packages.get_mirror_versions(package)
+        vers = backend.get_packages_db().get_mirror_versions(package)
         for ver in vers:
-            path = backend.packages.get_mirror_path(package, ver)
+            path = backend.get_packages_db().get_mirror_path(package, ver)
             all_vers.append((ver, "%s/%s"%(backend.base,path)))
     return all_vers
 
@@ -292,7 +291,7 @@ def import_directory(factory, dir, recursive=0):
                 import_file(factory, dir, file)
 
     for backend in factory.backends:
-        backend.packages.unload()
+        backend.get_packages_db().unload()
     
     
 def import_file(factory, dir, file):
@@ -347,7 +346,7 @@ def import_file(factory, dir, file):
 def test(factory, file):
     "Just for testing purposes, this should probably go to hell soon."
     for backend in factory.backends:
-        backend.packages.load()
+        backend.get_packages_db().load()
 
     info = AptDpkgInfo(file)
     path = get_mirror_path(factory, file)

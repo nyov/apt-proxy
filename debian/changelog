@@ -1,9 +1,15 @@
 apt-proxy (1.9.24.svn) UNRELEASED; urgency=low
 
-  * Otavio Salvador and Chris Halls
-    - Postpone database creating to first request. Closes: #288829.
+  * Postpone database creating to first request. Closes: #288829.
+  * Reorganise Backends. Now the packages databse is not opened multiple
+    times for each alternative URL given. 
+  * Each [backend] section in apt-proxy.conf creates a new class Backend
+  * Each URL in the backend section creates a new class BackendServer
+  * New class layout is:
+      Backend -> base, packages database, list of BackendServers
+      BackendServer -> fetcher, host, port, user etc
 
- -- Otavio Salvador <otavio@debian.org>  Fri, 14 Jan 2005 19:55:56 -0200
+ -- Chris Halls <halls@debian.org>  Tue, 25 Jan 2005 19:36:20 +0000
 
 apt-proxy (1.9.24) unstable; urgency=low
 

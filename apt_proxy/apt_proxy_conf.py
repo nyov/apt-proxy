@@ -108,8 +108,8 @@ def factoryConfig(factory, shell = None):
     factory.import_dir = conf.get(DEFAULTSECT, 'import_dir')
     factory.disable_pipelining = conf.getboolean(DEFAULTSECT,
                                                  'disable_pipelining')
-    factory.backends = []
     for name in conf.sections():
+        uris = []
         if name.find('/') != -1:
             log.msg("WARNING: backend %s contains '/' (ignored)"%(name))
             continue
@@ -122,16 +122,23 @@ def factoryConfig(factory, shell = None):
                 log.msg ("Removing unnecessary '/' at the end of %s"%(server))
                 server = server[0:-1]
             if urlparse.urlparse(server)[0] in ['http', 'ftp', 'rsync']:
-                backend = Backend(name, server, factory)
-                
-                if conf.has_option(name, 'timeout'):
-                    backend.timeout = conf.gettime(name, 'timeout')
-                
-                if conf.has_option(name, 'passive_ftp'):
-                    backend.passive_ftp = conf.getboolean(name, 'passive_ftp')
+                uris.append(server)
             else:
                 log.msg ("WARNING: Wrong server '%s' found in backend '%s'. It was skiped." % (server, name))
                 continue
+            
+        if conf.has_option(name, 'timeout'):
+            timeout = conf.gettime(name, 'timeout')
+        else:
+            timeout = factory.timeout
+        
+        if conf.has_option(name, 'passive_ftp'):
+            passive_ftp = conf.getboolean(name, 'passive_ftp')
+        else:
+            passive_ftp = factory.passive_ftp
+
+        backend = Backend(name, factory, uris, timeout, passive_ftp)
+        factory.addBackend(backend)
                                                 
     if shell:
         shell.username = conf.get(DEFAULTSECT, 'telnet_user')

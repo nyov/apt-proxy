@@ -110,7 +110,6 @@ class MirrorRecycler:
     def __init__(self, factory, timer):
         self.timer = timer
         self.factory = factory
-        self.backends = factory.backends
         self.cache_dir = factory.cache_dir
     def start(self):
         """
@@ -119,13 +118,13 @@ class MirrorRecycler:
         tree.
         """
         if not self.working:
-            if self.backends == []:
+            if self.factory.backends == []:
                 log.msg("NO BACKENDS FOUND",'recycle')
                 return
             self.cur_uri = '/'
             self.cur_dir = self.cache_dir
             self.pending = []
-            for backend in self.backends:
+            for backend in self.factory.backends:
                  self.pending.append(backend.base)
             self.stack = []
             reactor.callLater(self.timer, self.process)

@@ -384,10 +384,7 @@ class Fetcher:
 
             self.factory.file_served(self.request.uri)
 
-            if self.request.backend.packages == None:
-                 #Create a packages parser object for the backend
-                 self.request.backend.packages = packages.AptPackages(self.request.backend, self.factory)
-            self.request.backend.packages.packages_file(self.request.uri)
+            self.request.backend.get_packages_db().packages_file(self.request.uri)
         
         if self.transport:
             try:
@@ -471,7 +468,7 @@ class Fetcher:
         """
         msg = '[%s] Connection Failed: %s/%s'%(
             self.request.backend.base,
-            self.request.backend.path, self.request.backend_uri)
+            self.request.backendServer.path, self.request.backend_uri)
 
         if reason:
             msg = '%s (%s)'%(msg, reason.getErrorMessage())
@@ -479,7 +476,7 @@ class Fetcher:
         log.err(msg)
 
         # Look for alternative fetchers
-        if not self.request.activateNextBackend(self):
+        if not self.request.activateNextBackendServer(self):
             # No more backends, send error response back to client
             if reason.check(error.ConnectError):
                 self.setResponseCode(http.SERVICE_UNAVAILABLE, "Connect Error")
@@ -569,22 +566,22 @@ class FetcherHttp(Fetcher, http.HTTPClient):
                 log.debug("XXX clientConnectionLost", "http-client")
 
         if not self.proxy_host:
-            reactor.connectTCP(request.backend.host, request.backend.port,
+            reactor.connectTCP(request.backendServer.host, request.backendServer.port,
                                ClientFactory(self), request.backend.timeout)
         else:
             reactor.connectTCP(self.proxy_host, int(self.proxy_port),
                                ClientFactory(self), request.backend.timeout)
     def connectionMade(self):
         if not self.proxy_host:
-            self.sendCommand(self.request.method, self.request.backend.path
+            self.sendCommand(self.request.method, self.request.backendServer.path
                              + "/" + self.request.backend_uri)
         else:
             self.sendCommand(self.request.method, "http://"
-                             + self.request.backend.host + ":" + str(self.request.backend.port)
-                             + "/" + self.request.backend.path
+                             + self.request.backendServer.host + ":" + str(self.request.backendServer.port)
+                             + "/" + self.request.backendServer.path
                              + "/" + self.request.backend_uri)
             
-        self.sendHeader('host', self.request.backend.host)
+        self.sendHeader('host', self.request.backendServer.host)
 
         if self.local_mtime != None:
             datetime = http.datetimeToString(self.local_mtime)
@@ -679,17 +676,17 @@ class FetcherFtp(Fetcher, protocol.Protocol):
 
         self.passive_ftp = self.request.backend.passive_ftp
         
-        self.remote_file = (self.request.backend.path + "/" 
+        self.remote_file = (self.request.backendServer.path + "/" 
                             + self.request.backend_uri)
 
         from twisted.internet.protocol import ClientCreator
 
-        if not request.backend.username:
+        if not request.backendServer.username:
             creator = ClientCreator(reactor, ftp.FTPClient, passive=0)
         else:
-            creator = ClientCreator(reactor, ftp.FTPClient, request.backend.username,
-                                    request.backend.password, passive=0)
-        d = creator.connectTCP(request.backend.host, request.backend.port,
+            creator = ClientCreator(reactor, ftp.FTPClient, request.backendServer.username,
+                                    request.backendServer.password, passive=0)
+        d = creator.connectTCP(request.backendServer.host, request.backendServer.port,
                                request.backend.timeout)
         d.addCallback(self.controlConnectionMade)
         d.addErrback(self.connectionFailed)
@@ -821,7 +818,7 @@ class FetcherGzip(Fetcher, protocol.ProcessProtocol):
     NOTE: We use the serve_cached=0 parameter to Request.fetch so if
     it is cached it doesn't get uselessly read, we just get it from the cache.
     """
-    post_convert = re.compile(r"^Should not match anithing$")
+    post_convert = re.compile(r"^Should not match anything$")
     gzip_convert = post_convert
 
     exe = '/bin/gzip'
@@ -954,8 +951,8 @@ class FetcherRsync(Fetcher, protocol.ProcessProtocol):
           log.msg('Deleting stale tempfile:' + file)
           unlink(file)
                 
-        uri = 'rsync://'+request.backend.host\
-              +request.backend.path+'/'+request.backend_uri
+        uri = 'rsync://'+request.backendServer.host\
+              +request.backendServer.path+'/'+request.backend_uri
         self.local_dir=re.sub(r"/[^/]*$", "", self.local_file)+'/'
 
         exe = '/usr/bin/rsync'
@@ -1160,9 +1157,86 @@ class FetcherFile(Fetcher):
                                          
 class Backend:
     """
-    Holds the backend caracteristics, including the Fetcher class to be
-    used to fetch files.
+    A backend repository.  There is one Backend for each [...] section
+    in apt-proxy.conf
     """
+    
+    "Sequence of BackendServers, in order of preference"            
+    uris = []
+    
+    "Packages database for this backend"
+    packages = None
+    base = None
+
+    def __init__(self, base, factory, uris, timeout = None, passive_ftp = None):
+        self.base = base
+        self.factory = factory
+        self.uris=[]
+        self.searchre=re.compile("^/"+self.base+"/")
+        
+        if timeout:
+            self.timeout = timeout
+        else:
+            self.timeout = factory.timeout
+            
+        if passive_ftp:
+            self.passive_ftp = passive_ftp
+        else:
+            self.passive_ftp = factory.passive_ftp
+            
+        for uri in uris:
+            self.addURI(uri)
+
+    def addURI(self, uri):
+        newBackend = BackendServer(self, uri)
+        self.uris.append(newBackend)
+
+    def get_first_server(self): 
+        "Provide first BackendServer for this Backend"
+        return self.uris[0]
+
+    def get_next_server(self, previous_server):
+        "Return next server, or None if this is the last server"
+        oldServerIdx = self.uris.index(previous_server)
+        if(oldServerIdx+1 >= len(self.uris)):
+            return None
+        return self.uris[oldServerIdx+1]
+            
+    def __str__(self):
+        return '('+self.base+')'+' servers:'+str(len(self.uris))
+    
+    def get_packages_db(self):
+        "Return packages parser object for the backend, creating one if necessary"
+        if self.packages == None:
+            self.packages = packages.AptPackages(self, self.factory)
+        return self.packages
+
+    def check_path(self, path):
+        """
+        'path' is the original uri of the request.
+        
+        Return True if path matches this backend
+        """
+        return self.searchre.search(path)
+
+    def get_path(self, path):
+        """
+        'path' is the original uri of the request.
+        
+        We return the path to be appended to the backend path to
+        request the file from the backend server
+        """
+        return path[len(self.base)+2:]
+        
+class BackendServer:
+    """
+    A repository server.  A BackendServer is created for each URI defined in 'backends'
+    for a Backend
+    """
+    
+    backend = None        # Backend for this URI
+    uri = None            # URI of server
+
     fetchers = {
         'http' : FetcherHttp,
         'ftp'  : FetcherFtp,
@@ -1173,11 +1247,12 @@ class Backend:
         'ftp'  : 21,
         'rsync': 873,
         }
-
-    def __init__(self, base, uri, factory):
-        self.base = base
-        self.factory = factory
-
+    
+    def __init__(self, backend, uri):
+        self.backend = backend
+        self.uri = uri
+        log.debug("Created new BackendServer: " + uri)
+        
         # hack because urlparse doesn't support rsync
         if uri[0:5] == 'rsync':
             uri = 'http'+uri[5:]
@@ -1206,29 +1281,10 @@ class Backend:
         except ValueError:
             pass 
 
-        self.timeout = self.factory.timeout
-        self.passive_ftp = self.factory.passive_ftp
-
-        self.packages = None
-        factory.backends.append(self)
-
     def __str__(self):
-        return ('(' + self.base + ') ' + self.scheme + '://' +
+        return ('(' + self.backend.base + ') ' + self.scheme + '://' +
                self.host + ':' + str(self.port))
-    
-    def check_path(self, path):
-        """
-        'path' is the original uri of the request.
-        
-        We return the path to be appended to the backend path to
-        request the file from the backend server or None if the path
-        doesn't match this backend.
-        """
-        if re.search("^/"+self.base+"/", path):
-            return  path[len(self.base)+2:]
-        else:
-            return None
-
+              
 class Request(http.Request):
     """
     Each new request from connected clients generates a new instance of this
@@ -1238,6 +1294,155 @@ class Request(http.Request):
     local_size = None
     serve_if_cached = 1
     apFetcher = None
+    uriIndex = 0             # Index of backend URI
+    backend = None           # Backend for this request
+    backendServer = None     # Current server to be tried
+    
+    def __init__(self, channel, queued):
+        self.factory=channel.factory
+        http.Request.__init__(self, channel, queued)
+
+    def process(self):
+        """
+        Each new request begins processing here
+        """
+        log.debug("Request: " + self.method + " " + self.uri);
+        # Clean up URL
+        self.uri = self.simplify_path(self.uri)
+
+        self.local_file = self.factory.cache_dir + self.uri
+
+        if self.factory.disable_pipelining:
+            self.setHeader('Connection','close')
+            self.channel.persistent = 0
+
+        if self.method != 'GET':
+            #we currently only support GET
+            log.debug("abort - method not implemented")
+            self.finishCode(http.NOT_IMPLEMENTED)
+            return
+
+        if re.search('/\.\./', self.uri):
+            log.debug("/../ in simplified uri ("+self.uri+")")
+            self.finishCode(http.FORBIDDEN)
+            return
+
+        # Find first matching backend
+        for backend in self.factory.backends:
+            if backend.check_path(self.uri):
+                self.backend = backend
+                self.backend_uri = backend.get_path(self.uri)
+                break
+        else:
+            if not self.factory.dynamic_backends:
+                log.debug("abort - non existent Backend")
+                self.finishCode(http.NOT_FOUND, "NON-EXISTENT BACKEND")
+                return
+
+            # We are using dynamic backends so we will use the name as
+            # the hostname to get the files.
+            log.debug("Adding " + self.uri[1:].split('/')[0] + " backend dynamicaly")
+            self.backend = Backend(self.uri[1:].split('/')[0], self.factory
+                                   ("http://" + self.uri[1:].split('/')[0]))
+            self.backend_uri = self.backend.get_path(self.uri)
+            
+        self.backendServer = self.backend.get_first_server()
+        self.filetype = findFileType(self.uri)
+
+        if not self.filetype:
+            log.debug("abort - unknown extension")
+            self.finishCode(http.NOT_FOUND)
+            return
+
+        self.setHeader('content-type', self.filetype.contype)
+
+        if os.path.isdir(self.local_file):
+            log.debug("abort - Directory listing not allowed")
+            self.finishCode(http.FORBIDDEN)
+            return
+
+        self.fetch()
+
+    def fetch(self, serve_cached=1):
+        """
+        Serve 'self' from cache or through the appropriate Fetcher
+        depending on the asociated backend.
+    
+        Use post_convert and gzip_convert regular expresions of the Fetcher
+        to gzip/gunzip file before and after download.
+    
+        'serve_cached': this is somewhat of a hack only useful for
+        LoopbackRequests (See LoopbackRequest class for more information).
+        """
+        def fetch_real(result, dummyFetcher, cached, running):
+            """
+            This is called after verifying if the file is properly cached.
+            
+            If 'cached' the requested file is properly cached.
+            If not 'cached' the requested file was not there, didn't pass the
+            integrity check or may be outdated.
+            """
+            __pychecker__ = 'unusednames=result'
+            if len(dummyFetcher.requests)==0:
+                #The request's are gone, the clients probably closed the
+                #conection
+                log.debug("THE REQUESTS ARE GONE (Clients closed conection)", 
+                          'fetch')
+                dummyFetcher.apEnd()
+                return
+
+            req = dummyFetcher.request
+            
+            if cached:
+                msg = ("Using cached copy of %s"
+                       %(dummyFetcher.request.local_file))
+                fetcher_class = FetcherFile
+            else:
+                msg = ("Consulting server about %s"
+                       %(dummyFetcher.request.local_file))
+                fetcher_class = req.backendServer.fetcher
+
+            if fetcher_class.gzip_convert.search(req.uri):
+                msg = ("Using gzip/gunzip to get %s"
+                       %(dummyFetcher.request.local_file))
+                fetcher_class = FetcherGzip
+
+            log.debug(msg, 'fetch_real')
+            fetcher = dummyFetcher.apEndTransfer(fetcher_class)
+			# Postconvert routine disabled until properly debugged
+#             if (fetcher and fetcher.post_convert.search(req.uri)
+#                 and not running.has_key(req.uri[:-3])):
+#                 log.debug("post converting: "+req.uri,'convert')
+#                 loop = LoopbackRequest(req)
+#                 loop.uri = req.uri[:-3]
+#                 loop.local_file = req.local_file[:-3]
+#                 loop.process()
+#                 loop.serve_if_cached=0
+#                 #FetcherGzip will attach as a request of the
+#                 #original Fetcher, efectively waiting for the
+#                 #original file if needed
+#                 gzip = FetcherGzip()
+#                 gzip.activate(loop, postconverting=1)
+
+        self.serve_if_cached = serve_cached
+        running = self.factory.runningFetchers
+        if (running.has_key(self.uri)):
+            #If we have an active fetcher just use that
+            log.debug("have active fetcher: "+self.uri,'client')
+            running[self.uri].insert_request(self)
+            return running[self.uri]
+        else:
+            #we make a FetcherDummy instance to hold other requests for the
+            #same file while the check is in process. We will transfer all
+            #the requests to a real fetcher when the check is done.
+            dummyFetcher = FetcherDummy(self)
+            #Standard Deferred practice
+            d = self.check_cached()
+            d.addCallbacks(fetch_real, fetch_real,
+                           (dummyFetcher, 1, running,), None,
+                           (dummyFetcher, 0, running,), None)
+            d.arm()
+            return None
     
     def simplify_path(self, old_path):
         """
@@ -1328,154 +1533,6 @@ class Request(http.Request):
         else:
             deferred.errback()
         return deferred
-
-    def __init__(self, channel, queued):
-        self.factory=channel.factory
-        http.Request.__init__(self, channel, queued)
-
-    def process(self):
-        """
-        Each new request begins processing here
-        """
-        log.debug("Request: " + self.method + " " + self.uri);
-        # Clean up URL
-        self.uri = self.simplify_path(self.uri)
-
-        self.local_file = self.factory.cache_dir + self.uri
-
-        if self.factory.disable_pipelining:
-            self.setHeader('Connection','close')
-            self.channel.persistent = 0
-
-        if self.method != 'GET':
-            #we currently only support GET
-            log.debug("abort - method not implemented")
-            self.finishCode(http.NOT_IMPLEMENTED)
-            return
-
-        if re.search('/\.\./', self.uri):
-            log.debug("/../ in simplified uri ("+self.uri+")")
-            self.finishCode(http.FORBIDDEN)
-            return
-
-        # Find first matching backend
-        for backend in self.factory.backends:
-            uri = backend.check_path(self.uri)
-            if uri:
-                self.backend = backend
-                self.backend_uri = uri
-                break
-        else:
-            if not self.factory.dynamic_backends:
-                log.debug("abort - non existent Backend")
-                self.finishCode(http.NOT_FOUND, "NON-EXISTENT BACKEND")
-                return
-
-            # We are using dynamic backends so we will use the name as
-            # the hostname to get the files.
-            log.debug("Adding " + self.uri[1:].split('/')[0] + " backend dynamicaly")
-            self.backend = Backend(self.uri[1:].split('/')[0],
-                                   "http://" + self.uri[1:].split('/')[0], self.factory)
-
-            self.backend_uri = self.backend.check_path(self.uri)
-            
-
-        self.filetype = findFileType(self.uri)
-
-        if not self.filetype:
-            log.debug("abort - unknown extension")
-            self.finishCode(http.NOT_FOUND)
-            return
-
-        self.setHeader('content-type', self.filetype.contype)
-
-        if os.path.isdir(self.local_file):
-            log.debug("abort - Directory listing not allowed")
-            self.finishCode(http.FORBIDDEN)
-            return
-
-        self.fetch()
-
-    def fetch(self, serve_cached=1):
-        """
-        Serve 'self' from cache or through the appropriate Fetcher
-        depending on the asociated backend.
-    
-        Use post_convert and gzip_convert regular expresions of the Fetcher
-        to gzip/gunzip file before and after download.
-    
-        'serve_cached': this is somewhat of a hack only useful for
-        LoopbackRequests (See LoopbackRequest class for more information).
-        """
-        def fetch_real(result, dummyFetcher, cached, running):
-            """
-            This is called after verifying if the file is properly cached.
-            
-            If 'cached' the requested file is properly cached.
-            If not 'cached' the requested file was not there, didn't pass the
-            integrity check or may be outdated.
-            """
-            __pychecker__ = 'unusednames=result'
-            if len(dummyFetcher.requests)==0:
-                #The request's are gone, the clients probably closed the
-                #conection
-                log.debug("THE REQUESTS ARE GONE (Clients closed conection)", 
-                          'fetch')
-                dummyFetcher.apEnd()
-                return
-
-            req = dummyFetcher.request
-            
-            if cached:
-                msg = ("Using cached copy of %s"
-                       %(dummyFetcher.request.local_file))
-                fetcher_class = FetcherFile
-            else:
-                msg = ("Consulting server about %s"
-                       %(dummyFetcher.request.local_file))
-                fetcher_class = req.backend.fetcher
-
-            if fetcher_class.gzip_convert.search(req.uri):
-                msg = ("Using gzip/gunzip to get %s"
-                       %(dummyFetcher.request.local_file))
-                fetcher_class = FetcherGzip
-
-            log.debug(msg, 'fetch_real')
-            fetcher = dummyFetcher.apEndTransfer(fetcher_class)
-			# Postconvert routine disabled until properly debugged
-#             if (fetcher and fetcher.post_convert.search(req.uri)
-#                 and not running.has_key(req.uri[:-3])):
-#                 log.debug("post converting: "+req.uri,'convert')
-#                 loop = LoopbackRequest(req)
-#                 loop.uri = req.uri[:-3]
-#                 loop.local_file = req.local_file[:-3]
-#                 loop.process()
-#                 loop.serve_if_cached=0
-#                 #FetcherGzip will attach as a request of the
-#                 #original Fetcher, efectively waiting for the
-#                 #original file if needed
-#                 gzip = FetcherGzip()
-#                 gzip.activate(loop, postconverting=1)
-
-        self.serve_if_cached = serve_cached
-        running = self.factory.runningFetchers
-        if (running.has_key(self.uri)):
-            #If we have an active fetcher just use that
-            log.debug("have active fetcher: "+self.uri,'client')
-            running[self.uri].insert_request(self)
-            return running[self.uri]
-        else:
-            #we make a FetcherDummy instance to hold other requests for the
-            #same file while the check is in process. We will transfer all
-            #the requests to a real fetcher when the check is done.
-            dummyFetcher = FetcherDummy(self)
-            #Standard Deferred practice
-            d = self.check_cached()
-            d.addCallbacks(fetch_real, fetch_real,
-                           (dummyFetcher, 1, running,), None,
-                           (dummyFetcher, 0, running,), None)
-            d.arm()
-            return None
         
     def connectionLost(self, reason=None):
         """
@@ -1489,27 +1546,19 @@ class Request(http.Request):
             self.apFetcher.remove_request(self)
         self.finish()
 
-    def activateNextBackend(self, fetcher):
+    def activateNextBackendServer(self, fetcher):
         """
-        The attempt to retrieve a file from the backend failed.
-        Look for the next possible backend and transfer requests to that
-        Returns true if another backend was found
+        The attempt to retrieve a file from the BackendServer failed.
+        Look for the next possible BackendServer and transfer requests to that
+        Returns true if another BackendServer was found
         """
-        oldBackendIdx = self.factory.backends.index(self.backend)
-        
-        # Find next matching backend
-        for backend in self.factory.backends[oldBackendIdx+1:]:
-            uri = backend.check_path(self.uri)
-            if uri:
-                self.backend = backend
-                self.backend_uri = uri
-                break
-        else:
-            log.debug("no more Backends", "backendFetchFailed")
+        self.backendServer = self.backend.get_next_server(self.backendServer)
+        if(self.backendServer == None):
+            log.debug("no more Backends", "fetcher")
             return False
         
-        fetcher_class = self.backend.fetcher
-        log.debug('Trying next backend', 'backendFetchFailed')
+        fetcher_class = self.backendServer.fetcher
+        log.debug('Trying next backendServer', 'fetcher')
         fetcher.apEndTransfer(fetcher_class)
         
         return True
@@ -1538,7 +1587,7 @@ class LoopbackRequest(Request):
         self.method = other_req.method
         self.clientproto = other_req.clientproto
     def process(self):
-        self.backend_uri = self.backend.check_path(self.uri)
+        self.backend_uri = self.backend.get_path(self.uri)
     def write(self, data):
         "We don't care for the data, just want to know then it is served."
         pass
@@ -1612,6 +1661,10 @@ class Factory(protocol.ServerFactory):
     max_versions = None
     max_age = None
 
+    "Add a new Backend to known backends"
+    def addBackend(self, backend):
+        self.backends.append(backend)
+                
     def periodic(self):
         "Called periodically as configured mainly to do mirror maintanace."
         log.debug("Doing periodic cleaning up")
@@ -1623,7 +1676,7 @@ class Factory(protocol.ServerFactory):
 
     def __init__ (self):
         self.runningFetchers = {}
-        pass
+        self.backends = []
 
     def __getattr__ (self, name):
         def open_shelve(filename):
