@@ -486,7 +486,7 @@ class Fetcher:
             else:
                 self.setResponseCode(http.SERVICE_UNAVAILABLE)
             self.apDataReceived("")
-            self.apDataEnd(self.transfered)
+            self.apDataEnd(self.transfered, False)
             #Because of a bug in tcp.Client we may be called twice,
             #Make sure that next time nothing will happen
             #FIXME: This hack is probably not anymore pertinent.
@@ -596,6 +596,9 @@ class FetcherHttp(Fetcher, http.HTTPClient):
         __pychecker__ = 'unusednames=version,message'
         log.debug('handleStatus %s - %s' % (code, message), 'http_client')
         self.status_code = int(code)
+        
+        # Keep a record of server response even if overriden later by setReponseCode
+        self.http_status = self.status_code  
 
         self.setResponseCode(self.status_code)
         
@@ -611,7 +614,7 @@ class FetcherHttp(Fetcher, http.HTTPClient):
             self.setResponseHeader(key, value)
 
     def handleEndHeaders(self):
-        if self.status_code == http.NOT_MODIFIED:
+        if self.http_status == http.NOT_MODIFIED:
             log.debug("NOT_MODIFIED " + str(self.status_code),'http_client')
             self.apEndCached()
 
@@ -621,8 +624,11 @@ class FetcherHttp(Fetcher, http.HTTPClient):
     def handleResponse(self, buffer):
         if self.length == 0:
             self.setResponseCode(http.NOT_FOUND)
-        #print "length: " + str(self.length), "response:", self.status_code
-        self.apDataEnd(self.transfered)
+        # print "length: " + str(self.length), "response:", self.status_code
+        if self.http_status == http.NOT_MODIFIED:
+            self.apDataEnd(self.transfered, False)
+        else:
+            self.apDataEnd(self.transfered, True)
 
     def lineReceived(self, line):
         """
