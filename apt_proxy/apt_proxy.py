@@ -1350,7 +1350,7 @@ class Factory(protocol.ServerFactory):
 
         NOTE: This should probably be done per distribution.
         """
-        if self.max_versions = None:
+        if self.max_versions == None:
             #max_versions is disabled
             return
         
@@ -1389,7 +1389,7 @@ class Factory(protocol.ServerFactory):
         Remove files which haven't been accessed for more than 'max_age' and
         all entries for files which are no longer there.
         """
-        if self.max_age = None:
+        if self.max_age == None:
             #old file cleaning is disabled
             return
         cache_dir = self.cache_dir

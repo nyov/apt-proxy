@@ -34,13 +34,13 @@ class MyConfigParser(ConfigParser.ConfigParser):
     disabled_keyword = 'off'
     def getint(self, section, option, allow_disabled=0):
         value = self.get(section, option)
-        if allow_disabled and value = disabled_keyword:
+        if allow_disabled and value == self.disabled_keyword:
             return None
         return int(value)
     def gettime(self, section, option, allow_disabled=0):
         mult = 1
         value = self.get(section, option)
-        if allow_disabled and value = disabled_keyword:
+        if allow_disabled and value == self.disabled_keyword:
             return None
         suffix = value[-1].lower()
         if suffix in self.time_multipliers.keys():
