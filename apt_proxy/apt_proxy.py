@@ -973,6 +973,7 @@ class AptProxyRequest(http.Request):
         NOTE: os.path.normpath could probably be used here.
         """
         path = re.sub(r"//+", "/", path)
+        path = re.sub(r"/\./+", "/", path)
         new_path = re.sub(r"/[^/]+/\.\./", "/", path)
         while (new_path != path):
             path = new_path
