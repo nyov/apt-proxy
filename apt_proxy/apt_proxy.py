@@ -26,6 +26,7 @@ import string
 import shelve
 from cStringIO import StringIO
 from twisted.python.failure import Failure
+#import memleak
 
 #sibling imports
 import packages, misc
@@ -224,7 +225,6 @@ def aptProxyClientDownload(request, serve_cached=1):
         #requests to a real client when the check is done.
         dummy_client = AptProxyClientDummy(request)
         #Standard Deferred practice
-        log.debug("CHECKING_CACHED")
         d = request.check_cached()
         d.addCallbacks(cached_cb, not_cached_cb,
                        (dummy_client,), None,
@@ -959,11 +959,12 @@ class AptProxyBackend:
 
 class AptProxyRequest(http.Request):
     """
-    All real request's come as an instance of this class.
+    Each new request from connected clients generates a new instance of this
+    class, and process() is called.
     """
     local_mtime = None
     local_size = None
-    def simplify_path(self, path):
+    def simplify_path(self, old_path):
         """
         change //+ with /
         change /directory/../ with /
@@ -972,12 +973,14 @@ class AptProxyRequest(http.Request):
         
         NOTE: os.path.normpath could probably be used here.
         """
-        path = re.sub(r"//+", "/", path)
+        path = re.sub(r"//+", "/", old_path)
         path = re.sub(r"/\./+", "/", path)
         new_path = re.sub(r"/[^/]+/\.\./", "/", path)
         while (new_path != path):
             path = new_path
             new_path = re.sub(r"/[^/]+/\.\./", "/", path)
+	if (new_path != old_path):
+            log.debug("simplified path from " + old_path + " to " + new_path,'simplify_path')
         return path
 
     def finishCode(self, responseCode, message=None):
@@ -999,29 +1002,40 @@ class AptProxyRequest(http.Request):
         """
         def file_ok(result, deferred, self):
             """
-            called if the file is cached and in good shape.
-            NOTE: The file may still be too old or not fresh enough.
+	    called if FileVerifier has determined that the file is cached and
+	    in good shape.
+
+            Now we check NOTE: The file may still be too old or not fresh enough.
             """
             stat_tuple = os.stat(self.local_file)
 
             self.local_mtime = stat_tuple[stat.ST_MTIME]
             self.local_size = stat_tuple[stat.ST_SIZE]
+	    log.debug("Modification time:" + time.asctime(time.localtime(self.local_mtime)), "file_ok")
             update_times = self.factory.update_times
 
             if update_times.has_key(self.uri): 
                 last_access = update_times[self.uri]
+	        log.debug("last_access from db: " + time.asctime(time.localtime(last_access)), "file_ok")
             else:
                 last_access = self.local_mtime
+
 
             cur_time = time.time()
             min_time = cur_time - self.factory.max_freq
 
-            if self.filetype.mutable and last_access < min_time:
+            if not self.filetype.mutable:
+	        log.debug("file is immutable: "+self.local_file, 'file_ok')
+                deferred.callback(None)
+            elif last_access < min_time:
+	        log.debug("file is not ok: "+self.local_file, 'file_ok')
                 update_times[self.uri] = cur_time
                 deferred.errback()
             else:
+	        log.debug("file is ok: "+self.local_file, 'file_ok')
                 deferred.callback(None)
 
+	log.debug("check_cached: "+self.local_file)
         deferred = defer.Deferred()
         if os.path.exists(self.local_file):
             verifier = FileVerifier(self)
@@ -1076,9 +1090,12 @@ class AptProxyRequest(http.Request):
 
     def process(self):
         """
-        This gets called every time a new request arrives to get it going.
+	Each new request begins processing here
         """
+	log.debug("Request: " + self.method + " " + self.uri);
+	# Clean up URL
         self.uri = self.simplify_path(self.uri)
+
         self.local_file = self.factory.cache_dir + self.uri
 
         if self.factory.disable_pipelining:
@@ -1087,11 +1104,12 @@ class AptProxyRequest(http.Request):
 
         if self.method != 'GET':
             #we currently only support GET
+            log.debug("abort - not implemented")
             self.finishCode(http.NOT_IMPLEMENTED)
             return
 
         if re.search('/../', self.uri):
-            log.debug("/../ in simplified uri")
+            log.debug("/../ in simplified uri ("+self.uri+")")
             self.finishCode(http.FORBIDDEN)
             return
 
@@ -1103,21 +1121,21 @@ class AptProxyRequest(http.Request):
                 self.backend_uri = uri
 
         if not self.backend:
-            log.debug("non existent Backend")
+            log.debug("abort - non existent Backend")
             self.finishCode(http.NOT_FOUND, "NON-EXISTENT BACKEND")
             return
 
         self.filetype = findFileType(self.uri)
 
         if not self.filetype:
-            log.debug("unknown extension")
+            log.debug("abort - unknown extension")
             self.finishCode(http.NOT_FOUND)
             return
 
         self.setHeader('content-type', self.filetype.contype)
 
         if os.path.isdir(self.local_file):
-            log.debug("Directory listing not allowed")
+            log.debug("abort - Directory listing not allowed")
             self.finishCode(http.FORBIDDEN)
             return
 
@@ -1159,17 +1177,21 @@ class AptLoopbackRequest(AptProxyRequest):
         pass
 
 class AptProxy(http.HTTPChannel):
-    "This is class represents the communication channel with the client."
+    """
+    This class encapsulates a channel (an HTTP socket connection with a single
+    apt client).
+
+    Each incomming request is passed to a new AptProxyRequest instance.
+    """
     requestFactory = AptProxyRequest
 
     def headerReceived(self, line):
         "log and pass over to the base class"
-        log.debug(line)
+        log.debug("Header: " + line)
         http.HTTPChannel.headerReceived(self, line)
 
     def allContentReceived(self):
-        "log and pass over to the base class"
-        log.debug("")
+        log.debug("End of request.")
         http.HTTPChannel.allContentReceived(self)
 
     def connectionLost(self):
@@ -1177,11 +1199,15 @@ class AptProxy(http.HTTPChannel):
         for req in self.requests:
             req.connectionLost()
         log.debug("Client connection closed")
+        #memleak.print_top_10();
 
 class AptProxyFactory(protocol.ServerFactory):
     """
     This is the center of apt-proxy, it holds all configuration and global data
     and gets attached everywhere.
+
+    AptProxyFactory receives incommng client connections and creates an
+    AptProxy for each client request.
 
     interesting attributes:
 
