@@ -1070,10 +1070,10 @@ class AptProxyFactory(protocol.ServerFactory):
     """
     def periodic(self):
         "Called periodically as configured mainly to do mirror maintanace."
-        self.debug("Doing periodic cleaning up")
+        log.debug("Doing periodic cleaning up")
         self.clean_old_files()
         self.recycler.start()
-        self.debug("Periodic cleaning done")
+        log.debug("Periodic cleaning done")
         reactor.callLater(self.cleanup_freq, self.periodic)
 
     def __init__ (self):
@@ -1127,10 +1127,10 @@ class AptProxyFactory(protocol.ServerFactory):
         for file in files:
             local_file = cache_dir + '/' + file
             if not os.path.exists(local_file):
-                self.debug("old_file: non-existent "+file)
+                log.debug("old_file: non-existent "+file)
                 del self.access_times[file]
             elif self.access_times[file] < min_time:
-                self.debug("old_file: removing "+file)
+                log.debug("old_file: removing "+file)
                 os.unlink(local_file)
                 del self.access_times[file]
 
@@ -1138,7 +1138,7 @@ class AptProxyFactory(protocol.ServerFactory):
         files = self.update_times.keys()
         for file in files:
             if not os.path.exists(cache_dir+'/'+file):
-                self.debug("old_file: non-existent "+file)
+                log.debug("old_file: non-existent "+file)
                 del self.update_times[file]
 
     def file_served(self, uri):
