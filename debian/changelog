@@ -1,3 +1,10 @@
+apt-proxy (1.2.9.11) sourceforge; urgency=low
+
+  * Fix log messages when a directory is created for a http/ftp backend.
+  * Clean up some other log messages
+
+ -- Chris Halls <chris.halls@gmx.de>  Thu,  4 Apr 2002 12:42:50 +0200
+
 apt-proxy (1.2.9.10) sourceforge; urgency=low
 
   * Update installation instructions for non-Debian systems

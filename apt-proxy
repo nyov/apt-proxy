@@ -11,7 +11,7 @@
 #	`I was joking!' -- Paul Mackerras
 #	`Note that Rusty's name is at the top' -- Stephen Rothwell.
 #	`Perl!!!  Please?' -- Martin Schwenke
-APT_PROXY_VERSION=1.2.9.10
+APT_PROXY_VERSION=1.2.9.11
 
 # Default values
 APT_PROXY_LOGFILE=/dev/null
@@ -232,9 +232,8 @@ download_url()
 		$WGET_CMD -O /dev/null $DL_URL/ > $DL_LOG 2>&1
 	        RET=$?
 		if [ $RET = 0 ];then
-		    debug "got file: `ls -l $DL_FILE`"
 		    # Success - create directory
-		    mkdir $DL_FILE && rm $DL_LOG
+		    mkdir $DL_FILE
 		fi
 	    fi
 	    debug "wget: `cat $DL_LOG`"
@@ -366,7 +365,6 @@ download_link()
     RSL_LINK=$1
     RSL_SUBDIR=$2
     shift 2
-echo RSYNC_LINK: Link:$RSL_LINK Subdir:$RSL_SUBDIR, backends:$@
     for rsl_back in $@; do
 	if download_url $rsl_back$RSL_LINK/ $RSL_SUBDIR $RSL_LINK; then
 	    return 0
@@ -390,45 +388,10 @@ directories()
 
 # Make a directory tree, checking that the counterpart are real dirs
 #	mkdir_maybe_symlinks(frontend base, subdir, backends...)
-mkdir_maybe_symlinks_old()
-{
-    [ -d "$1$2" ] && return
-    MMS_FRONTBASE="$1"
-    MMS_SUBDIR="$2"
-    shift 2
-
-    for mms_d in `directories $MMS_SUBDIR`; do
-	if [ ! -d "$MMS_FRONTBASE$mms_d" ]; then
-	    MMS_L="`download_link \"$mms_d\" \"$@\"`" ||
-		bad_url close "$mms_d" "directory does not exist on any server"
-	    if [ -n "$MMS_L" ]; then
-		if is_sane "$MMS_L"; then
-		    log Making symbolic link "$MMS_FRONTBASE$mms_d" '->' "$MMS_L"
-		    rm -f "$MMS_FRONTBASE$mms_d"
-		    ln -s "$MMS_L" "$MMS_FRONTBASE$mms_d"
-		else
-		    bad_url close "$mms_d" "is a bad symlink $MMS_L on server"
-		fi
-		# Don't support nested directory symlinks.  Mail rusty.
-		[ -d "$MMS_FRONTBASE$mms_d" ] ||
-		    mkdir -m 755 "`dirname $MMS_FRONTBASE$mms_d`/$MMS_L"
-	    else
-		log Making directory "$MMS_FRONTBASE$mms_d"
-		mkdir -m 755 "$MMS_FRONTBASE$mms_d"
-	    fi
-	    [ ! -d "$MMS_FRONTBASE$mms_d" ] &&
-		bad_config "$MMS_FRONTBASE$mms_d" \
-		    "is not a directory, and mkdir failed"
-	fi
-   done
-}
-
-# Make a directory tree, checking that the counterpart are real dirs
-#	mkdir_maybe_symlinks(frontend base, subdir, backends...)
 mkdir_maybe_symlinks()
 {
     [ -d "$1$2" ] && return
-    echo mkdir_maybe_symlinks base:$1 subdir:$2
+    debug mkdir_maybe_symlinks base:$1 subdir:$2
     MMS_FRONTBASE="$1"
     MMS_SUBDIR="$2"
     shift 2
@@ -444,8 +407,6 @@ mkdir_maybe_symlinks()
 	fi
    done
 }
-
-
 
 # Make sure that any symlinks in the current path haven't changed.
 #	check_symlinks(urlrest, frontend base, backends...)
