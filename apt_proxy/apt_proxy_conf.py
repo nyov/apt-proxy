@@ -113,7 +113,7 @@ def factoryConfig(factory, shell = None):
             continue
         for server in servers:
             if server[-1] == '/':
-                log.msg ("WARNING: removing slash at the end of %s"%(server))
+                log.msg ("Removing unnecessary '/' at the end of %s"%(server))
                 server = server[0:-1]
             backend = Backend(name, server)
                 
@@ -130,8 +130,6 @@ def factoryConfig(factory, shell = None):
             #Create a packages parser object for the backend
             packages.AptPackages(backend, factory)
             factory.backends.append(backend)
-        if len(servers) > 1:
-           log.msg("WARNING: using only first server on backend "+name)
 
     if shell:
         shell.username = conf.get(DEFAULTSECT, 'telnet_user')

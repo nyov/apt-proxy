@@ -1,3 +1,11 @@
+apt-proxy (1.9.9) experimental; urgency=low
+
+  * Add support for multiple backends.  If the connection is refused
+    or times out, attempt to contact the next server in the list.
+  * Documentation updates
+
+ -- Chris Halls <halls@debian.org>  Sat, 17 Apr 2004 16:44:11 +0200
+
 apt-proxy (1.9.8) experimental; urgency=low
 
   * Log deletion of cache files by max_version algorithm

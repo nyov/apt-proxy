@@ -101,4 +101,4 @@ A4: pbuilder, which also uses debootstrap.  Add this to /etc/pbuilderrc:
 	MIRRORSITE=http://APTPROXT:9999/main
 	NONUSMIRRORSITE=http://APTPROXT:9999/non-US
 
-November 2002
+April 2004

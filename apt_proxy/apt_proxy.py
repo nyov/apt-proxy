@@ -286,7 +286,7 @@ class Fetcher:
             self.activate(request)
             
     def activate(self, request):
-        log.debug(str(self.__class__) + ' URI:' + request.uri, 'fetcher_activate')
+        log.debug(str(request.backend) + request.uri, 'fetcher_activate')
         self.local_file = request.local_file
         self.local_mtime = request.local_mtime
         self.factory = request.factory
@@ -430,19 +430,23 @@ class Fetcher:
         if reason:
             msg = '%s (%s)'%(msg, reason.getErrorMessage())
             log.debug("Connection Failed: "+str(reason))
-        log.msg(msg)
+        log.error(msg)
 
-        if reason.check(error.ConnectError):
-            self.setResponseCode(http.SERVICE_UNAVAILABLE, "Connect Error")
-        else:
-            self.setResponseCode(http.SERVICE_UNAVAILABLE)
-        self.apDataReceived("")
-        self.apDataEnd(self.transfered)
-        #Because of a bug in tcp.Client we may be called twice,
-        #Make sure that next time nothing will happen
-        #FIXME: This hack is probably not anymore pertinent.
-        self.connectionFailed = lambda : log.debug('connectionFailed(2)',
-                                                   'client','9')
+            # Look for alternative fetchers
+        if not self.request.activateNextBackend(self):
+            # No more backends, send error response back to client
+            if reason.check(error.ConnectError):
+                self.setResponseCode(http.SERVICE_UNAVAILABLE, "Connect Error")
+            else:
+                self.setResponseCode(http.SERVICE_UNAVAILABLE)
+            self.apDataReceived("")
+            self.apDataEnd(self.transfered)
+            #Because of a bug in tcp.Client we may be called twice,
+            #Make sure that next time nothing will happen
+            #FIXME: This hack is probably not anymore pertinent.
+            self.connectionFailed = lambda : log.debug('connectionFailed(2)',
+                                                    'client','9')
+            
 
 class FetcherDummy(Fetcher):
     """
@@ -1040,6 +1044,10 @@ class Backend:
             self.scheme = 'rsync'
         self.fetcher = self.fetchers[self.scheme]
 
+    def __str__(self):
+        return ('(' + self.base + ') ' + self.scheme + '://' +
+               self.host + ':' + str(self.port))
+    
     def check_path(self, path):
         """
         'path' is the original uri of the request.
@@ -1183,14 +1191,14 @@ class Request(http.Request):
             self.finishCode(http.FORBIDDEN)
             return
 
-        self.backend = None
+        # Find first matching backend
         for backend in self.factory.backends:
             uri = backend.check_path(self.uri)
             if uri:
                 self.backend = backend
                 self.backend_uri = uri
-
-        if not self.backend:
+                break
+        else:
             log.debug("abort - non existent Backend")
             self.finishCode(http.NOT_FOUND, "NON-EXISTENT BACKEND")
             return
@@ -1303,6 +1311,31 @@ class Request(http.Request):
             self.apFetcher.remove_request(self)
         self.finish()
 
+    def activateNextBackend(self, fetcher):
+        """
+        The attempt to retrieve a file from the backend failed.
+        Look for the next possible backend and transfer requests to that
+        Returns true if another backend was found
+        """
+        oldBackendIdx = self.factory.backends.index(self.backend)
+        
+        # Find next matching backend
+        for backend in self.factory.backends[oldBackendIdx+1:]:
+            uri = backend.check_path(self.uri)
+            if uri:
+                self.backend = backend
+                self.backend_uri = uri
+                break
+        else:
+            log.debug("no more Backends", "backendFetchFailed")
+            return False
+        
+        fetcher_class = self.backend.fetcher
+        log.debug('Trying next backend', 'backendFetchFailed')
+        fetcher.apEndTransfer(fetcher_class)
+        
+        return True
+        
         
 class LoopbackRequest(Request):
     """
