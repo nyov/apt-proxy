@@ -5,6 +5,9 @@
 # You may freely use and modify this software under the conditions of
 # version 2 of the GNU General Public License.
 #
+# This code almost certainly requires Python 2.0, and probably works best
+# with Python 2.2.
+#
 # It's getting there...
 #
 # To do:
@@ -15,7 +18,7 @@
 #  - rsync the Packages files (?)
 #  - Check packages against Packages/Sources file to make sure the file is
 #    intact before forwarding upstream
-#    (we should check the md5sum and refetch if needed)
+#    (we should check the md5sum and refetch if needed?)
 #  - Put packages in the "right place" locally and symlink them
 #    (i.e. oldest release, binary-all if possible)
 #    [package pools deal with this already, so not a high priority]
@@ -30,18 +33,22 @@
 #  - Auto-prefetch of packages based on past fetches, priority
 
 __version__ = "0.1"
-MIRRORLOC = "/sda1/debian"
+MIRRORLOC = "/sdc1/debian"
 
-import SocketServer, md5, re, glob
+VERSION = 'debproxy '+__version__
+
+import SocketServer, md5, re, glob, getopt, syslog, fnmatch, socket
 import os, SimpleHTTPServer, BaseHTTPServer, sys, urlparse, urllib
 import posixpath, httplib, rfc822, time, shlex, whrandom, gzip
 import cStringIO, socket, errno
 
 PORT  = 9999  # Port to listen on
-SLEEP = 0.1   # Time to wait between attempts to retrieve the URL, in sec
+SLEEP = 0.5   # Time to wait between attempts to retrieve the URL, in sec
 BYTES = 16384 # How many bytes to push through at once
 
 DEBUGLEVEL = 0 # Debugging level for httplib.HTTPConnection
+
+CHECK_MD5 = 0  # Should we check MD5sums?
 
 def parse_apt_sources(file):
     mirrors = []
@@ -75,7 +82,10 @@ mirrors = parse_apt_sources("sources.list")
 archives = map(lambda x: x[0], mirrors)
 #print archives
 
-os.chdir(MIRRORLOC)
+try:
+    os.chdir(MIRRORLOC)
+except OSError:
+    pass
 
 def parse_packages_file(packages):
     files = []
@@ -161,18 +171,23 @@ def parse_sources_file(sources):
     return files
 
 def check_integrity(localdir, packagefile, files):
+    if not files: return []
+
     missing = []
+    missing_links = []
     bogus = []
     found = []
     
-    print 'Iterating'
     for (file, md5sum, size) in files:
         file = os.path.join(localdir, file)
         if not os.path.exists(file):
-            missing.append(file)
-        elif os.stat(file)[6] != size:
+            if os.path.islink(file):
+                missing_links.append(file)
+            else:
+                missing.append(file)
+        elif os.path.getsize(file) != size:
             bogus.append( (file, 'Size mismatch') )
-        else:
+        elif CHECK_MD5:
             md5ob = md5.new(open(file).read())
             sum = md5ob.hexdigest()
             if sum != md5sum:
@@ -180,19 +195,21 @@ def check_integrity(localdir, packagefile, files):
             else:
                 found.append(file)
             del md5ob
+        else:
+            found.append(file)
 
     print 'Archive report for %s' % packagefile
-    if len(missing):
-        print '%d files missing from local archive' % len(missing)
-    if len(bogus):
-        print '%d files are bogus' % len(bogus)
+    if missing:
+        print '  %d files missing from local archive' % len(missing)
+    if missing_links:
+        print '  %d symlinks have a missing target' % len(missing_links)
+    if bogus:
+        print '  %d files are bogus' % len(bogus)
         for file, reason in bogus:
             if reason == 'MD5Sum mismatch':
-                print 'Deleting', file, '(bogus md5sum)'
+                print '    Deleting', file, '(bogus md5sum)'
                 os.unlink(file)
-
-    if len(found):
-        print '%d files are OK' % len(found)
+    print '  %d files are OK' % len(found)
 
     return found
 
@@ -231,48 +248,75 @@ def check_packages_integrity(localdir, dist, sect=''):
     foundsrc = check_source_integrity(localdir, srcdir+'Sources.gz')
     return (foundbin, foundsrc)
 
+def find_files(info, dir, names):
+    filelist, patterns = info
+    names2 = map(lambda x: os.path.join(dir, x), names[:])
+
+    matches = []
+    for pattern in patterns:
+        matches += fnmatch.filter(names2, pattern)
+
+    filelist += matches
+    return
+
+def show_filename(name):
+    print name, 'is no longer pertinent'
+    return
+
 def check_archive_integrity():
+    locals = []
     foundbin = {}
     foundsrc = {}
+    checked = {}
+
+    unlink = show_filename
+    # unlink = os.unlink
     
     for (local, type, url, dist, sects) in mirrors:
+        if local not in locals:
+            locals.append(local)
+
         if not sects:
+            id = local+'-'+dist
+            print id
+            if checked.get(id): continue
+            checked[id] = 1
             (bin, src) = check_packages_integrity(local, dist)
             foundbin[local] = bin+foundbin.get(local, [])
             foundsrc[local] = src+foundsrc.get(local, [])
             continue
         
         for sect in sects:
+            id = local+'-'+dist+'-'+sect
+            print id
+            if checked.get(id): continue
+            checked[id] = 1
             (bin, src) = check_packages_integrity(local, dist, sect)
             foundbin[local] = bin+foundbin.get(local, [])
             foundsrc[local] = src+foundsrc.get(local, [])
 
-    for (localdir, files) in foundbin.items():
-        # Find all .debs under this directory
-        # find alldebs - files
-        # remove those files
-        pass
-
-# Combine multiple file objects into one for writing... probably should
-# be called Tee or something...
-class Multiplex:
-    def __init__(self, *fds):
-        self.fds = fds
-
-    def write(self, str):
-        if not self.fds: return
-        for fd in self.fds:
-            fd.write(str)
-
-    def flush(self):
-        if not self.fds: return
-        for fd in self.fds:
-            fd.flush()
-
-    def close(self):
-        if not self.fds: return
-        for fd in self.fds:
-            fd.close()
+    for localdir in locals:
+        keep_files = foundsrc.get(localdir, []) + foundbin.get(localdir, [])
+        keep_files_dict = {}
+        for f in keep_files:
+            keep_files_dict[f] = 1
+        
+        filelist = []
+        print 'Scanning for obsolete files in '+os.path.abspath(localdir)+'...',
+        sys.stdout.flush()
+        os.path.walk(localdir, find_files, (filelist, ["*.diff.gz", "*.tar.gz",
+                                                       "*.dsc", "*.deb"]))
+        bytes_saved = deleted = 0
+        filelist.sort()
+        for f in filelist:
+            if f not in keep_files_dict:
+                try:
+                    bytes_saved += os.path.getsize(f)
+                    deleted = deleted+1
+                    unlink(f)
+                except OSError:
+                    pass
+        print '%d files, freed %.1fk' % (deleted, bytes_saved/1024.0)
 
 class ProxyHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def setup(self):
@@ -305,26 +349,34 @@ class ProxyHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def acceptable_connections(self, archive, path):
         return self.conns.get(archive, [])
 
-    def send_bytes(self, fin, fout=None, localfile=None, bs=BYTES, start=None,
-                   end=None, buffer=''):
+    def send_bytes(self, start, end, expected, fin,
+                   fout=None, localfile=None, bs=BYTES,
+                   buffer=''):
         pos = 0
+        bytes = 0
+        length = end - start+1
         if fout and start < len(buffer):
             bit = buffer[start:end+1]
             try:
                 fout.write(bit)
+                bytes += len(bit)
             except IOError, x:
                 if x.errno == errno.EPIPE:
                     #print 'Broken Pipe'
                     pass
             pos = start + len(bit)
 
-        while 1:
+        while pos < expected:
             try:
-                stuff = fin.read(BYTES)
+                stuff = fin.read(bs)
+                if not stuff:
+                    print 'Unexpected empty read.'
+                    time.sleep(SLEEP)
+                    continue
             except httplib.IncompleteRead:
-                #print 'IncompleteRead'
-                break
-            if not stuff: break
+                time.sleep(SLEEP)
+                pass
+
             if localfile:
                 localfile.write(stuff)
 
@@ -334,20 +386,26 @@ class ProxyHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 s = max(start - pos, 0)
                 e = min(end - pos + 1, l)
                 # print os.getpid(), 'sending bytes', s, e, l
-                try:
-                    fout.write(stuff[s:e])
-                    sys.stdout.write('.')
-                    sys.stdout.flush()
-                except IOError, x:
-                    if x.errno == errno.EPIPE:
-                        #print 'Broken Pipe'
-                        sys.stdout.write('+')
+                bit = stuff[s:e]
+                if bit:
+                    try:
+                        fout.write(bit)
+                        sys.stdout.write('.')
                         sys.stdout.flush()
-                        pass
+                        bytes += len(bit)
+                    except IOError, x:
+                        if x.errno == errno.EPIPE:
+                            #print 'Broken Pipe'
+                            sys.stdout.write('+')
+                            sys.stdout.flush()
+                            pass
                 pos = pos + l
         sys.stdout.write('\n')
-
-    def snarf_if_needed(self, pathname, localpath, archive, nosend=0):
+        if fout:
+            return bytes
+        return length
+        
+    def snarf_if_needed(self, pathname, localpath, archive):
         close_connection = self.close_connection
         send_nada = 0
         
@@ -359,7 +417,6 @@ class ProxyHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
               self.command,  self.request_version
 
         if_mod_since = self.headers.getdate_tz('If-Modified-Since')
-        print 'IMS:', if_mod_since, self.headers.get('If-Modified-Since')
         req_ifrange = send_range = None
 
         if if_mod_since:
@@ -418,22 +475,19 @@ class ProxyHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             lsz, local_mtime = 0, 0
             rangestr = ''
             print '%s: No local file.' % filepart
-            
+
+        nosend = (self.command == 'HEAD')
         wfile = self.wfile
-        if self.command == 'HEAD':
+        if nosend:
             wfile = None
 
         acceptable = self.acceptable_connections(archive, pathname)
         for host, url, conn in acceptable:
-            if url[-1] == '/':
-                url = url[:-1]
-            httppath = url + '/' + pathname
+            httppath = posixpath.join(url, pathname)
             print 'Trying '+httppath
 
-            (scheme, netloc, netpath, parms, q, frag) = \
-                     urlparse.urlparse(httppath)
-
-            # We need to be able to handle ftp eventually
+            (scheme, netloc, netpath, parms, q, frag) = urlparse.urlparse(httppath)
+            # We should handle ftp eventually
             if scheme != 'http':
                 continue
 
@@ -448,19 +502,25 @@ class ProxyHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                     'Range' : rangestr
                     })
             print headers
-            conn.request('GET', netpath, headers=headers)
 
             response = None
             while not response:
-                try:
-                    response = conn.getresponse()
-                except httplib.ResponseNotReady:
-                    time.sleep(SLEEP)
-                except httplib.BadStatusLine, x:
-                    print 'Bad Status Line:', x.line
+                conn.request('GET', netpath, headers=headers)
+                while not response:
+                    try:
+                        response = conn.getresponse()
+                    except httplib.ResponseNotReady:
+                        time.sleep(SLEEP)
+                    except httplib.BadStatusLine, x:
+                        print 'Bad Status Line:', x.line
+                        conn.close()
+                if not response.msg.headers:
+                    print 'Something fishy going on... restarting connection'
                     conn.close()
+                    conn = httplib.HTTPConnection(host)
+                    conn.set_debuglevel(DEBUGLEVEL)
+                    response = None
 
-            print response.msg.headers
             try:
                 text = response.getheader('Last-Modified')
                 last_mod = int(rfc822.mktime_tz(rfc822.parsedate_tz(text)))
@@ -470,33 +530,37 @@ class ProxyHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 last_mod = 0
                 timestr = text = expires = ''
 
+            length = response.getheader('content-length')
+            if response.chunked:
+                # Cache and forward, it's our only hope...
+                print 'Dealing with chunked transfer encoding...'
+                everything = response.read()
+                rsz = len(everything)
+            else:
+                if length:
+                    try:
+                        rsz = int(length)
+                    except ValueError:
+                        rsz = None
+                else:
+                    rsz = None
+
+                if not rsz:
+                    print 'Something fishy going on'
+                    print response.reason, response.msg.headers
+                    continue
+                everything = None
+            
             if response.status in (404, 410):
                 print '%s: missing (%d %s)' % (conn.host, response.status,
                                                response.reason)
-                response.close()
-                continue
+                break
             elif response.status not in (200, 203, 206, 304):
                 print '%s: odd status (%d %s)' % (conn.host, response.status,
                                                   response.reason)
                 print response.msg.headers
-                response.close()
                 continue
 
-            length = response.getheader('content-length')
-            if length and not response.chunked:
-                try:
-                    rsz = int(length)
-                except ValueError:
-                    rsz = None
-            else:
-                rsz = None
-                
-            if not rsz:
-                print 'Something fishy going on'
-                print response.reason, response.msg.headers
-                response.close()
-                continue
-            
             print '%s %s: %d %s/%d' % (filepart, conn.host,
                                        response.status, timestr, rsz)
             if text != timestr:
@@ -504,8 +568,9 @@ class ProxyHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 
             if local_exists and ((response.status == 206 and rsz == 1) or
                                  response.status == 304):
-                response.close()
-                print 'Serving from cache (%s).' % localpath
+                if not everything and response.status == 206:
+                    response.read(rsz)
+                print 'Serving from local cache (%s).' % localpath
                 if last_mod:
                     os.utime(localpath, (time.time(), last_mod))
                 else:
@@ -559,9 +624,15 @@ class ProxyHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
                 if f and wfile:
                     print 'Sending bytes %d-%d' % (start, end)
-                    self.send_bytes(fin=f, fout=wfile, start=start,
-                                    end=end)
-                    print 'Send complete.'
+                    amt = self.send_bytes(fin=f, fout=wfile, start=start,
+                                          end=end, expected=lsz)
+                    if amt == length:
+                        print 'Send complete.'
+                    else:
+                        print 'Amount sent (%d) != length (%d)!' % (
+                            amt, length)
+                        self.close_connection = 1
+                        conn.close()
                 return None
 
             # If not changed, send what we have
@@ -574,46 +645,52 @@ class ProxyHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 
             if response.status in (200, 203, 206):
                 length = 0
+                if response.status == 206:
+                    if not everything:
+                        content_range = response.getheader('Content-Range')
+                        fulllen = content_range.split('/')[1]
+                        rsz = int(fulllen)
+                    else:
+                        rsz = len(everything)+lsz-1
 
                 start, end = 0, rsz-1
-                if not nosend:
-                    if send_range and ((not req_ifrange) or
-                                       req_ifrange <= local_mtime or
-                                       not local_mtime):
-                        start, end = send_range
+                if send_range and ((not req_ifrange) or
+                                   req_ifrange <= local_mtime or
+                                   not local_mtime):
+                    start, end = send_range
 
-                        if not end:
-                            end = rsz-1
-                        elif end < 0:
-                            start = rsz+end
-                            end = rsz-1
+                    if not end:
+                        end = rsz-1
+                    elif end < 0:
+                        start = rsz+end
+                        end = rsz-1
 
-                        self.send_response(206, 'Partial content follows')
-                        self.send_header('Content-Range', 'bytes %d-%d/%d' %
-                                         (start, end, rsz))
-                        length = end-start+1
-                        print 'Sending partial content.'
-                    elif (if_mod_since and if_mod_since >= last_mod):
-                        send_nada = 1
-                        self.send_response(304)
-                        print 'Not sending anything.'
-                        wfile = None
-                    else:
-                        self.send_response(200)
-                        print 'Sending whole file.'
+                    self.send_response(206, 'Partial content follows')
+                    self.send_header('Content-Range', 'bytes %d-%d/%d' %
+                                     (start, end, rsz))
+                    length = end-start+1
+                    print 'Sending partial content.'
+                elif (if_mod_since and if_mod_since >= last_mod):
+                    send_nada = 1
+                    self.send_response(304)
+                    print 'Not sending anything.'
+                    wfile = None
+                else:
+                    self.send_response(200)
+                    print 'Sending whole file.'
 
-                    if wfile:
-                        self.send_header("Content-Type",
-                                         self.guess_type(pathname))
-                        self.send_header("Last-Modified",
-                                         rfc822.formatdate(last_mod))
-                        self.send_header('Accept-Ranges', 'bytes')
+                if wfile:
+                    self.send_header("Content-Type",
+                                     self.guess_type(pathname))
+                    self.send_header("Last-Modified",
+                                     rfc822.formatdate(last_mod))
+                    self.send_header('Accept-Ranges', 'bytes')
 
                 f = open(localtemppath, 'wb')
                 length = length or rsz
                 if response.status == 206:
                     buffer = open(localpath, 'rb').read()[:-1]
-                    f.write(buffer[:-1])
+                    f.write(buffer)
                     print "Appending what we don't have:",\
                           response.getheader('content-range')
                 else:
@@ -629,10 +706,18 @@ class ProxyHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 if wfile:
                     print 'Sending bytes %d-%d (%d bytes)' % (start, end,
                                                               length)
-                self.send_bytes(fin=response, fout=wfile, localfile=f,
-                                buffer=buffer, start=start, end=end)
+                fin = response
+                if everything:
+                    fin = cStringIO.StringIO(everything)
+                    
+                amt = self.send_bytes(fin=fin, fout=wfile, localfile=f,
+                                      buffer=buffer, start=start, end=end,
+                                      expected=length)
+                if amt != length:
+                    print 'Amount sent (%d) != length (%d)!' % (amt, length)
+                    self.close_connection = 1
+                    conn.close()
 
-                response.close()
                 f.close()
                 if os.path.exists(localtemppath):
                     print 'Moving %s into place.' % filepart
@@ -643,9 +728,7 @@ class ProxyHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
                 return None
             else:
-                if not nosend:
-                    self.send_error(response.status)
-                response.close()
+                self.send_error(response.status)
                 return None
 
         # See if we can just serve something we have - and we
@@ -721,11 +804,68 @@ class ForkingHTTPServer(SocketServer.ForkingMixIn,
                         BaseHTTPServer.HTTPServer): pass
 
 # Disable forking by doing this
-ForkingHTTPServer = BaseHTTPServer.HTTPServer
+#ForkingHTTPServer = BaseHTTPServer.HTTPServer
+
+def usage():
+    print 'debproxy - A replicating caching proxy server for Debian.'
+    print
+    print 'Usage: debproxy [-d][-h][-v][-c][-a ADDRESS][-p PORT]'
+    print
+    print '-d: Enable diagnostics to stdout.'
+    print '-h: Display this help message.'
+    print '-v: Display the version of debproxy.'
+    print '-c: Check archive and exit.'
+    print '-a: IP address to bind server to (default: all addresses)'
+    print '-p: Port to bind server to (default: %d)' % PORT
+    print '    (names from /etc/services are acceptable)'
+    print '-s: Log to syslog'
+
+def main():
+    address = ''
+    port = PORT
+    verbose = check_mode = use_syslog = 0
+
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], 'hvcp:a:ds',
+                                   ['help', 'version', 'check', 'syslog'
+                                    'port=', 'address=', 'debug'])
+    except getopt.GetoptError:
+        usage()
+        sys.exit(2)
+
+    for o, a in opts:
+        if o in ('-h', '--help'):
+            usage()
+            sys.exit()
+        if o in ('-v', '--version'):
+            print VERSION
+            sys.exit()
+        if o in ('-c', '--check'):
+            check_mode = 1
+        if o in ('-d', '--debug'):
+            verbose = 1
+        if o in ('-s', '--syslog'):
+            use_syslog = 0
+        if o in ('-a', '--address'):
+            address = a
+        if o in ('-p', '--port'):
+            try:
+                port = int(a)
+            except ValueError:
+                try:
+                    port = socket.getservbyname(a, 'tcp')
+                except socket.error:
+                    print 'You must supply a numeric port number or a valid '\
+                          'service name.'
+                    sys.exit()
+
+    if check_mode:
+        check_archive_integrity()
+        sys.exit()
+    
+    print "debproxy serving on", (address, port)
+    serv = ForkingHTTPServer( (address, port), ProxyHTTPRequestHandler)
+    serv.serve_forever()
 
 if __name__ == '__main__':
-    # check_archive_integrity()
-    
-    print "debproxy serving on", PORT
-    serv = ForkingHTTPServer( ("", PORT), ProxyHTTPRequestHandler)
-    serv.serve_forever()
+    main()
