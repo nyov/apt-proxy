@@ -26,7 +26,7 @@ can import these files into apt\-proxy as follows:
 You can import the apt\-move generated cache into apt\-proxy using the following command:
 .PP
 .nf
-    apt\-proxy\-import \-r /var/cache/apt\-move
+    apt\-proxy\-import \-r \-i /var/cache/apt\-move
 .fi
 .PP
 This tells apt\-proxy\-import to recuse over each directory in the apt\-move cache.
