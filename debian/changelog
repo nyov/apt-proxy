@@ -1,12 +1,14 @@
-apt-proxy (1.9.20.pre21) unstable; urgency=low
+apt-proxy (1.9.21) unstable; urgency=low
 
   * Fix caching of files that was broken in 1.9.20, thanks
-    to Paul Wagland for the help (closes: #283441)
+    to Paul Wagland for the help 
+    (closes: #283441, #283893, #257611)
   * Create database file if it does not exist (closes: #283686)
   * Fix bug in gzip conversion class
   * Clean up memory after sending files from cache directory
+    (closes: #260951, #258025)
 
- -- Chris Halls <halls@debian.org>  Wed,  1 Dec 2004 16:31:19 +0000
+ -- Chris Halls <halls@debian.org>  Thu,  2 Dec 2004 11:24:52 +0000
 
 apt-proxy (1.9.20) unstable; urgency=low
 
