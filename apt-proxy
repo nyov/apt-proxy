@@ -221,7 +221,7 @@ download_url()
 	        debug $RSYNC -v --perms --links --times --partial $DL_URL > $DL_LOG 2>&1
 	        $RSYNC -v --perms --links --times --partial $DL_URL > $DL_LOG 2>&1
 	        RET=$?
-		[ $RET = 0 ] && mkdir $DL_DESTDIR
+		[ $RET = 0 ] && mkdir $DL_DESTDIR$DL_DESTFILE
 
 	    fi
 	    
