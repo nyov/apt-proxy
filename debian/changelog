@@ -1,9 +1,10 @@
 apt-proxy-v2 (1.9.5.6pre1) experimental; urgency=low
 
-  * Fix FTP code and cleanup (Manuel)
+  * Fix FTP code and clean up (Manuel)
   * Remove usage of depreciated clientTCP.  (Manuel)
   * The new code requires a minimum of twisted 1.0.0 - Depends updated.
   * We don't actually need to build-depend on python or twisted
+  * Updated / added documentation for v2 (Manuel):
 
  -- Chris Halls <halls@debian.org>  Tue, 19 Nov 2002 18:47:31 +0100
 
