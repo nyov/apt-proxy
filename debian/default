@@ -1,10 +1,10 @@
 # apt-proxy configuration
 
 ## Filename to store pid of process
-#pidfile=/var/run/apt-proxy-v2/apt-proxy-v2.pid 
+#pidfile=/var/run/apt-proxy/apt-proxy.pid 
 
 ## Log file
-#logfile=/var/log/apt-proxy-v2.log
+#logfile=/var/log/apt-proxy.log
 
 ## User and group to run daemon as
 #user=aptproxy

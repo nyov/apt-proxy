@@ -1,6 +1,6 @@
 etc/default
 etc/init.d
-usr/share/doc/apt-proxy-v2
+usr/share/doc/apt-proxy
 usr/sbin
 var/cache/apt-proxy
-var/lib/apt-proxy-v2
+var/lib/apt-proxy

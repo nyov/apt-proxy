@@ -2,7 +2,7 @@
 
 #DEBHELPER#
 
-NAME=apt-proxy-v2
+NAME=apt-proxy
 CACHEDIR=/var/cache/apt-proxy
 
 if test "$1" = "purge"; then

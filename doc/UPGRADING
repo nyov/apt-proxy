@@ -1,0 +1,87 @@
+
+UPGRADING FROM <= 1.9.5
+-----------------------
+
+	The following files may be left over when you upgrade from
+	apt-proxy-v2 package. And since apt-proxy-v2 was never uploaded to
+	Debian mirrors I won't bother with it.
+
+	I understand that if you were brave enough to install such an
+	experimental package you are brave enough to take care of the left
+	overs.
+
+		/etc/init.d/apt-proxy-v2
+		/etc/default/apt-proxy-v2
+		/var/log/apt-proxy-v2.log*
+ 
+UPGRADING FROM 1.3.x to 1.9.x
+-----------------------------
+
+	You should be able to upgrade/downgrade between 1.3.x and 1.9.x
+	without much trouble.
+
+	If you don't have /etc/apt-proxy/apt-proxy-v2.conf when upgrading from
+	1.3.x to 1.9.x, the postinst will provide one for you based on your
+	current /etc/apt-proxy/apt-proxy.conf using apt-proxy-v1tov2(8)
+	script. 
+
+	IMPROVEMENTS
+	------------
+	
+	- Much better performance.
+	
+	- Code much easier to maintain.
+
+	- More reliable.
+		- Well, it is still young and wider testing may reveal
+		  problems.
+
+	REGRESIONS
+	----------
+
+	- There is no statistics gathering
+		If there is interest I'll try, but there are more important
+		things.
+	
+	- multiple server backends are not implemented.
+		After releasing current code, and having it a little exercised
+		this will bump to the top of the TODO list.
+		¿Should I keep apt-proxy v2 in experimental until this is done?
+
+	- 'max_age' and 'CLEANUP_DAYS' don't quite mean the same, 'max_age'
+	  doesn't take into acount if there is a newer version of the package
+
+	- rsync is not officially supported.
+		It can work with rsync and some LD_PRELOAD hack, although it
+		has not been tested for a while, and the shared library is not
+		included in the .deb package.
+		If someone convinces me that it is still usefull in the
+		current situation I may give another chance to rsync backends.
+
+	- '+' prefix or equivalent functionality is not supported.
+		This was specially usefull for rsyncing uncompressed Packages
+		files, which are not anymore available.
+
+		'rsyncpackages' config option was supposed to fill the gap,
+		but in the current situation, someone will have to convince me
+		that it is still usefull.
+
+	CHANGES
+	-------
+
+	- 'cleanup_freq' and 'CLEAN_SWEEP' don't quite mean the same, v2 does
+	  more on cleanup than just erase old files.
+		- delete files that have not been accessed in max_age
+		- scan cache directories and update internal tables
+		- ...
+
+	- backend names can not contain '/' and directory names within the
+	  cache are automaticaly named after the backend name.
+		1.3.x allowed you to give a different name to the backend and
+		the directory to store the files on the cache. If you used
+		that "feature" apt-proxy 1.9.x will not find previously cached
+		files for the affected backend unless you rename the directory
+		on the cache.
+
+	  	NOTE: apt-proxy-v1tov2 should complain about this.
+

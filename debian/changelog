@@ -1,12 +1,16 @@
-apt-proxy-v2 (1.9.5.6pre1) experimental; urgency=low
+apt-proxy (1.9.5.6pre1) experimental; urgency=low
 
-  * Fix FTP code and clean up (Manuel)
-  * Remove usage of depreciated clientTCP.  (Manuel)
-  * The new code requires a minimum of twisted 1.0.0 - Depends updated.
-  * We don't actually need to build-depend on python or twisted
-  * Updated / added documentation for v2 (Manuel):
+  * Fix FTP code and clean up.
+  * Remove usage of depreciated clientTCP.
+  * The new code requires a minimum of twisted 1.0.0 - Depends updated. (Chris)
+  * We don't actually need to build-depend on python or twisted. (Chris)
+  * Updated / added documentation for v2.
+  * Removed the '-v2' suffix.
+  * Changed default port to 9999 to match apt-proxy v1.
+  * Conflicts/Replaces: apt-proxy-v2 (<= 1.9.5)
+  * Added UPGRADING notes.
 
- -- Chris Halls <halls@debian.org>  Tue, 19 Nov 2002 18:47:31 +0100
+ -- Manuel Estrada Sainz <ranty@debian.org>  Tue, 26 Nov 2002 22:44:41 +0100
 
 apt-proxy-v2 (1.9.5) experimental; urgency=low
 

@@ -51,7 +51,7 @@ class MyConfigParser(ConfigParser.ConfigParser):
 def factoryConfig(factory):
     "Loads the configuration file into 'factory'"
     defaults = {
-        'port': '8000',
+        'port': '9999',
         'min_refresh_delay': '30',
         'complete_clientless_downloads': '0',
         'debug': '0',
