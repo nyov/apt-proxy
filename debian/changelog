@@ -11,6 +11,8 @@ apt-proxy (1.9.13pre14) unstable; urgency=low
     and like (Otavio).
   * Swap maintainer and uploaders field as requested by Chris (Otavio).
   * Change postinst to always check by user (Otavio). (closes: #258215)
+  * Restart inet.d if upgrading from some version earlier then 1.9.0
+    (Otavio). (closes: #259009)
 
  -- Otavio Salvador <otavio@debian.org>  Thu,  8 Jul 2004 12:01:32 -0300
 

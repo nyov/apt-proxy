@@ -33,6 +33,7 @@ case "$1" in
 	if dpkg --compare-versions "$PREV"  lt-nl 1.9; then
 	    echo "Disabling inetd's apt-proxy v1 line."
 	    update-inetd --comment-chars "#<apt-proxy-v2># " --disable 9999
+	    invoke-rc.d inetd restart
 	    db_fset $NAME/upgrading-v2 seen false || true
 	    db_input medium $NAME/upgrading-v2 || true
 	    db_go
