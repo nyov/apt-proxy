@@ -1,8 +1,8 @@
-apt-proxy (1.9.11.pre12) experimental; urgency=low
+apt-proxy (1.9.12) experimental; urgency=low
 
   * Manuel, the author of the version 2 rewrite, has been killed
     in a car accident.  http://www.debian.org/News/2004/20040515
-    
+
   * Add a paragraph to the README dedicating this passage to him
   * Change maintainer back to myself
   * Fix method to redirect stdout when loading packages cache
@@ -10,7 +10,7 @@ apt-proxy (1.9.11.pre12) experimental; urgency=low
   * Fix max_versions to work in the same way as version 1
     did, taking distributions into account (part of #242197)
 
- -- Chris Halls <halls@debian.org>  Thu, 27 May 2004 00:10:38 +0200
+ -- Chris Halls <halls@debian.org>  Sun, 30 May 2004 07:32:18 +0200
 
 apt-proxy (1.9.11) experimental; urgency=low
 
