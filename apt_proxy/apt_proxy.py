@@ -382,6 +382,8 @@ class Fetcher:
                 
         for req in self.requests:
             req.finish()
+
+        self.transfered.close()
         self.apEnd()
 
     def apEnd(self):
