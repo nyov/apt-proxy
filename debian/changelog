@@ -1,5 +1,7 @@
 apt-proxy (1.9.17+CVS) unstable; urgency=low
 
+  * Change the umask of process to 022 so the cache will be readable by
+    others. (closes: #264638)
   * Applied patch provided by Julien Louis <arthur51@ifrance.com> to fix a
     reference to the apt-proxy.conf(8) manpage and the SEE ALSO section
     output. (closes: #265682)
