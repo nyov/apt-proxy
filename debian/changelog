@@ -1,3 +1,9 @@
+apt-proxy (1.9.18+CVS) UNRELEASED; urgency=low
+
+  * Fix format in apt-proxy.conf(5). (closes: #272153)
+
+ -- Otavio Salvador <otavio@debian.org>  Sat, 18 Sep 2004 11:19:04 -0300
+
 apt-proxy (1.9.18) unstable; urgency=low
 
   * Add dependencie of logrotate. (closes: #267822)
