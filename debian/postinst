@@ -1,12 +1,13 @@
 #! /bin/sh
 
-#DEBHELPER#
-
 PYVER=2.2
 NAME=apt-proxy
 APTPROXY_USER=aptproxy
 APTPROXY_LOGFILE=/var/log/$NAME.log
 CACHEDIR=/var/cache/apt-proxy
+
+. /usr/share/debconf/confmodule
+db_version 2.0
 
 set -e
 case "$1" in
@@ -29,6 +30,36 @@ case "$1" in
 	    chown $APTPROXY_USER:adm $APTPROXY_LOGFILE
 	    chmod 640 $APTPROXY_LOGFILE
 	fi
+	PREV="$2"
+	db_fget $NAME/upgrading-v2 had_v2_conf || true
+	had_v2_conf=$RET
+	
+	if dpkg --compare-versions "$PREV"  lt-nl 1.9; then
+	    echo "Disabling inetd's apt-proxy v1 line."
+	    update-inetd --comment-chars "#<apt-proxy-v2># " --disable 9999
+	    db_fset $NAME/upgrading-v2 seen false || true
+	    db_input medium $NAME/upgrading-v2 || true
+	    db_go
+	fi
+	if
+	    dpkg --compare-versions "$PREV"  lt-nl 1.9 && ( ! $had_v2_conf ) \
+	    && [ -r /etc/apt-proxy/apt-proxy.conf ]
+	then
+	    echo Customising configuration file based on old settings.
+	    cp -a --backup=numbered /etc/apt-proxy/apt-proxy-v2.conf \
+			/etc/apt-proxy/apt-proxy-v2.conf.backup
+	    OUTPUT=$(/usr/sbin/apt-proxy-v1tov2 /etc/apt-proxy/apt-proxy.conf \
+					/etc/apt-proxy/apt-proxy-v2.conf.backup\
+					2>&1 \
+					> /etc/apt-proxy/apt-proxy-v2.conf )
+	    echo "$OUTPUT"
+	    echo "$OUTPUT" | mail -s "apt-proxy v1->v2 upgrade" root@localhost
+	    if [ -n "$OUTPUT" ]; then
+		db_fset $NAME/upgrading-v2-result seen false
+		db_input high $NAME/upgrading-v2-result || true
+		db_go
+	    fi
+	fi
         ;;
     abort-upgrade|abort-remove|abort-deconfigure)
         ;;
@@ -41,10 +72,16 @@ esac
 case "$1" in
     configure|abort-upgrade|abort-remove|abort-deconfigure)
         dpkg --listfiles $NAME | grep '\.py$' | \
-	     xargs -n 1 /usr/bin/python$PYVER -c 'import py_compile,sys;py_compile.compile(sys.argv[1])'
+	     xargs -n 1 /usr/bin/python$PYVER \
+	     	-c 'import py_compile,sys;py_compile.compile(sys.argv[1])'
 	dpkg --listfiles $NAME | grep '\.py$' | \
-	     xargs -n 1 /usr/bin/python$PYVER -O -c 'import py_compile,sys;py_compile.compile(sys.argv[1])'
+	     xargs -n 1 /usr/bin/python$PYVER -O \
+	     	-c 'import py_compile,sys;py_compile.compile(sys.argv[1])'
     ;;
 esac
+
+db_stop
+
+#DEBHELPER#
 
 exit 0
