@@ -1,5 +1,5 @@
 .\" Man page copied from apt.conf man page.
-.TH "apt-proxy" "8" "05 Feb 2002" "apt-proxy" ""
+.TH "apt-proxy" "8" "Sep 2002" "apt-proxy" ""
 .SH "Name"
 apt-proxy \- A proxy for saving bandwidth to Debian servers
 .SH SYNOPSIS
@@ -40,17 +40,15 @@ deb http://SERVER:9999/non-US woody/non-US main contrib non-free
 deb-src http://SERVER:9999/main woody main contrib non-free
 deb-src http://SERVER:9999/non-US woody/non-US main contrib non-free
 
-deb http://SERVER:9999/helixcode/ woody main
+deb http://SERVER:9999/openoffice woody main contrib
 .fi
 
 What path should be specified after the server name and port number
 depends on the configuration of \fBapt-proxy\fP (which can restrict
 paths and send different paths to different servers)\&.  In this
-example, non-US/ and helixcode/ actually retrieve files from different
+example, non-US and openoffice actually retrieve files from different
 back-end servers\&.
 
-Note that you can also use the nicknames `unstable', `frozen' etc, but
-they may be slightly slower for `apt-get update'.
 .PP
 .SH "SERVER CONFIGURATION"
 See

@@ -1,8 +1,10 @@
 .\" Man page copied from apt.conf man page.
-.TH "apt-proxy\&.conf" "5" "05 Feb 2002" "apt-proxy" ""
+.TH "apt-proxy\&.conf" "5" "Sep 2002" "apt-proxy" ""
+
 .SH "NAME"
 apt-proxy\&.conf \- configuration file for apt-proxy
 .PP
+
 .SH "DESCRIPTION"
 \fBapt-proxy\&.conf\fP is the configuration file for apt-proxy; the
 only option which cannot be controlled using the configuration file is
@@ -14,67 +16,123 @@ The configuration file is a shell script, which is sourced from
 apt-proxy; in effect your configuration file becomes part of the
 apt-proxy program\&.
 .PP
+
+.PP
 .SH "BACKEND SERVERS"
-The supplied apt-proxy\&.conf will work out of the box, but I suggest you
+
+The supplied apt-proxy\&.conf will work out of the box, but it is suggested you
 look for a mirror closer to you\&.  There are some in the default
 apt-proxy\&.conf and it may be enough just to reorder the lines in the file\&.
-See \fBFINDING NEW BACKEND SERVERS\fP for how to find and add new backends\&.
 .PP
 .TP
-.B add_backend \fIURI-prefix cache-path-prefix rsync-server|http-server|ftp-server ...\fP
-\fIURI-prefix\fP: if the start of the client URL begins
-with this string, then this backend configuration will be used\&.  They
-are examined in order, so list the most specific servers first\&.
+.B add_backend \fIbackend-name cache-path-name backend-server ...\fP
+\fIbackend-name\fP: Name of the backend\&.  Clients can use this backend by putting an entry like this in their sources\&.list:
+.nf
+    deb http://\fIservername\fP:9999/\fIbackend-name\fP ...
+.fi
 
 \fIcache-path-prefix\fP: the client URI will have the prefix chopped off and
-replaced by this to form the location of the cache file\&.
+replaced by this to form the location of the cache file\&.  Normally you should
+set this to be $APT_PROXY_CACHE/'\fIbackend-name\fP\&.
 
-\fIrsync-server\fP: Rsync-compatible server name(s): the
-client URI will have the prefix chopped off and replaced by this name to
-form the location of the back-end file\&.  If the rsync fails to the first
-server for any reason, it will fall back to successive servers\&.  If
-one of the server names is prepended by a `\fB+\fP', then it will always be
-preferred for fetching Packages, Sources and other control files\&.
-
-\fIhttp-server|ftp-server\fP: URL of server to be contacted using wget.
+\fIbackend-server\fP:  
+Backend server name(s): the client URI will have the prefix chopped off and
+replaced by this name to form the location of the back-end file\&.  If the
+download fails from the first server, it will fall back to successive
+servers\&.  If one of the server names is prepended by a `\fB+\fP', then it
+will always be preferred for fetching Packages, Sources and other control
+files\&.  See \fBBACKEND SERVER PROTOCOLS\fP for more details.
 
 .PP
-This example shows how to give clients access to the Helixcode Debian
-files (the backslashes at the end of the lines are important):
+.B Example
+.br
+This example shows how to give clients access to the main Debian
+archive (the backslashes at the end of the lines are important):
 .nf
-add_backend /helixcode/						\\
-	$APT_PROXY_CACHE/helixcode/				\\
-	somelocalmirror::helixcode/debian/			\\
-	+spidermonkey.helixcode.com::http/distributions/debian/
 
+    add_backend /debian/                       \\
+         $APT_PROXY_CACHE/debian/              \\
+         http://ftp.us.debian.org/debian/      \\
+         http://ftp.de.debian.org/debian/      \\
+         +ftp.us.debian.org::debian/
 .fi
 
 .PP
 Using this configuration, the client would use a \fBsources.list\fP entry
 like:
 .nf
-deb http://server:9999/helixcode/ woody main
+
+    deb http://server:9999/debian woody main
+
 .fi
 And so the file request
-`/helixcode/woody/main/binary-i386/x11/foo_1-1.deb' would turn into a
+`/debian/woody/main/binary-i386/x11/foo_1-1.deb' would turn into a
 back-end request of first
-`somelocalmirror::helixcode/debian/woody/main/binary-i386/x11/foo_1-1.deb'
-and if that failed,
-`spidermonkey.helixcode.com::http/distributions/debian/woody/main/binary-i38
-6/x1
-1/foo_1-1.deb'
-and the file would be placed in
-`/home/ftp/pub/debian/helixcode/woody/main/binary-i386/x11/foo_1-1.deb'\&.
+.nf
 
-.PP
-This example shows how to use an http backend, in this case for the Emdebian
-project apt archive:
+    `http://ftp.us.debian.org/debian/woody/main/binary-i386/x11/foo_1-1.deb'
+
+.fi
+and if that failed,
+.nf
+
+    `http://ftp.de.debian.org/debian/woody/main/binary-i386/x11/foo_1-1.deb'
 
 .nf
-add_backend /emdebian/						\\
-	$APT_PROXY_CACHE/emdebian/				\\
-	http://emdebian.sourceforge.net/emdebian/
-.fi
+and the file would be placed in
+.nf
+
+     `/var/cache/apt-proxy/debian/debian/woody/main/binary-i386/x11/foo_1-1.deb'\&.
+
+.nf
+
+.PP
+For many more examples, see the supplied /etc/apt-proxy/apt-proxy\&.conf\&.
+
+.SH "BACKEND SERVER PROTOCOLS"
+
+apt-proxy currently supports 3 types of backends: http, rsync and ftp.
+.PP
+
+
+.B http - http://server.name/path/
+.br
+http is performed using wget, is fast and does not put much load on the backend
+servers.   If a backend supports http, that is the recommended protocol to use.
+
+
+.PP
+.B ftp - ftp://server.name/path/
+.br
+Ftp also uses wget but takes longer to start because a login sequence is
+required first, and apt-proxy does not keep the connection open.
+
+.PP
+.B rsync - server.name::path/
+.br
+rsync is useful for updating files that have only partially changed, but
+unfortunatately does not work efficiently with compressed files (unless the
+gzip --rsyncable patch makes it into gzip one day..)  Also, there is much more
+load put on the backend servers for rsync, and it takes a while to set up each
+connection.
+.PP
+The original apt-proxy used rsync; http/ftp support was added in 1.3.0 but the
+default apt-proxy.conf still contained rsync.  
+.PP
+NOTE: You need to install the \fBrsync\fP package on your system to use rsync
+backends.
+
+.PP
+.B Combining rsync with http
+.br
+Currently, the most efficient way to keep apt-proxy's Packages files up to date
+for backends with large Packages files (such as Debian main and non-US) is to
+use http backend servers but use the special `\fB+\fP' prefix to rsync the
+control files.  For this you need both \fBwget\fP and \fBrsync\fP installed.
+See the example for the apt-proxy.conf entry.
+.PP
+Note that most unofficial backends do not have large enough Packages files to
+make the extra rsync overhead worthwhile.
 
 .SH "OTHER OPTIONS"
 .TP
@@ -129,6 +187,13 @@ MAX_VERSIONS=3 and are tracking both potato and woody, the maximum number
 of files in the cache for one package will be 6\&.
 
 .SH "FINDING NEW RSYNC BACKEND SERVERS"
+.B Old documentation!
+.PP
+This section was more useful when rsync was the only backend available\&.  Rsync
+is not a good idea anymore, becuase http is much more efficient, both in
+network load and server load (except when rsyncing uncompressed files such as
+Packages)\&.
+.PP
 If you need to find your backend server, you can look at what an rsync
 server is offering using \fBrsync -n <mirror address>::\fP to find available
 modules, and \fBrsync -n <mirror address>::<module-name>/\fP to look in

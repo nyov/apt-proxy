@@ -15,7 +15,10 @@ If you have been using apt standalone, you probably have built up a
 large collection of .debs in apt's cache directory.  You can import 
 these files into apt-proxy as follows:
 .PP
-1. Update apt-proxy's filelists:
+1. Update apt-proxy's filelists.  You must have at least one apt client visit
+   your brand new, empty cache to initialise it.  This client must have lines
+   in its sources.list that point to the apt-proxy and sucessfully run 'apt-get
+   update' or equivalent:
 .nf
     apt-get update
 .fi

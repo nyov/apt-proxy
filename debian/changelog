@@ -1,6 +1,11 @@
-apt-proxy (1.3.3.4pre1) unstable; urgency=low
+apt-proxy (1.3.3.4pre2) unstable; urgency=low
 
   * Correct spelling error in apt-proxy.conf (closes: #157147)
+  * Add more items to the FAQ and improve documentation of the different
+    backends and when to use them.  Updates to the manpages and README.
+    Thanks to Heather Stern for the suggestions.
+  * Apply patch from Roger Burton West (thanks!) to handle unknown filetypes
+    for Jigdo support (closes: #156676, #156009)
 
  -- Chris Halls <chris.halls@gmx.de>  Mon, 19 Aug 2002 10:22:31 +0200
 

@@ -1,7 +1,7 @@
 #!/bin/ash
 # (You may safely change the above to /bin/sh if you do not have ash available)
 #
-# $Id: apt-proxy,v 1.44.2.3 2002/08/19 08:23:52 haggai Exp $
+# $Id: apt-proxy,v 1.44.2.4 2002/09/12 11:01:27 haggai Exp $
 # Copyright Paul Russell <rusty@samba.org>
 # Released under the GPL version 2 or later
 #	Fixed by Stephen Rothwell <sfr@canb.auug.org.au>
@@ -1311,7 +1311,15 @@ while true; do
 	    STREAM="`fetch_file_start $URL_REST $FRONT_BASE $BACKS`"
 	;;
     *)
-	bad_url close $REQUEST Unknown extension.
+        # Other unknown type of file
+        resolve_url $REQUEST
+        [ -f $FRONT ] ||
+            STREAM="`fetch_file_start $URL_REST $FRONT_BASE $BACKS`"
+        [ -n "$CLEANUP_DAYS" ] && DO_CLEANUP=1
+
+        contype=application/octet-stream
+        conenc=
+
 	;;
     esac
 

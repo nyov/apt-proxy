@@ -11,11 +11,13 @@ do the following:
 1. Edit apt-proxy.conf to select the nearest backend servers for you.  See
    the apt-proxy.conf(5) manpage for details.
 2. Point your apt clients to the proxy.  See the apt-proxy(8) manpage for
-   details.
+   details.  The supplied apt-proxy.conf contains example lines for
+   sources.list along with the backend examples.
 3. run apt-get update on a client, to initialise the archive directories and
    filelists.
 4. If you have an apt cache directory full of .debs, you can use
-   apt-proxy-import(8) to copy them into the apt-proxy archive.
+   apt-proxy-import(8) to copy them into the apt-proxy archive.  You must have
+   completed steps 1-3 first.
 
 If you are installing from the source tar.gz, for example on a non-Debian
 machine, have a look at INSTALL for manual installation instructions.
@@ -37,7 +39,22 @@ Frequently Asked Questions
 --------------------------
 Here are some of the issues that have been raised about apt-proxy:
 
-- Initial configuration -
+- Initial configuration of the apt-proxy server -
+
+Q: How do I start apt-proxy?
+
+A: You don't need to - it is run by inetd, which is configured when apt-proxy
+   is installed.  Just point your apt clients at HOSTNAME:9999 and inet will
+   start apt-proxy on demand.  This also means configuration files changes take
+   effect immediately.
+
+Q: Which is the most efficient backend protocol to use?
+
+A: Use http for all backends.  Backends which have large Packages files (i.e.
+   the main Debian and non-US archives) can benefit from using the rsync
+   protocol to transfer uncompressed Packages files (if available) using the
+   special '+' prefix.  See the BACKEND SERVERS section of apt-proxy.conf(5)
+   for more details.
 
 Q: apt-proxy refuses to serve files and apt reports 500 Bad Configuration
 
@@ -90,6 +107,14 @@ A: Have you got http_proxy set?  From the apt.conf manpage:
    
    So you must unset http_proxy before running apt.
 
+- apt-proxy-import -
+
+Q: apt-proxy-import reports 'No backend filelists found' and won't import anything.
+
+A: You must have at least one apt client visit your brand new, empty cache to
+   initialise it.  This client must have lines in its sources.list that point
+   to the apt-proxy and sucessfully run 'apt-get update' or equivalent.
+
 - Using apt-proxy with other clients -
 
 Q: What else is apt-proxy known to work with?  How do I configure it?
@@ -121,4 +146,4 @@ A4: pbuilder, which also uses debootstrap.  Add this to /etc/pbuilderrc:
 	MIRRORSITE=http://APTPROXY:9999/main
 	NONUSMIRRORSITE=http://APTPROXY:9999/non-US
 
-July 2002
+September 2002
