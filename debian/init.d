@@ -16,7 +16,7 @@ test -x $twistd || exit 0
 test -r $application || exit 0
 
 # return true if at least one pid is alive
-function alive()
+alive()
 {
     if [ -z "$*" ]; then
 	return 1
@@ -48,21 +48,26 @@ case "$1" in
 
     stop)
 	echo -n "Stopping apt-proxy"
+	start-stop-daemon --stop --quiet --pidfile $pidfile
+	#
+	# Continue stopping until daemon finished or time over
+	#
 	count=0
 	pid=$(cat $pidfile 2>/dev/null)
 	while alive $pid; do
-		start-stop-daemon --stop --quiet --pidfile $pidfile
-		count=$(expr $count + 1)
 		if [ $count -gt 20 ]; then
+			echo -n " aborted"
 			break;
-		elif [ $count = 2 ]; then
+		elif [ $count = 1 ]; then
 			echo -n " [wait $count"
-		elif [ $count -gt 2 ]; then
+		elif [ $count -gt 1 ]; then
 			echo -n " $count"
 		fi
+		count=$(expr $count + 1)
 		sleep 1
+		start-stop-daemon --stop --quiet --pidfile $pidfile
 	done
-	if [ $count -gt 2 ]; then
+	if [ $count -gt 1 ]; then
 		echo -n "]"
 	fi
 	echo "."	

@@ -62,8 +62,13 @@ from apt_proxy import packages
 
 class DummyFactory:
     "This is just to get the configuration data somewhere."
+    def __init__ (self):
+        self.backends = []
     def debug(self, msg):
         print msg
+    def addBackend(self, backend):
+        self.backends.append(backend)
+        
         
 factory = DummyFactory()
 factoryConfig(factory)

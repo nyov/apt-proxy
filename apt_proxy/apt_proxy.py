@@ -148,7 +148,8 @@ class FileVerifier(protocol.ProcessProtocol):
             return
 
         log.debug("starting verification: " + exe + " " + str(args))
-        self.process = reactor.spawnProcess(self, exe, args)
+	self.nullhandle = open("/dev/null", "w")
+        self.process = reactor.spawnProcess(self, exe, args, childFDs = { 0:"w", 1:self.nullhandle.fileno(), 2:"r" })
         self.laterID = reactor.callLater(self.factory.timeout, self.timedout)
 
     def connectionMade(self):
@@ -274,11 +275,11 @@ class Fetcher:
         """
         self.requests.remove(request)
         if len(self.requests) == 0:
-            log.debug("Last request removed",'client')
+            log.debug("Last request removed",'Fetcher')
             if not self.factory.finish_horphans:
                 if self.transport:
                     log.debug(
-                        "telling the transport to loseConnection",'client')
+                        "telling the transport to loseConnection",'Fetcher')
                     try:
                         self.transport.loseConnection()
                     except KeyError:
@@ -298,6 +299,7 @@ class Fetcher:
 
     def setResponseCode(self, code, message=None):
         "Set response code for all requests"
+        log.debug('Response code: %d - %s' % (code, message),'Fetcher')
         self.status_code = code
         self.status_message = message
         for req in self.requests:
@@ -315,7 +317,7 @@ class Fetcher:
             self.activate(request)
             
     def activate(self, request):
-        log.debug(str(request.backend) + request.uri, 'fetcher_activate')
+        log.debug(str(request.backend) + request.uri, 'Fetcher.activate')
         self.local_file = request.local_file
         self.local_mtime = request.local_mtime
         self.factory = request.factory
@@ -361,7 +363,7 @@ class Fetcher:
            
         """
         import shutil
-        log.debug("Finished receiving data, status:%d saveData:%d" %(self.status_code, saveData));
+        log.debug("Finished receiving data, status:%d saveData:%d" %(self.status_code, saveData), 'Fetcher');
         if (self.status_code == http.OK):
             if saveData:
                 dir = dirname(self.local_file)
@@ -379,7 +381,7 @@ class Fetcher:
                 if self.local_mtime != None:
                     os.utime(self.local_file, (time.time(), self.local_mtime))
                 else:
-                    log.debug("no local time: "+self.local_file,'client')
+                    log.debug("no local time: "+self.local_file,'Fetcher')
                     os.utime(self.local_file, (time.time(), 0))
 
             self.factory.file_served(self.request.uri)
@@ -392,7 +394,7 @@ class Fetcher:
             except exceptions.KeyError:
               # Couldn't close connection - already closed?
               log.debug("transport.loseConnection() - "
-                        "connection already closed")
+                        "connection already closed", 'Fetcher')
               pass
                 
         for req in self.requests:
@@ -410,13 +412,13 @@ class Fetcher:
         try:
             del self.factory.runningFetchers[self.request.uri]
         except exceptions.KeyError:
-            log.debug("We are not on runningFetchers!!!",'client')
+            log.debug("We are not on runningFetchers!!!",'Fetcher')
             log.debug("Class is not in runningFetchers: "+str(self.__class__),
-                      'client')
+                      'Fetcher')
             if self.request:
-                log.debug(' URI:' + self.request.uri, 'fetcher_activate')
+                log.debug(' URI:' + self.request.uri, 'Fetcher')
             log.debug('Running fetchers: '
-                      +str(self.factory.runningFetchers),'client')
+                      +str(self.factory.runningFetchers),'Fetcher')
             #raise exceptions.KeyError
         for req in self.requests[:]:
             self.remove_request(req)
@@ -453,7 +455,7 @@ class Fetcher:
                 running = req.factory.runningFetchers
                 if (running.has_key(req.uri)):
                     #If we have an active Fetcher just use that
-                    log.debug("have active Fetcher",'file_client')
+                    log.debug("have active Fetcher",'Fetcher')
                     running[req.uri].insert_request(req)
                     fetcher = running[req.uri]
                 else:
@@ -472,7 +474,7 @@ class Fetcher:
 
         if reason:
             msg = '%s (%s)'%(msg, reason.getErrorMessage())
-            log.debug("Connection Failed: "+str(reason))
+            log.debug("Connection Failed: "+str(reason), 'Fetcher')
         log.err(msg)
 
         # Look for alternative fetchers
@@ -488,7 +490,7 @@ class Fetcher:
             #Make sure that next time nothing will happen
             #FIXME: This hack is probably not anymore pertinent.
             self.connectionFailed = lambda : log.debug('connectionFailed(2)',
-                                                    'client','9')
+                                                    'Fetcher','9')
             
 
 class FetcherDummy(Fetcher):
@@ -591,6 +593,7 @@ class FetcherHttp(Fetcher, http.HTTPClient):
 
     def handleStatus(self, version, code, message):
         __pychecker__ = 'unusednames=version,message'
+        log.debug('handleStatus %s - %s' % (code, message), 'http_client')
         self.status_code = int(code)
 
         self.setResponseCode(self.status_code)
@@ -1145,11 +1148,12 @@ class FetcherFile(Fetcher):
         else:
             log.debug("Zero length file! " + self.local_file, 'FetcherFile')
             self.file_transfer_complete(None, request)
-            request.transport.loseConnection
+            request.finish()
 
     # A file transfer has completed
     def file_transfer_complete(self, result, request):
         log.debug("transfer complete", 'FetcherFile')
+        request.finish()
         # Remove this client from request list
         self.remove_request(request)
         if len(self.requests) == 0:
@@ -1679,10 +1683,15 @@ class Factory(protocol.ServerFactory):
         self.backends = []
 
     def __getattr__ (self, name):
-        def open_shelve(filename):
+        def open_shelve(dbname):
             from bsddb3 import db,dbshelve
  
             shelve = dbshelve.DBShelf()
+            db_dir = self.cache_dir+'/'+status_dir+'/db'
+            if not os.path.exists(db_dir):
+                os.makedirs(db_dir)
+                
+            filename = db_dir + '/' + dbname + '.db'
             if os.path.exists(filename):
                  try:
                      log.debug('Verifying database: ' + filename)
@@ -1709,18 +1718,14 @@ class Factory(protocol.ServerFactory):
                     
             return shelve
 
-        db_dir = self.cache_dir+'/'+status_dir+'/db'
-        if not os.path.exists(db_dir):
-            os.makedirs(db_dir)
-
         if name == 'update_times':
-            self.update_times = open_shelve(db_dir+'/update.db')
+            self.update_times = open_shelve('update')
             return self.update_times
         elif name == 'access_times':
-            self.access_times = open_shelve(db_dir+'/access.db')
+            self.access_times = open_shelve('access')
             return self.access_times
         elif name == 'packages':
-            self.packages = open_shelve(db_dir+'/packages.db')
+            self.packages = open_shelve('packages')
             return self.packages
         else:
             raise AttributeError(name)

@@ -1,3 +1,18 @@
+apt-proxy (1.9.26.pre27) unstable; urgency=low
+
+  * Delay database directory creation until after uid change. Closes: #288829
+  * Fix exception in apt-proxy-import. Closes: #296574
+  * Close connection where necessary after sending complete file.
+    Closes: #288905
+  * Pipe file verification output to /dev/null for UML speedups,
+    thanks Paul Wagland for the patch.  Closes: #292818
+  * init script:
+     - Fix bashism in init script.  Closes: #296710
+     - Improve output and remove first sleep, thanks
+       again Herbert Thielen.  Closes: #296875
+
+ -- Chris Halls <halls@debian.org>  Fri, 25 Feb 2005 12:05:25 +0000
+
 apt-proxy (1.9.26) unstable; urgency=low
 
   * Add Depends to disallow upgrade of python2.3 without
