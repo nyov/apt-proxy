@@ -6,12 +6,13 @@ rundir=/var/run/apt-proxy-v2/
 pidfile=$rundir/apt-proxy-v2.pid 
 logfile=/var/log/apt-proxy-v2.log
 application=/usr/sbin/apt-proxy-v2
+twistd=/usr/bin/twistd
 user=aptproxy
 group=nogroup
 
 [ -r /etc/default/apt-proxy-v2 ] && . /etc/default/apt-proxy-v2
 
-test -x /usr/bin/twistd || exit 0
+test -x $twistd || exit 0
 test -r $application || exit 0
 
 
@@ -20,7 +21,7 @@ case "$1" in
 	echo -n "Starting apt-proxy-v2"
 	[ ! -d $rundir ] && mkdir $rundir && chown $user:$group $rundir
 	[ ! -f $logfile ] && touch $logfile && chown $user:$group $logfile
-	start-stop-daemon --start --quiet --exec /usr/bin/twistd --chuid $user:$group -- \
+	start-stop-daemon --start --quiet --exec $twistd --chuid $user:$group -- \
             --pidfile=$pidfile 	--rundir=$rundir --python=$application \
 	    --logfile=$logfile 	--no_save
 	echo "."	
