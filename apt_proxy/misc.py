@@ -16,6 +16,65 @@
 
 import os
 from twisted.internet import reactor
+from twisted import python
+
+class DomainLogger:
+    """
+    This class should help us classify messages into domains and levels.
+
+    This way we can select messages by kind and level.
+
+    You just have to set in the configuration file something like:
+
+        debug = db:3 import:8
+
+      Which means that we only want to see messages of domain 'db' and
+      level <= 3 and domain 'import' and level <= 8
+
+      There are three special domains:
+
+         all: if enabled all messages will be shown.
+         log: is on by default and only the level can be changed
+              it is meant for production logging.
+         debug: aptProxyConfig will define it if you select any loging
+                domains.
+
+    Pretended meaning of levels:
+       0: nothing or maybe critical information
+       1: important information
+       ...
+       9: useless information
+    """
+    def __init__(self, enabled={'log':9}):
+        self.enabled = enabled
+
+    def addDomains(self, domains):
+        self.enabled.update(domains)
+    def isEnabled(self, domain, level=9):
+        domains = self.enabled.keys()
+        if domain in domains and level > self.enabled[domain]:
+            return 0
+        if(('all' in domains and level <= self.enabled['all'])
+           or (domain in domains and level <= self.enabled[domain])):
+            return 1
+        else:
+            return 0
+
+    def msg(self, msg, domain='log', level=9):
+        "Logs 'msg' if domain and level are appropriate"
+        if self.isEnabled(domain, level):
+            python.log.msg("[%s:%d]%s"%(domain,level,msg))
+    def debug(self, msg, domain='debug', level=9):
+        "Usefull to save typing on new debuging messages"
+        self.msg(msg, domain, level)
+
+# Prevent log being replace on reload.  This only works in cpython.
+try:
+    log
+except NameError:
+    log = DomainLogger()
+
+
 
 class MirrorRecycler:
     """
@@ -45,7 +104,7 @@ class MirrorRecycler:
         """
         if not self.working:
             if self.backends == []:
-                self.factory.debug("NO BACKENDS FOUND")
+                log.msg("NO BACKENDS FOUND",'recycle')
                 return
             self.cur_uri = '/'
             self.cur_dir = self.cache_dir
@@ -79,17 +138,17 @@ class MirrorRecycler:
             self.cur_uri = uri
             self.pending = os.listdir(self.cur_dir)
             if not self.pending:
-                self.factory.debug("PRUNING EMPTY:"+path)
+                log.msg("PRUNING EMPTY:"+path,'recycle')
                 os.removedirs(path)
         else:
             if os.path.isfile(path):
                 #print "PATH:", path
                 #print "URI: ", uri
                 if not self.factory.access_times.has_key(uri):
-                    self.factory.debug("RECYCLING:"+ uri)
+                    log.msg("RECYCLING:"+ uri,'recycle')
                     self.factory.access_times[uri] = os.path.getatime(path)
             else:
-                self.factory.debug("UNKNOWN:"+path)
+                log.msg("UNKNOWN:"+path,'recycle')
 
         if not self.pending:
             self.pop()
@@ -102,8 +161,7 @@ if __name__ == '__main__':
     import shelve
     
     class DummyFactory:
-        def debug(self, msg):
-            pass
+        pass
     factory = DummyFactory()
     aptProxyFactoryConfig(factory)
     factory.access_times=shelve.open("tmp.db")

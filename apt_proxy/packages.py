@@ -20,6 +20,7 @@ from os.path import dirname, basename
 import re, signal, shelve, shutil, fcntl
 from twisted.internet import process
 import apt_proxy, copy, UserDict
+from misc import log
 
 class AptDpkgInfo(UserDict.UserDict):
     """
@@ -170,7 +171,7 @@ class AptPackages:
         fake lists/ directory and sources.list.
         """
         if basename(uri)=="Packages" or basename(uri)=="Release":
-            self.factory.debug("REGISTERING PACKAGE:"+uri)
+            log.msg("REGISTERING PACKAGE:"+uri,'apt_pkg')
             mtime = os.stat(self.factory.cache_dir+'/'+uri)
             self.packages[uri] = mtime
             self.unload()
@@ -249,21 +250,21 @@ def import_debs(factory, dir):
         os.makedirs(dir)
     for file in os.listdir(dir):
         if file[-4:]!='.deb':
-            factory.debug("IGNORING:"+ file)
+            log.msg("IGNORING:"+ file, 'import')
             continue
-        factory.debug("considering:"+ dir+'/'+file)
+        log.msg("considering:"+ dir+'/'+file, 'import')
         paths = get_mirror_path(factory, dir+'/'+file)
         if paths:
             if len(paths) != 1:
-                factory.debug("WARNING: multiple ocurrences")
-                factory.debug(str(paths))
+                log.msg("WARNING: multiple ocurrences", 'import')
+                log.msg(str(paths), 'import')
             path = paths[0]
             
-            factory.debug("MIRROR_PATH:"+ path)
+            log.msg("MIRROR_PATH:"+ path, 'import')
             spath = dir+'/'+file
             dpath = factory.cache_dir+path
             if not os.path.exists(dpath):
-                print "IMPORTING:"+spath
+                log.msg("IMPORTING:"+spath, 'import')
                 if not os.path.exists(dirname(dpath)):
                     os.makedirs(dirname(dpath))
                 f = open(dpath, 'w')

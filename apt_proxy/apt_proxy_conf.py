@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from apt_proxy import AptProxyBackend
+from misc import log
 import packages
 import ConfigParser, os
 from ConfigParser import DEFAULTSECT
@@ -42,8 +43,7 @@ def aptProxyFactoryConfig(factory):
         'port': '8000',
         'min_refresh_delay': '30',
         'complete_clientless_downloads': '0',
-        'debug': '1',
-        'db_debug': '0',
+        'debug': '0',
         'timeout': '30',
         'cleanup_freq': '600',
         'cache_dir': '/var/cache/apt-proxy',
@@ -67,8 +67,20 @@ def aptProxyFactoryConfig(factory):
     factory.max_age = conf.gettime(DEFAULTSECT, 'max_age')
     factory.timeout = conf.gettime(DEFAULTSECT, 'timeout')
     factory.cleanup_freq = conf.gettime(DEFAULTSECT, 'cleanup_freq')
-    factory.do_debug = conf.getboolean(DEFAULTSECT, 'debug')
-    factory.do_db_debug = conf.getboolean(DEFAULTSECT, 'db_debug')
+    factory.do_debug = conf.get(DEFAULTSECT, 'debug')
+    if factory.debug != '0':
+        factory.debug = {'debug':'9'}
+        for domain in factory.do_debug.split():
+            if domain.find(':') != -1:
+                name, level = domain.split(':')
+            else:
+                name, level = domain, 9
+            factory.debug[name] = int(level)
+
+        factory.do_debug = 1
+    else:
+        factory.debug = 0
+        factory.do_debug = 0
     factory.finish_horphans = conf.getboolean(DEFAULTSECT,
                                               'complete_clientless_downloads')
     factory.import_dir = conf.get(DEFAULTSECT, 'import_dir')
@@ -77,12 +89,12 @@ def aptProxyFactoryConfig(factory):
     factory.backends = []
     for name in conf.sections():
         if name.find('/') != -1:
-            print "WARNING: backend %s contains '/' (ignored)"%(name)
+            log.msg("WARNING: backend %s contains '/' (ignored)"%(name))
             continue
         servers = conf.get(name, 'backends').split()
         server = servers[0]
         if server[-1] == '/':
-            print "WARNING: removing slash at the end of %s"%(server)
+            log.msg ("WARNING: removing slash at the end of %s"%(server))
             server = server[0:-1]
         backend = AptProxyBackend(name, server)
         if conf.has_option(name, 'timeout'):
@@ -93,4 +105,4 @@ def aptProxyFactoryConfig(factory):
         packages.AptPackages(backend, factory)
         factory.backends.append(backend)
         if len(servers) > 1:
-            factory.debug("WARNING: using only first server on backend "+name)
+            log.msg("WARNING: using only first server on backend "+name)

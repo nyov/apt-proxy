@@ -18,7 +18,6 @@
 from twisted.internet import reactor, defer
 from twisted.protocols import http, protocol, ftp
 from twisted.web import static
-from twisted.python import log
 import os, stat, signal, fcntl, exceptions
 from os.path import dirname, basename
 import re
@@ -31,6 +30,7 @@ from twisted.python.failure import Failure
 
 #sibling imports
 import packages, misc
+from misc import log
 
 status_dir = '.apt-proxy'
 
@@ -130,8 +130,8 @@ class FileVerifier(protocol.ProcessProtocol):
         this should not happen, but if we timeout, we pretend that the
         operation failed.
         """
-        self.factory.debug("Process Timedout:")
-        self.factory.debug("verifier: verication failed")
+        log.debug("Process Timedout:",'verify')
+        log.debug("verication failed",'verify',1)
         self.deferred.errback(None)
         
     def processEnded(self):
@@ -140,12 +140,12 @@ class FileVerifier(protocol.ProcessProtocol):
         the status and report through the Deferred.
         """
         reactor.cancelCallLater(self.laterID)
-        self.factory.debug("Process Status: %d" %(self.process.status))
-        self.factory.debug("verifier: " + self.data)
+        log.debug("Process Status: %d" %(self.process.status),'verify')
+        log.debug(self.data, 'verify')
         if self.process.status == 0:
             self.deferred.callback(None)
         else:
-            self.factory.debug("verifier: verication failed")
+            log.debug("verication failed",'verify')
             self.deferred.errback(None)
 
 def findFileType(name):
@@ -168,7 +168,7 @@ def aptProxyClientDownload(request, serve_cached=1):
     """
     def cached_cb(result, request, serve_cached):
         """ This is called if the file is properly cached. """
-        request.factory.debug("CACHED")
+        log.debug("CACHED")
         if serve_cached:
             return request.send_cached()
         else:
@@ -179,7 +179,7 @@ def aptProxyClientDownload(request, serve_cached=1):
         """
         The requested file was not there or didn't pass the integrity check.
         """
-        request.factory.debug("NOT_CACHED")
+        log.debug("NOT_CACHED")
         client_class = request.backend.client
         if client_class.gzip_convert.search(request.uri):
             client = AptProxyClientGzip(request)
@@ -188,7 +188,7 @@ def aptProxyClientDownload(request, serve_cached=1):
 
         if (client.post_convert.search(request.uri)
             and not running.has_key(request.uri[:-3])):
-            client.factory.debug("post converting: "+request.uri)
+            log.debug("post converting: "+request.uri,'convert')
             loop = AptLoopbackRequest(request)
             loop.uri = request.uri[:-3]
             loop.local_file = request.local_file[:-3]
@@ -202,13 +202,13 @@ def aptProxyClientDownload(request, serve_cached=1):
     running = request.factory.runningClients
     if (running.has_key(request.uri)):
         #If we have an active client just use that
-        request.factory.debug("have active client")
+        log.debug("have active client",'client')
         running[request.uri].insert_request(request)
         return running[request.uri]
 
     else:
         #Standard Deferred practice
-        request.factory.debug("CHECKING_CACHED")
+        log.debug("CHECKING_CACHED")
         d = request.check_cached()
         d.addCallbacks(cached_cb, not_cached_cb,
                        (request,serve_cached,), None,
@@ -253,11 +253,11 @@ class AptProxyClient:
         """
         self.requests.remove(request)
         if len(self.requests) == 0:
-            self.factory.debug("Last request removed")
+            log.debug("Last request removed",'client')
             if not self.factory.finish_horphans:
                 if self.transport:
-                    self.factory.debug(
-                        "telling the transport to loseConnection")
+                    log.debug(
+                        "telling the transport to loseConnection",'client')
                     self.transport.loseConnection()
                 if hasattr(self, 'loseConnection'):
                     self.loseConnection()
@@ -276,7 +276,7 @@ class AptProxyClient:
             req.setHeader(name, value)
 
     def __init__(self, request):
-        request.factory.debug(self.__class__)
+        log.debug(self.__class__)
         self.local_file = request.local_file
         self.local_mtime = request.local_mtime
         self.requests = [request]
@@ -289,7 +289,7 @@ class AptProxyClient:
         data = request.content.read()
 
 
-        self.factory.debug("Request uri: " + request.uri)
+        log.debug("Request uri: " + request.uri,'client')
 
         request.setResponseCode(self.status_code)
         request.proxy_client = self
@@ -337,7 +337,7 @@ class AptProxyClient:
             if self.local_mtime != None:
                 os.utime(self.local_file, (time.time(), self.local_mtime))
             else:
-                self.factory.debug("no local time: "+self.local_file)
+                log.debug("no local time: "+self.local_file,'client')
                 os.utime(self.local_file, (time.time(), 0))
 
             self.factory.file_served(self.request.uri)
@@ -358,8 +358,8 @@ class AptProxyClient:
         try:
             del self.factory.runningClients[self.request.uri]
         except exceptions.KeyError:
-            self.factory.debug("We are not on runningClients!!!")
-            self.factory.debug(str(self.factory.runningClients))
+            log.debug("We are not on runningClients!!!",'client')
+            log.debug(str(self.factory.runningClients),'client')
             raise exceptions.KeyError
 
     def connectionFailed(self):
@@ -369,16 +369,15 @@ class AptProxyClient:
         When multi-server backends are implemented we could change server and
         try again.
         """
-        self.factory.debug('['+self.request.backend.base+']'
-                           + " Connection Failed: "
-                           + self.request.backend.path + "/"
-                           + self.request.backend_uri)
+        log.msg('['+self.request.backend.base+']' + " Connection Failed: "
+                + self.request.backend.path + "/" + self.request.backend_uri)
         self.setResponseCode(http.SERVICE_UNAVAILABLE)
         self.aptDataReceived("")
         self.aptDataEnd(self.transfered)
         #Because of a bug in tcp.Client we may be called twice,
         #Make sure that next time nothing will happen
-        self.connectionFailed = lambda : log.msg('connectionFailed(2)')
+        self.connectionFailed = lambda : log.debug('connectionFailed(2)',
+                                                   'client','9')
         
 class AptProxyClientHttp(AptProxyClient, http.HTTPClient):
 
@@ -424,7 +423,7 @@ class AptProxyClientHttp(AptProxyClient, http.HTTPClient):
 
     def handleEndHeaders(self):
         if self.status_code == http.NOT_MODIFIED:
-            self.factory.debug("NOT_MODIFIED")
+            log.debug("NOT_MODIFIED",'http_client')
             self.transport.loseConnection()
 
             self.aptEnd()
@@ -452,23 +451,23 @@ class AptProxyClientHttp(AptProxyClient, http.HTTPClient):
         Note: when running a class method directly and not from an object you
         have to give the 'self' parameter manualy.
         """
-        self.factory.debug(line)
+        log.debug(line,'http_client')
         if not re.search('^Location:', line):
             http.HTTPClient.lineReceived(self, line)
 
     def sendCommand(self, command, path):
         "log the line and handle it to the base class."
-        self.factory.debug(command + ":" + path)
+        log.debug(command + ":" + path,'http_client')
         http.HTTPClient.sendCommand(self, command, path)
 
     def endHeaders(self):
         "log and handle to the base class."
-        self.factory.debug("")
+        log.debug("",'http_client')
         http.HTTPClient.endHeaders(self)
 
     def sendHeader(self, name, value):
         "log and handle to the base class."
-        self.factory.debug(name + ":" + value)
+        log.debug(name + ":" + value,'http_client')
         http.HTTPClient.sendHeader(self, name, value)
 
 class AptProxyClientFtp(AptProxyClient, protocol.Protocol):
@@ -493,11 +492,11 @@ class AptProxyClientFtp(AptProxyClient, protocol.Protocol):
         self.remote_file = (self.request.backend.path + "/" 
                             + self.request.backend_uri)
         self.status_code = http.NOT_FOUND
-	#ftp.FTPClient doesn't handle control connection failed
-	#We work around it.
+        #ftp.FTPClient doesn't handle control connection failed
+        #We work around it.
         class MyFTPClient(ftp.FTPClient):
             def connectionFailed(self):
-                log.msg("MyFTPClient: Connection Failed")
+                log.debug("MyFTPClient: Connection Failed",'ftp_client')
                 self.apt_owner.status_code = http.SERVICE_UNAVAILABLE
                 #self.apt_owner.ftpFinish(http.SERVICE_UNAVAILABLE)
                 class dummy:
@@ -509,7 +508,8 @@ class AptProxyClientFtp(AptProxyClient, protocol.Protocol):
             
         self.ftpclient = MyFTPClient(passive=0)
         self.ftpclient.apt_owner=self
-        self.ftpclient.debug = self.factory.do_debug
+        if log.isEnabled('ftp_client'):
+            self.ftpclient.debug = 1
 
         reactor.clientTCP(request.backend.host, request.backend.port,
                           self.ftpclient, request.backend.timeout)
@@ -568,7 +568,7 @@ class AptProxyClientFtp(AptProxyClient, protocol.Protocol):
         def aptFtpSizeFinish(msgs, client, fail):
             code, msg = msgs[0].split()
             if fail or code != '213':
-                client.factory.debug("ftp:SIZE FAILED")
+                log.debug("SIZE FAILED",'ftp_client')
                 client.ftpFetchList()
             else:
                 client.setResponseHeader('content-length', msg)
@@ -617,7 +617,7 @@ class AptProxyClientFtp(AptProxyClient, protocol.Protocol):
         Maybe we should do some recovery here, I don't know, but the Deferred
         should be enough.
         """
-        self.factory.debug("ftp: lost connection")
+        log.debug("lost connection",'ftp_client')
 
 class AptProxyClientGzip(AptProxyClient, protocol.ProcessProtocol):
     """
@@ -689,7 +689,7 @@ class AptProxyClientGzip(AptProxyClient, protocol.ProcessProtocol):
         self.aptDataReceived(data)
 
     def errReceived(self, data):
-        self.factory.debug(data)
+        log.debug(data,'gzip')
 
     def loseConnection(self):
         """
@@ -702,7 +702,7 @@ class AptProxyClientGzip(AptProxyClient, protocol.ProcessProtocol):
         self.process.connectionLost()
 
     def processEnded(self):
-        self.factory.debug("Status: %d" %(self.process.status))
+        log.debug("Status: %d" %(self.process.status),'gzip')
         if self.process.status != 0:
             self.setResponseCode(http.NOT_FOUND)
 
@@ -759,10 +759,10 @@ class AptProxyClientRsync(AptProxyClient, protocol.ProcessProtocol):
         self.aptDataReceived(data)
 
     def errReceived(self, data):
-        self.factory.debug(data)
+        log.debug(data,'rsync_client')
 
     def processEnded(self):
-        self.factory.debug("Status: %d" %(self.process.status))
+        log.debug("Status: %d" %(self.process.status),'rsync_client')
         if self.process.status != 0:
             self.setResponseCode(http.NOT_FOUND)
             if not os.path.exists(self.local_file):
@@ -772,7 +772,7 @@ class AptProxyClientRsync(AptProxyClient, protocol.ProcessProtocol):
                     pass
 
         elif self.transfered == '':
-            self.factory.debug("NOT_MODIFIED")
+            log.debug("NOT_MODIFIED",'rsync_client')
             self.aptEnd()
             for req in self.requests:
                 req.setResponseCode(http.OK)
@@ -958,7 +958,7 @@ class AptProxyRequest(http.Request):
             return
 
         if re.search('/../', self.uri):
-            self.factory.debug("/../ in simplified uri")
+            log.debug("/../ in simplified uri")
             self.finishCode(http.FORBIDDEN)
             return
 
@@ -970,21 +970,21 @@ class AptProxyRequest(http.Request):
                 self.backend_uri = uri
 
         if not self.backend:
-            self.factory.debug("non existent Backend")
+            log.debug("non existent Backend")
             self.finishCode(http.NOT_FOUND)
             return
 
         self.filetype = findFileType(self.uri)
 
         if not self.filetype:
-            self.factory.debug("unknown extension")
+            log.debug("unknown extension")
             self.finishCode(http.NOT_FOUND)
             return
 
         self.setHeader('content-type', self.filetype.contype)
 
         if os.path.isdir(self.local_file):
-            self.factory.debug("Directory listing not allowed")
+            log.debug("Directory listing not allowed")
             self.finishCode(http.FORBIDDEN)
             return
 
@@ -1031,19 +1031,19 @@ class AptProxy(http.HTTPChannel):
 
     def headerReceived(self, line):
         "log and pass over to the base class"
-        self.factory.debug(line)
+        log.debug(line)
         http.HTTPChannel.headerReceived(self, line)
 
     def allContentReceived(self):
         "log and pass over to the base class"
-        self.factory.debug("")
+        log.debug("")
         http.HTTPChannel.allContentReceived(self)
 
     def connectionLost(self):
         "If the connection is lost, notify all my requets"
         for req in self.requests:
             req.connectionLost()
-        self.factory.debug("Client connection closed")
+        log.debug("Client connection closed")
 
 class AptProxyFactory(protocol.ServerFactory):
     """
@@ -1076,6 +1076,8 @@ class AptProxyFactory(protocol.ServerFactory):
         pass
 
     def startFactory(self):
+        if self.do_debug:
+            log.addDomains(self.debug)
         db_dir = self.cache_dir+'/'+status_dir+'/db'
         if not os.path.exists(db_dir):
             os.makedirs(db_dir)
@@ -1160,30 +1162,30 @@ class AptProxyFactory(protocol.ServerFactory):
 
     def dumpdbs (self):
         def dump_update(key, value):
-            print "%s: %s"%(key, time.ctime(value))
+            log.msg("%s: %s"%(key, time.ctime(value)),'db')
         def dump_access(key, value):
-            print "%s: %s"%(key, time.ctime(value))
+            log.msg("%s: %s"%(key, time.ctime(value)),'db')
         def dump_packages(key, list):
-            print "%s: "%(key)
+            log.msg("%s: "%(key),'db')
             for file in list:
-                print "\t%s"%(file)
+                log.msg("\t%s"%(file),'db')
         def dump(db, func):
             keys = db.keys()
             for key in keys:
                 func(key,db[key])
 
-        if self.do_db_debug:
-            print "========================="
-            print "Dumping update times"
-            print "========================="
+        if log.isEnabled('db'):
+            log.msg("=========================",'db')
+            log.msg("Dumping update times",'db')
+            log.msg("=========================",'db')
             dump(self.update_times, dump_update)
-            print "========================="
-            print "Dumping access times"
-            print "========================="
+            log.msg("=========================",'db')
+            log.msg("Dumping access times",'db')
+            log.msg("=========================",'db')
             dump(self.access_times, dump_access)
-            print "========================="
-            print "Dumping packages"
-            print "========================="
+            log.msg("=========================",'db')
+            log.msg("Dumping packages",'db')
+            log.msg("=========================",'db')
             dump(self.packages, dump_packages)
 
 
@@ -1196,5 +1198,4 @@ class AptProxyFactory(protocol.ServerFactory):
         return
 
     def debug(self, message):
-        if self.do_debug:
-            print message
+        log.debug(message)
