@@ -26,4 +26,31 @@ this package on Potato.  However, you can still install and use a package that
 has been built on a Woody system, or downloaded from the Woody archives.
 (Thanks to Thorsten Gunkel for testing this and other aspects of the package.)
 
-February 2002
+Frequently Asked Questions
+--------------------------
+Here are some of the issues that have been raised about apt-proxy:
+
+- Initial configuration -
+
+Q: apt-proxy refuses to serve files and apt reports 500 Bad Configuration
+
+A: There is a problem with the syntax in an add_backend line in apt-proxy.conf.
+   One common mistake is to try to comment out a line which is continued from
+   the last line:
+   
+   add_backend /main/                 \
+   $APT_PROXY_CACHE/debian/           \
+   #       ftp.us.debian.org::debian/ \    <---- This does not work
+	   ftp.de.debian.org::debian/ 
+
+   You should either delete the line, or move it further down to follow a line
+   that does not end in a backslash.
+
+Q: A connection cannot be established with apt-proxy on a remote machine.
+   Nothing appears in the apt-proxy.log file.
+
+A: apt-proxy is run by tcpd, which may deny connections depending on how it is
+   set up.  The standard ALL: PARANOID in /etc/hosts.deny will deny acess to
+   clients whose hostname cannot be looked up.
+
+April 2002
