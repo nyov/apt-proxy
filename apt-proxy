@@ -251,7 +251,7 @@ copy_best_match()
     CBM_START=`echo $1 | cut -d_ -f1`
     CBM_EXT=`echo $1 | sed 's/^.*\.//'`
 
-    CBM_BEST=`ls "$CBM_START"*."$CBM_EXT" | tail -1`
+    CBM_BEST=`ls "$CBM_START"*."$CBM_EXT" 2> /dev/null | tail -1`
     debug Found best basis for ${1}: $CBM_BEST
     [ -n "$CBM_BEST" ] && cp $CBM_BEST $2
 }
@@ -644,6 +644,7 @@ stream_file "$STREAM" "$FRONT"
 # that without having sent all data out, other end gets short read.
 # Drain next request.
 (while read LINE && [ "`echo x$LINE | tr -d '\015'`" != x ]; do :; done) &
+DRAINER_PID=$!
 sleep 1
 
 # Now, derive the uncompressed file.
@@ -665,4 +666,5 @@ if [ -n "$CLEAN_SWEEP" ]; then
     fi
 fi
 
+kill $DRAINER_PID
 exit 0
