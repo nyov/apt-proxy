@@ -1,0 +1,72 @@
+#! /usr/bin/perl
+
+# program to turn /etc/apt/sources.list into an apt-proxy.conf and a
+# sources.list that uses it.
+
+# Michael (Micksa) Slade <micksa@knobbits.org>
+
+my($sources,$newsources,$proxyconf,$proxy_server) = @ARGV;
+
+$sources ||= "/etc/apt/sources.list";
+$newsources ||= "sources.list.proxy";
+$proxyconf ||= "apt-proxy.conf.new";
+
+if(!$proxy_server) {
+    use Sys::Hostname;
+    $proxy_server = hostname.":9999";
+}
+
+open my $fh,"<$sources" or
+	die "$sources: $!";
+open my $outfh,">$newsources" or
+	die "$newsources: $!";
+
+my %backends;
+my $dirnum = 1;
+
+while (my $line = <$fh>) {
+	chomp $line;
+	my $comment; $line =~ /(\s*#.*)/ and $comment = $1;
+	$line =~ /^\s*(#|$)/ and goto PRINT;
+	my @fields = split /\s+/,$line;
+	my ($type,$url,$dist,@components) = @fields;
+	$url .= "/" unless $url =~ m|/$|;
+	$type = lc($type);
+#	$type eq "deb" || $type eq "deb-src" or goto PRINT;
+	if($url =~ /(cdrom|file):/i) {
+		print STDERR "line $.: file/cdrom, passing on as-is.\n";
+		goto PRINT;
+	}
+	my $subdir;
+	if(!$backends{$url}) {
+		$url =~ m"\w://(ftp\.|http\.)?([\w-]+)\." and $subdir = $2;
+		if (!$subdir || grep { $backends{$_} eq $subdir } (keys %backends)) {
+			$subdir = $dirnum++;
+		}
+		$backends{$url} = $subdir;
+	} else {
+		$subdir = $backends{$url};
+	}
+	$line = "$type http://$proxy_server/$subdir $dist @components";
+PRINT:
+	print $outfh "$line\n";
+}
+
+close $fh; close $outfh;
+
+open $fh, ">$proxyconf" or
+	die "$proxyconf: $!";
+print $fh <<__EOF__;
+APT_PROXY_CACHE=/var/cache/apt-proxy
+CLEANUP_DAYS=14
+CLEAN_SWEEP=60
+MAX_VERSIONS=4
+BACKEND_FREQ=240
+WGET_TIMEOUT=30
+__EOF__
+
+foreach my $backend (sort keys %backends) {
+	my $dir = $backends{$backend};
+	print $fh "add_backend /$dir/ \$APT_PROXY_CACHE/$dir/ $backend\n";
+}
+close $fh;

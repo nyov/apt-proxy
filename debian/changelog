@@ -1,14 +1,18 @@
 apt-proxy (1.3.6) unstable; urgency=low
 
-  * Correct example proxy lines in apt-proxy.conf (closes: #169658)
+  * Correct example proxy lines in apt-proxy.conf (closes: #169658, #177514)
   * Remove logrotated logfiles on purge
   * Correct location of apt-proxy.conf in apt-proxy(8) (closes: #170045)
   * Add French translation of apt-proxy.8 manpage, thanks to Richard Bonichon
     for the translation.
   * Set PATH to standard system path.  You can override this in apt-proxy.conf
     if you need PATH set to semething else. (closes: #170286)
+  * Add conversion script by Michael (Micksa) Slade.  This reads sources.list
+    and creates an example sources.list and apt-proxy.conf.  Installed in 
+    /usr/share/doc/apt-proxy/examples/apt-proxy-mkconfig until it has been
+    documented.
 
- -- Chris Halls <halls@debian.org>  Mon, 13 Jan 2003 11:03:19 +0100
+ -- Chris Halls <halls@debian.org>  Wed, 22 Jan 2003 10:29:12 +0100
 
 apt-proxy (1.3.5) unstable; urgency=low
 
