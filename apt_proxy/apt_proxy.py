@@ -327,6 +327,7 @@ class Fetcher:
             if type(data) is StringType:
                 f.write(data)
             else:
+                data.seek(0, SEEK_SET)
                 shutil.copyfileobj(data, f)
             f.close()
             if self.local_mtime != None:
