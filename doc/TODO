@@ -67,6 +67,28 @@ Consider implementing rproxy
 	- sincronizing two caches
 
 Consider using apt-build to get "auto recompiled for your processor" packages.
+ - warning apt-build changes your system compiler.. ugh.  Chris
+
+Deal with permissions problems in the cache gracefully, not like this:
+
+22/08/2002 17:23 [AptProxy,1,192.168.60.24] [debug:9]CHECKING_CACHED
+22/08/2002 17:23 [-] [gzip:9]/var/cache/apt-proxy/security/dists/sarge/updates/non-free/binary-i386/Packages.gz:          0.0%22/08/2002 17:23 [-]
+22/08/2002 17:23 [-] [verify:9]Process Status: 0
+22/08/2002 17:23 [-] [verify:9]unknown file: not verified
+22/08/2002 17:23 [-]
+22/08/2002 17:23 [-] [debug:9]NOT_CACHED
+22/08/2002 17:23 [-] [debug:9]apt_proxy.apt_proxy.AptProxyClientHttp
+22/08/2002 17:23 [-] [client:9]Request uri: /security/dists/sarge/updates/non-free/binary-i386/Release
+22/08/2002 17:23 [-] [gzip:9]Status: 0
+22/08/2002 17:23 [-] Traceback (most recent call last):
+22/08/2002 17:23 [-]   File "/usr/lib/python2.1/site-packages/apt_proxy/twisted_compat/process.py", line 310, in maybeCallProcessEnded
+22/08/2002 17:23 [-]     self.proto.processEnded()
+22/08/2002 17:23 [-]   File "/usr/lib/python2.1/site-packages/apt_proxy/apt_proxy.py", line 789, in processEnded
+22/08/2002 17:23 [-]     self.aptDataEnd(self.transfered)
+22/08/2002 17:23 [-]   File "/usr/lib/python2.1/site-packages/apt_proxy/apt_proxy.py", line 359, in aptDataEnd
+22/08/2002 17:23 [-]     f = open(self.local_file, "w")
+22/08/2002 17:23 [-] exceptions.IOError: [Errno 13] Permission denied: '/var/cache/apt-proxy/security/dists/sarge/updates/non-free/binary-i386/Packages'
+22/08/2002 17:23 [AptProxyClientHttp,client] [http_client:9]GET:/debian-security/dists/sarge/updates/non-free/binary-i386/Rele
 
 ---------------- OLD LIST from v1 ---------------------------
 TODO list for apt-proxy

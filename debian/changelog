@@ -1,6 +1,14 @@
-apt-proxy-v2 (1.9.1+2pre1) experimental; urgency=low
+apt-proxy-v2 (1.9.2+3pre1) experimental; urgency=low
+
+  * Change default cache directory to /var/cache/apt-proxy - using
+    apt-proxy v1 and v2 is OK, as long as you don't use both at once
+
+ -- Chris Halls <chris.halls@gmx.de>  Thu, 22 Aug 2002 19:02:21 +0200
+
+apt-proxy-v2 (1.9.2) experimental; urgency=low
 
   * Fix hanging when 2 clients are connected simultaneously (Manuel)
+  * Improve some debugging messages (Manuel)
 
  -- Chris Halls <chris.halls@gmx.de>  Thu, 22 Aug 2002 16:39:46 +0200
 
