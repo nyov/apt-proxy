@@ -880,13 +880,46 @@ class AptProxyClientRsync(AptProxyClient, protocol.ProcessProtocol):
 
 
 class AptProxyClientFile(AptProxyClient):
+    """
+    Sends the cached file or tells the client that the file was not
+    'modified-since' if appropriate.
+    """
     post_convert = re.compile(r"^Should not match anything$")
     gzip_convert = post_convert
 
     request = None
+    laterID = None
+    def if_modified(self, request):
+        """
+        Check if the file was 'modified-since' and tell the client if it
+        wasn't.
+        """
+        if_modified_since = request.getHeader('if-modified-since')
+        if if_modified_since != None:
+            if_modified_since = http.stringToDatetime(
+                    if_modified_since)
+
+        if request.local_mtime <= if_modified_since:
+            request.setResponseCode(http.NOT_MODIFIED)
+            request.setHeader("Content-Length", 0)
+            request.write("")
+            request.finish()
+            self.remove_request(request)
+        
+    def insert_request(self, request):
+        AptProxyClient.insert_request(self, request)
+        self.if_modified(request)
+        
     def activate(self, request):
         AptProxyClient.activate(self, request)
         if not request.proxy_client:
+            return
+        self.factory.file_served(request.uri)
+
+        self.if_modified(request)
+        if len(self.requests) == 0:
+            #we had a single request and didn't have to send it
+            self.aptEnd()
             return
 
         self.size = request.local_size
@@ -896,14 +929,11 @@ class AptProxyClientFile(AptProxyClient):
         request.setHeader("Content-Length", request.local_size)
         request.setHeader("Last-modified",
                           http.datetimeToString(request.local_mtime))
-        self.factory.file_served(request.uri)
         self.readBuffer()
 
     def readBuffer(self):
-        if not self.request:
-            return
+        self.laterID = None
         data = self.file.read(abstract.FileDescriptor.bufferSize)
-
         self.aptDataReceived(data)
 
         if self.file.tell() == self.size:
@@ -912,12 +942,14 @@ class AptProxyClientFile(AptProxyClient):
                 req.finish()
             self.aptEnd()
         else:
-            reactor.callLater(0, self.readBuffer)
-                                
+            self.laterID = reactor.callLater(0, self.readBuffer)
+
     def aptEnd(self):
+        if self.laterID:
+            reactor.cancelCallLater(self.laterID)
         self.file.close()
         AptProxyClient.aptEnd(self)
-
+                                         
 class AptProxyBackend:
     """
     Holds the backend caracteristics, including the proxy client class to be
@@ -1067,21 +1099,8 @@ class AptProxyRequest(http.Request):
 
     def send_cached(self):
         """
-        Serves the cached file or tells the client that the file was not
-        'modified-since' if appropriate.
+        Serves the cached file.
         """
-        if_modified_since = self.getHeader('if-modified-since')
-        if if_modified_since != None:
-            if_modified_since = http.stringToDatetime(
-                    if_modified_since)
-
-        if self.local_mtime <= if_modified_since:
-            self.setResponseCode(http.NOT_MODIFIED)
-            self.setHeader("Content-Length", 0)
-            self.write("")
-            self.finish()
-            return None
-
         running = self.factory.runningClients
         if (running.has_key(self.uri)):
             #If we have an active client just use that
