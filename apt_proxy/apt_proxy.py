@@ -396,7 +396,7 @@ class Fetcher:
                 req.finish()
         return fetcher
             
-    def connectionFailed(self):
+    def connectionFailed(self, reason=None):
         """
         Tell our requests that the connection with the server failed.
 
@@ -405,6 +405,9 @@ class Fetcher:
         """
         log.msg('['+self.request.backend.base+']' + " Connection Failed: "
                 + self.request.backend.path + "/" + self.request.backend_uri)
+        if reason != None:
+            log.debug("Connection Failed: "+str(reason))
+
         self.setResponseCode(http.SERVICE_UNAVAILABLE)
         self.apDataReceived("")
         self.apDataEnd(self.transfered)
@@ -559,28 +562,20 @@ class FetcherFtp(Fetcher, protocol.Protocol):
 
         self.remote_file = (self.request.backend.path + "/" 
                             + self.request.backend_uri)
-        #ftp.FTPClient doesn't handle control connection failed
-        #We work around it.
-        class MyFTPClient(ftp.FTPClient):
-            def connectionFailed(self):
-                log.debug("MyFTPClient: Connection Failed",'ftp_client')
-                self.ap_owner.setResponseCode(http.SERVICE_UNAVAILABLE)
-                #self.ap_owner.ftpFinish(http.SERVICE_UNAVAILABLE)
-                class dummy:
-                    def loseConnection(self):
-                        pass
-                self.transport = dummy()
-                self.nextDeferred.errback(
-                  Failure(ftp.CommandFailed('Connection Failed')))
-                self.ap_owner.connectionFailed()
-            
-        self.ftpclient = MyFTPClient(passive=0)
-        self.ftpclient.ap_owner=self
+
+        from twisted.internet.protocol import ClientCreator
+
+        creator = ClientCreator(reactor, ftp.FTPClient, passive=0)
+        d = creator.connectTCP(request.backend.host, request.backend.port,
+                               request.backend.timeout)
+        d.addCallback(self.controlConnectionMade)
+        d.addErrback(self.connectionFailed)
+
+    def controlConnectionMade(self, ftpclient):
+        self.ftpclient = ftpclient
         if log.isEnabled('ftp_client'):
             self.ftpclient.debug = 1
 
-        reactor.clientTCP(request.backend.host, request.backend.port,
-                          self.ftpclient, request.backend.timeout)
         self.ftpFetchMtime()
 
     def ftpFinish(self, code, message=None):
@@ -603,9 +598,6 @@ class FetcherFtp(Fetcher, protocol.Protocol):
             
             Someone should check that this is timezone independent.
             """
-            if fetcher.status_code == http.SERVICE_UNAVAILABLE:
-                #The control connetion failed
-                return
             code = None
             if not fail:
                 code, msg = msgs[0].split()
@@ -631,8 +623,10 @@ class FetcherFtp(Fetcher, protocol.Protocol):
     def ftpFetchSize(self):
         "Get the size of the file from the server"
         def apFtpSizeFinish(msgs, fetcher, fail):
-            code, msg = msgs[0].split()
-            if fail or code != '213':
+            code = None
+            if not fail:
+                code, msg = msgs[0].split()
+            if code != '213':
                 log.debug("SIZE FAILED",'ftp_client')
                 fetcher.ftpFetchList()
             else:
