@@ -1,10 +1,10 @@
-apt-proxy (1.9.21.pre22) unstable; urgency=low
+apt-proxy (1.9.22) unstable; urgency=low
 
   * Load database when requested. Closes: #283685. (Otavio)
   * Remove previous database and recreate it because the format has
     change. Closes: #284011. (Otavio)
 
- -- Otavio Salvador <otavio@debian.org>  Fri,  3 Dec 2004 11:30:08 -0200
+ -- Otavio Salvador <otavio@debian.org>  Fri,  3 Dec 2004 11:37:26 -0200
 
 apt-proxy (1.9.21) unstable; urgency=low
 
