@@ -66,6 +66,8 @@ Consider implementing rproxy
 	- to access mirrors which may have it.
 	- sincronizing two caches
 
+Consider using apt-build to get "auto recompiled for your processor" packages.
+
 ---------------- OLD LIST from v1 ---------------------------
 TODO list for apt-proxy
 
