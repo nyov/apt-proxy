@@ -1,0 +1,763 @@
+# Translation of fr.po to french
+# Raphaël 'SurcouF' Bordet <surcouf@debianfr.net>, 2004.
+#  <surcouf@gmx.fr>, 2004.
+# 
+# 
+msgid ""
+msgstr ""
+"Project-Id-Version: apt-proxy 1.3.6.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2004-08-28 16:59+0200\n"
+"PO-Revision-Date: 2004-08-14 12:46+0200\n"
+"Last-Translator: Raphaël 'SurcouF' Bordet <surcouf@debianfr.net>\n"
+"Language-Team: French <debian-l10n-french@lists.debian.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=iso-8859-1\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# type: TH
+#: doc/apt-proxy.8:2 doc/apt-proxy.conf.5:2
+#, no-wrap
+msgid "apt-proxy"
+msgstr "apt-proxy"
+
+# type: TH
+#: doc/apt-proxy.8:2
+#, no-wrap
+msgid "05 Feb 2002"
+msgstr "05 Février 2002"
+
+# type: SH
+#: doc/apt-proxy.8:3
+#, no-wrap
+msgid "Name"
+msgstr "Nom"
+
+# type: Plain text
+#: doc/apt-proxy.8:5
+msgid "apt-proxy - A proxy for saving bandwidth to Debian servers"
+msgstr ""
+"apt\\-proxy \\- Un mandataire pour économiser de la bande passante sur les "
+"serveurs Debian"
+
+# type: SH
+#: doc/apt-proxy.8:5 doc/apt-proxy-v1tov2.8:4
+#, no-wrap
+msgid "SYNOPSIS"
+msgstr "SYNOPSIS"
+
+# type: Plain text
+#: doc/apt-proxy.8:8
+msgid "B<apt-proxy> I<[options] [logfile]>"
+msgstr "B<apt\\-proxy> I<[options] [fichier de log]>"
+
+# type: SH
+#: doc/apt-proxy.8:10 doc/apt-proxy-v1tov2.8:8 doc/apt-proxy.conf.5:6
+#, no-wrap
+msgid "DESCRIPTION"
+msgstr "DESCRIPTION"
+
+# type: Plain text
+#: doc/apt-proxy.8:16
+msgid ""
+"B<apt-proxy> is a python program designed to be run as an stand alone server "
+"via twistd, and provides a clean, caching, intelligent proxy for B<apt-get>, "
+"which speaks HTTP to apt-get clients, and http or ftp to the back-end server"
+"(s)\\&.  Usually it is run on port 9999, mainly because that is the default "
+"configuration, and people are lazy\\&."
+msgstr ""
+"B<apt\\-proxy> est un logiciel écrit en python, conçu pour tourner de lui-"
+"même via twistd et qui fournit un serveur mandataire (« proxy ») propre, "
+"cachant et intelligent pour B<apt\\-get>.Il communique via HTTP avec les "
+"clients apt\\-get et HTTP ou FTP aux serveurs\\&. Normalement, il est "
+"configuré sur le port TCP 9999, principalement parce que c'est la "
+"configuration par défaut, et que les gens sont paresseux\\&."
+
+# type: SH
+#: doc/apt-proxy.8:17
+#, no-wrap
+msgid "CLIENT CONFIGURATION"
+msgstr "CONFIGURATION DU CLIENT"
+
+# type: Plain text
+#: doc/apt-proxy.8:21
+msgid ""
+"Once B<apt-proxy> is configured, users then edit their B<sources\\&.list> "
+"file to point to the proxy (which uses the http protocol to serve clients), "
+"like so:"
+msgstr ""
+"Une fois qu'B<apt\\-proxy> est configuré, les utilisateurs doivent éditer "
+"leur fichier B<sources\\&.list> pour utiliser le serveur mandataire ou "
+"« proxy » (qui utilise le protocole HTTP pour servir les clients), comme "
+"suit :"
+
+# type: Plain text
+#: doc/apt-proxy.8:27
+#, no-wrap
+msgid ""
+"deb http://SERVER:9999/main woody main contrib non-free\n"
+"deb http://SERVER:9999/non-US woody/non-US main contrib non-free\n"
+"deb-src http://SERVER:9999/main woody main contrib non-free\n"
+"deb-src http://SERVER:9999/non-US woody/non-US main contrib non-free\n"
+msgstr ""
+"deb http://SERVER:9999/main woody main contrib non\\-free\n"
+"deb http://SERVER:9999/non\\-US woody/non\\-US main contrib non\\-free\n"
+"deb\\-src http://SERVER:9999/main woody main contrib non\\-free\n"
+"deb\\-src http://SERVER:9999/non\\-US woody/non\\-US main contrib non\\-free\n"
+
+# type: Plain text
+#: doc/apt-proxy.8:29
+#, no-wrap
+msgid "deb http://SERVER:9999/helixcode/ woody main\n"
+msgstr "deb http://SERVER:9999/helixcode/ woody main\n"
+
+# type: Plain text
+#: doc/apt-proxy.8:36
+msgid ""
+"What path should be specified after the server name and port number depends "
+"on the configuration of B<apt-proxy> (which can restrict paths and send "
+"different paths to different servers)\\&.  In this example, non-US/ and "
+"helixcode/ actually retrieve files from different back-end servers\\&."
+msgstr ""
+"Le chemin devant être spécifié après le nom du serveur et le numéro de port "
+"dépendent de la configuration d'B<apt\\-proxy> (ce qui peut restreindre les "
+"chemins et envoyer des chemins différents à différents serveurs)\\&. Dans "
+"cet exemple, non\\-US/ et helixcode/ récupèrent actuellement des fichiers de "
+"différents serveurs\\&."
+
+# type: Plain text
+#: doc/apt-proxy.8:40
+msgid ""
+"Note that you can also use the nicknames `unstable', `frozen' etc, but "
+"Packages/Sources files may get duplicated, so it is advised use either the "
+"symbolic or the code name and stick with it."
+msgstr ""
+"Notez que vous pouvez aussi utiliser les saveurs « unstable », « frozen », "
+"etc., mais les fichiers Packages/Sources seraient dupliqués, aussi il est "
+"conseillé d'utiliser soit le lien symbolique soit le nom de code mais de s'y "
+"tenir."
+
+# type: SH
+#: doc/apt-proxy.8:41
+#, no-wrap
+msgid "SERVER CONFIGURATION"
+msgstr "CONFIGURATION DU SERVER"
+
+# type: Plain text
+#: doc/apt-proxy.8:45
+msgid ""
+"See B<apt-proxy.conf>(8)  for details of how to set up apt-proxy to use "
+"backends near to you."
+msgstr ""
+"Voir B<apt\\-proxy.conf>(5) pour les détails sur comment configurer apt\\-"
+"proxy afin d'utiliser les dorsaux proches de vous."
+
+# type: SH
+#: doc/apt-proxy.8:46
+#, no-wrap
+msgid "CARE AND FEEDING OF MIRRORS"
+msgstr "SOINS ET APPROVISIONNEMENTS DES MIROIRS"
+
+# type: Plain text
+#: doc/apt-proxy.8:52
+msgid ""
+"B<apt-proxy> reduces the bandwidth requirements of Debian mirrors by "
+"restricting the frequency of Packages, Releases and Sources file updates "
+"from the back end and only doing a single fetch for any file, how ever many "
+"users request it from the proxy."
+msgstr ""
+"B<apt\\-proxy> réduit les besoins en bande passante des miroirs Debian en "
+"restreignant la fréquence des mises à jour des fichiers Packages, Releases "
+"et Sources depuis le serveur et en téléchargeant une seule fois pour tout "
+"fichier, sans tenir compte du nombre d'utilisateurs qui en font la requête "
+"au mandataire (« proxy »)."
+
+# type: SH
+#: doc/apt-proxy.8:53 doc/apt-proxy-v1tov2.8:18 doc/apt-proxy.conf.5:138
+#, no-wrap
+msgid "FILES"
+msgstr "FICHIERS"
+
+# type: Plain text
+#: doc/apt-proxy.8:55 doc/apt-proxy-v1tov2.8:20 doc/apt-proxy.conf.5:140
+msgid "/etc/apt-proxy/apt-proxy\\&.conf"
+msgstr "/etc/apt\\-proxy/apt\\-proxy\\&.conf"
+
+# type: SH
+#: doc/apt-proxy.8:56 doc/apt-proxy-v1tov2.8:24 doc/apt-proxy.conf.5:142
+#, no-wrap
+msgid "SEE ALSO"
+msgstr "VOIR AUSSI"
+
+# type: Plain text
+#: doc/apt-proxy.8:60
+msgid "B<apt-proxy.conf(5),>apt-proxy-import(8)"
+msgstr "B<apt\\-proxy.conf>(5),B<apt\\-proxy\\-import>(8)"
+
+# type: SH
+#: doc/apt-proxy.8:63 doc/apt-proxy.conf.5:150
+#, no-wrap
+msgid "BUGS"
+msgstr "ANOMALIES"
+
+# type: Plain text
+#: doc/apt-proxy.8:67
+msgid ""
+"Packages are not compressed using gzip --rsyncable, which gives a 30% "
+"reduction in bytes transferred for binary packages, and much greater for "
+"source and other packages."
+msgstr ""
+"Les paquets ne sont pas compressés en utilisant l'option \\-\\-rsyncable de "
+"gzip, ce qui octroie une réduction de 30 % pour les paquets binaires, et "
+"beaucoup plus pour les paquets sources et autres."
+
+# type: Plain text
+#: doc/apt-proxy.8:70
+msgid ""
+"NOTE: v2 doesn't officially support rsync backends, so for now the above "
+"does not apply."
+msgstr ""
+"NOTE : la seconde version ne gère pas officiellement rsync, donc, ce qui "
+"suit ne s'applique pas."
+
+# type: SH
+#: doc/apt-proxy.8:71 doc/apt-proxy.conf.5:153
+#, no-wrap
+msgid "AUTHOR"
+msgstr "AUTEUR"
+
+# type: Plain text
+#: doc/apt-proxy.8:73
+msgid ""
+"apt-proxy v2 was written by Manuel Estrada Sainz and is maintained by Chris "
+"Halls."
+msgstr ""
+"apt\\-proxy·v2 a été écrit par Manuel Estrada Sainz et est maintenu par "
+"Chris Halls."
+
+# type: TH
+#: doc/apt-proxy-v1tov2.8:1
+#, no-wrap
+msgid "APT-PROXY-V1TOV2"
+msgstr ""
+
+# type: TH
+#: doc/apt-proxy-v1tov2.8:1
+#, no-wrap
+msgid "November 2002"
+msgstr ""
+
+# type: TH
+#: doc/apt-proxy-v1tov2.8:1
+#, no-wrap
+msgid "Debian GNU/Linux"
+msgstr ""
+
+# type: TH
+#: doc/apt-proxy-v1tov2.8:1
+#, no-wrap
+msgid " "
+msgstr ""
+
+# type: SH
+#: doc/apt-proxy-v1tov2.8:2 doc/apt-proxy.conf.5:3
+#, no-wrap
+msgid "NAME"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy-v1tov2.8:4
+msgid "apt-proxy-v1tov2 - Updates apt-proxy configuration to the new format."
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy-v1tov2.8:7
+msgid "B<apt-proxy-v1tov2> [v1_conf [v2_sample_conf]] E<gt> v2_conf"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy-v1tov2.8:11
+msgid ""
+"apt-proxy-v1tov2 tries to update I<v2_sample_conf> with the configuration "
+"found in I<v1_conf> and writes the result to I<stdout>."
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy-v1tov2.8:14
+msgid ""
+"By default, it will use /etc/apt-proxy/apt-proxy.conf for I<v1_conf> and /"
+"etc/apt-proxy/apt-proxy-v2.conf for I<v2_sample_conf>."
+msgstr ""
+
+# type: SH
+#: doc/apt-proxy-v1tov2.8:15
+#, no-wrap
+msgid "NOTES"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy-v1tov2.8:17
+msgid "Hopefully the package maintainer scripts have already run this for you."
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy-v1tov2.8:22 doc/apt-proxy.conf.5:142
+msgid "/etc/apt-proxy/apt-proxy-v2\\&.conf"
+msgstr "/etc/apt\\-proxy/apt\\-proxy-v2\\&.conf"
+
+# type: SH
+#: doc/apt-proxy-v1tov2.8:22
+#, no-wrap
+msgid "AUTHORS"
+msgstr "AUTEUR"
+
+# type: Plain text
+#: doc/apt-proxy-v1tov2.8:24
+msgid "Manuel Estrada Sainz E<lt>ranty@debian.orgE<gt>"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy-v1tov2.8:29 doc/apt-proxy-import.8.inc:42
+msgid "B<apt-proxy>(8), B<apt-proxy.conf>(5)"
+msgstr "B<ap\\-proxy>(8), B<apt\\-proxy\\&.conf>(5)"
+
+# type: Plain text
+#: doc/apt-proxy-import.8.inc:4
+msgid "[NAME] apt-proxy-import - Import packages into the apt-proxy cache."
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy-import.8.inc:9
+msgid ""
+"/apt-proxy-import imports / It uses the package lists to determine where "
+"each file should be placed, so you should run B<'apt-get update'> to allow "
+"apt-proxy to update the package lists before running apt-proxy-import."
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy-import.8.inc:14
+msgid ""
+"[USING TO BOOTSTRAP A NEW APT-PROXY CACHE] If you have been using apt "
+"standalone, you probably have built up a large collection of .debs or .udebs "
+"in apt's cache directory.  You can import these files into apt-proxy as "
+"follows:"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy-import.8.inc:16
+msgid "1. Update apt-proxy's filelists:"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy-import.8.inc:18
+#, no-wrap
+msgid "    apt-get update\n"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy-import.8.inc:21
+msgid "2. Import files from apt's cache:"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy-import.8.inc:23
+#, no-wrap
+msgid "    apt-proxy-import -i /var/cache/apt/archives\n"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy-import.8.inc:27
+msgid ""
+"[IMPORTING APT-MOVE CACHE] You can import the apt-move generated cache into "
+"apt-proxy using the following command:"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy-import.8.inc:30
+#, no-wrap
+msgid "    apt-proxy-import -r -i /var/cache/apt-move\n"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy-import.8.inc:33
+msgid ""
+"This tells apt-proxy-import to recuse over each directory in the apt-move "
+"cache."
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy-import.8.inc:36
+msgid "[FILES]  /etc/apt-proxy/apt-proxy\\&.conf"
+msgstr "[FICHIERS] /etc/apt\\-proxy/apt\\-proxy\\&.conf"
+
+# type: SH
+#: doc/apt-proxy-import.8.inc:38
+msgid "[SEE ALSO]"
+msgstr "VOIR AUSSI"
+
+# type: Plain text
+#: doc/apt-proxy-import.8.inc:48
+msgid ""
+"[BUGS] apt-proxy-import does not use I<max_age> or I<max_versions> to clean "
+"the cache directory on import."
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy-import.8.inc:50
+msgid "It does not yet import source.tar.gz or Packages files."
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy-import.8.inc:52
+msgid "You must run it as the apt-proxy user or as root."
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy-import.8.inc:54
+msgid ""
+"[AUTHORS] Chris Halls E<lt>halls@debian.orgE<gt>, Manuel Estrada Sainz "
+"E<lt>ranty@debian.orgE<gt>"
+msgstr ""
+
+# type: TH
+#: doc/apt-proxy.conf.5:2
+#, no-wrap
+msgid "apt-proxy\\&.conf"
+msgstr "apt\\-proxy\\&.conf"
+
+# type: TH
+#: doc/apt-proxy.conf.5:2
+#, no-wrap
+msgid "21 Nov 2002"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:5
+msgid "apt-proxy\\&.conf - configuration file for apt-proxy"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:9
+msgid ""
+"B<apt-proxy\\&.conf> is the configuration file for apt-proxy.  When apt-"
+"proxy starts up, it will read B</etc/apt-proxy/apt-proxy\\&.conf>\\&."
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:12
+msgid ""
+"B</etc/apt-proxy/apt-proxy-v2\\&.conf> will be read instead if it exists to "
+"make upgrading from v1 easier."
+msgstr ""
+
+# type: SH
+#: doc/apt-proxy.conf.5:13
+#, no-wrap
+msgid "[DEFAULT]"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:15
+msgid "This section holds options global to the whole apt-proxy:"
+msgstr ""
+
+# type: TP
+#: doc/apt-proxy.conf.5:16
+#, no-wrap
+msgid ".B address"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:19
+msgid "IP address on which apt-proxy will listen for requests."
+msgstr ""
+
+# type: TP
+#: doc/apt-proxy.conf.5:20
+#, no-wrap
+msgid ".B port"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:23
+msgid "TCP port on which apt-proxy will listen for requests."
+msgstr ""
+
+# type: TP
+#: doc/apt-proxy.conf.5:24
+#, no-wrap
+msgid ".B min_refresh_delay"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:29
+msgid ""
+"If different from B<off>, means that Packages and other control files will "
+"not be refreshed more frequently than this number of seconds\\&."
+msgstr ""
+
+# type: TP
+#: doc/apt-proxy.conf.5:30 doc/apt-proxy.conf.5:82
+#, no-wrap
+msgid ".B timeout"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:33
+msgid "Maximum I/O timeout in seconds for backend transfers."
+msgstr ""
+
+# type: TP
+#: doc/apt-proxy.conf.5:34
+#, no-wrap
+msgid ".B cache_dir"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:37
+msgid "Cache directory.  Default: /var/cache/apt-proxy"
+msgstr ""
+
+# type: TP
+#: doc/apt-proxy.conf.5:38
+#, no-wrap
+msgid ".B cleanup_freq"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:43
+msgid ""
+"If different from B<off>, indicates the time between housekeeping attempts: "
+"delete files that have not been accessed in max_age, scan cache directories "
+"and update internal tables, ..."
+msgstr ""
+
+# type: TP
+#: doc/apt-proxy.conf.5:44
+#, no-wrap
+msgid ".B max_age"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:48
+msgid ""
+"If different from B<off>, indicates the maximum age of files before deletion "
+"from the cache."
+msgstr ""
+
+# type: TP
+#: doc/apt-proxy.conf.5:49
+#, no-wrap
+msgid ".B max_versions"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:56
+msgid ""
+"If different from B<off>, indicates the maximum number of versions of a \\&."
+"deb to keep.  This is the number of versions per distribution, for example "
+"setting max_versions to 2 will ensure that a maximum of 6 packages would be "
+"kept: the last 2 stable versions, the last 2 testing versions and the last 2 "
+"unstable versions."
+msgstr ""
+
+# type: TP
+#: doc/apt-proxy.conf.5:57 doc/apt-proxy.conf.5:96
+#, no-wrap
+msgid ".B passive_ftp"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:62
+msgid ""
+"Specify B<on> to use passive FTP, which works from behind a firewall, but "
+"may not be supported on all servers.  Specify B<off> to use active FTP "
+"instead.  Default: on"
+msgstr ""
+
+# type: TP
+#: doc/apt-proxy.conf.5:63
+#, no-wrap
+msgid ".B http_proxy"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:66
+msgid "Specify B<hostname:port> to use an upstream proxy."
+msgstr ""
+
+# type: TP
+#: doc/apt-proxy.conf.5:67
+#, no-wrap
+msgid ".B dynamic_backends"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:72
+msgid ""
+"By default apt-proxy will add HTTP backends dynamicaly if not already "
+"defined. Specify B<off> to restrict the available backends to those listed "
+"in the configuration file.  Default: on"
+msgstr ""
+
+# type: SH
+#: doc/apt-proxy.conf.5:74
+#, no-wrap
+msgid "BACKENDS"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:77
+msgid ""
+"All other sections will be interpreted as backend names, and the options "
+"specified within are local to the backend."
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:81
+msgid ""
+"The supplied apt-proxy\\&.conf will work out of the box, but I suggest you "
+"look for a mirror closer to you\\&.  There are some in the default apt-proxy"
+"\\&.conf and it may be enough just to reorder the lines in the file\\&."
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:85
+msgid "Overrides the global timeout"
+msgstr ""
+
+# type: TP
+#: doc/apt-proxy.conf.5:86
+#, no-wrap
+msgid ".B backends = \"E<lt>protocolE<gt>://E<lt>serverE<gt>/E<lt>directoryE<gt>\""
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:89
+msgid "A list of backend URLs\\&."
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:91
+msgid "Protocol - internet protocol to use: http, ftp or rsync"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:93
+msgid "Server - hostname of the backend server to contact"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:95
+msgid "Directory - directory name to prepend requests to for this server"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:99
+msgid "Override the global setting of passive_ftp"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:103
+msgid ""
+"This example shows how to give clients access to the main Debian archive:"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:107
+#, no-wrap
+msgid ""
+"[debian]\n"
+"backends = http://ftp.us.debian.org/debian/\n"
+"           http://ftp.de.debian.org/debian/\n"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:112
+msgid ""
+"Using this configuration, the client would use a B<sources.list> entry like:"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:115
+#, no-wrap
+msgid "    deb http://server:9999/debian/ woody main\n"
+msgstr "    deb http://SERVER:9999/debian/ woody main\n"
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:120
+msgid ""
+"And so the file request `/debian/woody/main/binary-i386/x11/foo_1-1.deb' "
+"would turn into a back-end request of first"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:124
+#, no-wrap
+msgid ""
+"    `http://ftp.us.debian.org/debian/woody/main/binary-i386/x11/foo_1-1.deb'\n"
+"    \n"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:126
+msgid "and if that failed,"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:130
+#, no-wrap
+msgid ""
+"    `http://ftp.de.debian.org/debian/woody/main/binary-i386/x11/foo_1-1.deb'\n"
+"    \n"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:132
+#, no-wrap
+msgid "and the file would be placed in\n"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:134
+#, no-wrap
+msgid "    `/var/cache/apt-proxy/debian/debian/woody/main/binary-i386/x11/foo_1-1.deb'\\&.\n"
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:137
+msgid ""
+"For many more examples, see the supplied /etc/apt-proxy/apt-proxy\\&.conf\\&."
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:147
+msgid "B<apt-proxy(8),> B</usr/share/doc/apt-proxy/README,>apt-proxy-import(8)"
+msgstr "B<apt-proxy>(8), B</usr/share/doc/apt-proxy/README>,B<apt-proxy-import>(8)"
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:152
+msgid "Plenty sure.  Please report."
+msgstr ""
+
+# type: Plain text
+#: doc/apt-proxy.conf.5:154
+msgid ""
+"apt-proxy v2 was written by Manuel Estrada Sainz E<lt>ranty@debian.orgE<gt>"
+"\\&."
+msgstr ""
+"apt\\-proxy·v2 a été écrit par Manuel Estrada Sainz E<lt>ranty@debian.orgE<gt>"
+"\\&."
+
+# type: Plain text
+#~ msgid "\n"
+#~ msgstr "\n"
+
+# type: Plain text
+#~ msgid "/etc/apt\\-proxy/apt\\-proxy\\&.conf"
+#~ msgstr "/etc/apt\\-proxy/apt\\-proxy\\&.conf"
+
+# type: Plain text
+#, fuzzy
+#~ msgid "B<apt\\-proxy>(8), B<apt\\-proxy.conf>(5)"
+#~ msgstr "/etc/apt\\-proxy/apt\\-proxy\\&.conf"

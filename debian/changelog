@@ -2,11 +2,17 @@ apt-proxy (1.9.17+CVS) unstable; urgency=low
   
   * Applied patch provided by Paul Wagland <paul@kungfoocoder.org> to
     improve of caching response speeds (closes: #267915)
+
+  * Applied patch provided by Julien Louis <arthur51@ifrance.com> to to
+    handle translated manpages with po4a.
   * Debconf Translations:
     - Czech (cs.po) by Jan Outrata <outrataj@upcase.inf.upol.cz>
       (closes: #266571)
     - Japanese (ja.po) by Hideki Yamane <henrich@samba.gr.jp>
       (closes: #270471)
+  * Manpage Translations:
+    - French (fr.po) by Raphaël Bordet 
+      <debian-l10n-french@lists.debian.org> (closes: #266035)
 
  -- Otavio Salvador <otavio@debian.org>  Tue, 24 Aug 2004 10:57:30 -0300
 

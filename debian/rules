@@ -6,12 +6,15 @@ build: build-stamp
 build-stamp:
 	dh_testdir
 
+	po4a doc/po4a.cfg
 	$(MAKE) -C doc apt-proxy-import.8
 	touch build-stamp
 
 clean:
 	dh_testdir
 	dh_testroot
+	po4a doc/po4a.cfg
+	rm -f doc/*.??.*
 	$(MAKE) -C doc clean
 	rm -f build-stamp install-stamp AptProxy-shutdown-2.tap
 	find . -name "*.pyc" |xargs -r rm
