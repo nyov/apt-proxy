@@ -12,9 +12,13 @@ Revise debian packing:
 	   /etc/apt-proxy/apt-proxy-v2.conf, run apt-proxy-v1tov2 to
 	   create apt-proxy-v2.conf.
 
+---------------- "Before experimental" mark ---------------------------
 It seams to get stuck some times on packages download.
 
----------------- "Before experimental" mark ---------------------------
+it looks like it is leaking FileVerifiers
+
+It doesn't deal well with servers that don't respond at all e.g.  turned off,
+unreachable
 
 I guess that for now I could trap the "database corrupted" exception and
 rebuild it automatically.
