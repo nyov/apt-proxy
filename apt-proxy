@@ -951,7 +951,7 @@ while true; do
 	exit 0
 	;;
     # We always keep the Packages and Release files uptodate: derive the .gz.
-    *Packages.gz|*Release.gz|*Sources.gz)
+    *Packages.gz|*Release.gz|*Sources.gz|*Contents-*.gz)
 	# Rsync uncompressed files and derive.
 	debug Updating compressed file \`$REQUEST\'
 	FILE=`echo $REQUEST | sed 's/\.gz$//'`
@@ -991,7 +991,7 @@ while true; do
 	conenc=x-gzip
 	;;
 
-    *Packages|*Release|*Sources)
+    *Packages|*Release|*Sources|*Contents-*)
 	debug Updating file \`$REQUEST\'
 	resolve_url $REQUEST 1
 	STREAM="`fetch_file_maybe $URL_REST $FRONT_BASE $BACKS`"
