@@ -21,16 +21,27 @@ import ConfigParser, os
 from ConfigParser import DEFAULTSECT
     
 class MyConfigParser(ConfigParser.ConfigParser):
-    "Just adds 'gettime' to ConfigParser to interpret the suffixes."
+    """
+    Adds 'gettime' to ConfigParser to interpret the suffixes.
+    Interprets 'disabled_keyword' as disabled (None).
+    """
     time_multipliers={
         's': 1,    #seconds
         'm': 60,   #minutes
         'h': 3600, #hours
         'd': 86400,#days
         }
-    def gettime(self, section, option):
+    disabled_keyword = 'off'
+    def getint(self, section, option, allow_disabled=0):
+        value = self.get(section, option)
+        if allow_disabled and value = disabled_keyword:
+            return None
+        return int(value)
+    def gettime(self, section, option, allow_disabled=0):
         mult = 1
         value = self.get(section, option)
+        if allow_disabled and value = disabled_keyword:
+            return None
         suffix = value[-1].lower()
         if suffix in self.time_multipliers.keys():
             mult = self.time_multipliers[suffix]
@@ -63,10 +74,10 @@ def factoryConfig(factory):
     factory.proxy_port = conf.getint(DEFAULTSECT, 'port')
     factory.cache_dir = conf.get(DEFAULTSECT, 'cache_dir')
     factory.max_freq = conf.gettime(DEFAULTSECT, 'min_refresh_delay')
-    factory.max_versions = conf.getint(DEFAULTSECT, 'max_versions')
-    factory.max_age = conf.gettime(DEFAULTSECT, 'max_age')
+    factory.max_versions = conf.getint(DEFAULTSECT, 'max_versions', 1)
+    factory.max_age = conf.gettime(DEFAULTSECT, 'max_age', 1)
     factory.timeout = conf.gettime(DEFAULTSECT, 'timeout')
-    factory.cleanup_freq = conf.gettime(DEFAULTSECT, 'cleanup_freq')
+    factory.cleanup_freq = conf.gettime(DEFAULTSECT, 'cleanup_freq', 1)
     factory.do_debug = conf.get(DEFAULTSECT, 'debug')
     if factory.debug != '0':
         factory.debug = {'debug':'9'}

@@ -1320,7 +1320,8 @@ class Factory(protocol.ServerFactory):
         self.clean_old_files()
         self.recycler.start()
         log.debug("Periodic cleaning done")
-        reactor.callLater(self.cleanup_freq, self.periodic)
+        if (self.cleanup_freq != None):
+            reactor.callLater(self.cleanup_freq, self.periodic)
 
     def __init__ (self):
         self.runningFetchers = {}
@@ -1336,9 +1337,10 @@ class Factory(protocol.ServerFactory):
         self.access_times = shelve.open(db_dir+'/access.db')
         self.packages = shelve.open(db_dir+'/packages.db')
         #start periodic updates
-        reactor.callLater(self.cleanup_freq, self.periodic)
         self.recycler = misc.MirrorRecycler(self, 1)
         self.recycler.start()
+        if (self.cleanup_freq != None):
+            reactor.callLater(self.cleanup_freq, self.periodic)
         import apt_pkg
         apt_pkg.InitSystem()
     def clean_versions(self, packages):
@@ -1348,6 +1350,10 @@ class Factory(protocol.ServerFactory):
 
         NOTE: This should probably be done per distribution.
         """
+        if self.max_versions = None:
+            #max_versions is disabled
+            return
+        
         cache_dir = self.cache_dir
         info = {}
         def compare(a, b):
@@ -1383,6 +1389,9 @@ class Factory(protocol.ServerFactory):
         Remove files which haven't been accessed for more than 'max_age' and
         all entries for files which are no longer there.
         """
+        if self.max_age = None:
+            #old file cleaning is disabled
+            return
         cache_dir = self.cache_dir
         files = self.access_times.keys()
         min_time = time.time() - self.max_age
