@@ -1,3 +1,19 @@
+apt-proxy (1.2.1) unstable; urgency=low
+
+  * Reset access time on version n-1 when downloading n, so the cache cleaning
+    algorithm works better (came up in the discussion for bug #131883)
+  * Add Contents-* to list of control files, so apt-proxy works with apt-file.
+    (closes: #134217)
+  * Add version to debhelper build dependency (>> 3.0.0)
+  * On purge, remove the cache directory
+  * Make it possible to install on Potato again by removing --diabled-login
+    and --shell from adduser invocation.  They are on by default for a system
+    user anyway. (Sourceforge bug #516318)
+  * Add note to README about usage on Potato
+  * Make Debian native
+
+ -- Chris Halls <chris.halls@nikocity.de>  Thu, 21 Feb 2002 18:47:08 +0100
+
 apt-proxy (1.2.0-1) unstable; urgency=low
 
   * New upstream release
