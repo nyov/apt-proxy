@@ -3,8 +3,8 @@
 # Copyright Paul Russell <rusty@samba.org>
 # Released under the GPL version 2 or later
 #	Fixed by Stephen Rothwell <sfr@canb.auug.org.au>
-#	Additional fixes by Chris Halls <chris.halls@nikocity.de> for Debian
 #       Stuff by Martin Schwenke <martin@meltin.net>
+#	Additional fixes by Chris Halls <chris.halls@nikocity.de> for Debian
 #
 #	`perl!' -- Anton Blanchard
 #	`I was joking!' -- Paul Mackerras
@@ -299,6 +299,7 @@ resolve_file()
 # return 1 if no lockfile
 #	test_lockfile(lockfile)
 test_lockfile()
+{
     LOCKFILE=$1
 
     [ -f $LOCKFILE ] || return 1
@@ -363,6 +364,7 @@ wait_for_lock()
 # create_packages_filelist (file)
 create_packages_filelist ()
 {
+    debug create_packages_filelist "$1"
     PREFIX=`resolve_file $1`
     [ -n "$PREFIX"  ] || return
 
@@ -372,7 +374,8 @@ create_packages_filelist ()
 
     OUTFILE="${PREFIX}.apt-proxy-filelists/`echo $FILE_REST | tr -s / _`"
 
-    [ $OUTFILE -ot $1 ] || return
+    # Don't bother if OUTFILE has already been created and is newer
+    [ $OUTFILE -nt $1 ] && return
 
     OUTDIR=`dirname $OUTFILE`
     [ -d $OUTDIR ] || mkdir -p $OUTDIR
@@ -405,6 +408,8 @@ create_packages_filelist ()
 # create_all_packages_filelists ()
 create_all_packages_filelists ()
 {
+    debug create_all_packages_filelists
+
     for try in $APT_PROXY_BACKENDS; do
 	PREFIX=`echo $try | cut -d, -f2`
 	find $PREFIX -name Packages
@@ -708,38 +713,29 @@ remove_extra_versions ()
     rm -f ${REC_LOCKFILE}
     [ -n "$REC_CURRENT" ] || return  # Or should this remove all of them?  :-)
 
-    # Pop off 1st item
+    # Place sorted list of current .debs in positional parameters so we can use shift.
     set -- $REC_CURRENT
-    CURR=$1
-    shift
-    REC_CURRENT="$@"
 
     # Now try to match them.
-    COUNT=""
+    COUNT=0
     for i in $REC_FILES; do
-	if [ -n "$CURR" ] ; then
+	if [ $# -gt 0 ] ; then
 	    # Have current file to compare to.
-	    if [ "$i" = "$CURR" ] ; then
+	    if [ "$i" = "$1" ] ; then
 		# This is the next current file, so keep it.
 		COUNT=1
 		# Pop off next item
-		set -- $REC_CURRENT
-		CURR=$1
 		shift
-		REC_CURRENT="$@"
-	    elif deb_compare_versions $i lt "$CURR" ; then
+	    elif deb_compare_versions $i lt "$1" ; then
 		# Older than next current file: current is missing so pop it.
 		COUNT=1
 		# Pop off next item
-		set -- $REC_CURRENT
-		CURR=$1
 		shift
-		REC_CURRENT="$@"
-	    elif [ -n "$COUNT" ] ; then
+	    elif [ $COUNT -ge 1 ] ; then
 		# Newer than next current file and previous current
 		# file exists, so this is an intermediate version that
 		# we might want to delete.
-		COUNT=`expr $COUNT + 1`
+		COUNT=$(($COUNT + 1))
 		if [ $COUNT -gt $MAX_VERSIONS ] ; then
 		    log "Removing surplus version: $i"
 		    rm -f $i
@@ -750,7 +746,7 @@ remove_extra_versions ()
 	    fi
 	else
 	    # Files left over after last current one, so maybe delete.
-	    COUNT=`expr $COUNT + 1`
+	    COUNT=$(($COUNT + 1))
 	    if [ $COUNT -gt $MAX_VERSIONS ] ; then
 		log "Removing surplus version: $i"
 		rm -f $i
