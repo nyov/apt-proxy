@@ -1168,6 +1168,8 @@ class Backend:
         if '@' in netloc:
             auth, netloc = netloc.split('@')
             self.username, self.password = auth.split(':')
+        else:
+            self.username = None
         if ':' in netloc:
             self.host, self.port = netloc.split(':')
         else:
