@@ -1,4 +1,4 @@
-apt-proxy (1.9.18+CVS) UNRELEASED; urgency=low
+apt-proxy (1.9.19) unstable; urgency=low
 
   * Fix format in apt-proxy.conf(5). (closes: #272153) (Otavio)
   * Add default to 30 in timeout parameter when importing from version
@@ -25,7 +25,7 @@ apt-proxy (1.9.18+CVS) UNRELEASED; urgency=low
   * Fix apt-proxy(8) backend name to debian instead of main. 
     Closes: #277447. (Otavio)
 
- -- Chris Halls <halls@debian.org>  Mon, 11 Oct 2004 18:01:22 +0100
+ -- Otavio Salvador <otavio@debian.org>  Thu, 18 Nov 2004 16:10:56 -0200
 
 apt-proxy (1.9.18) unstable; urgency=low
 
