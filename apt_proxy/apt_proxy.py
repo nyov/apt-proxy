@@ -68,10 +68,7 @@ filetypes = (
     FileType(re.compile(r"\.bin$"), "application/octet-stream", 0),
     FileType(re.compile(r"\.tgz$"), "application/x-gzip", 0),
 
-    FileType(re.compile(r"/Packages(\.gz)?$"), "text/plain", 1),
-    FileType(re.compile(r"/Release(\.gz)?$"), "text/plain", 1),
-    FileType(re.compile(r"/Sources(\.gz)$"), "text/plain", 1),
-    FileType(re.compile(r"/Contents-.*(\.gz)$"), "text/plain", 1)
+    FileType(re.compile(r"/(Packages|Release|Sources|Contents-.*)(\.(gz|bz2))?$"), "text/plain", 1),
     )
 
 class FileVerifier(protocol.ProcessProtocol):
@@ -105,6 +102,9 @@ class FileVerifier(protocol.ProcessProtocol):
         elif re.search(r"\.gz$", self.path):
             exe = '/bin/gunzip'
             args = (exe, '-t', '-v', self.path)
+        elif re.search(r"\.bz2$", self.path):
+            exe = '/usr/bin/bunzip2'
+            args = (exe, '--test', self.path)
         else:
             exe = '/bin/sh'
             args = (exe, '-c', "echo unknown file: not verified 1>&2")
