@@ -1,0 +1,96 @@
+#
+#    Translators, if you are not familiar with the PO format, gettext
+#    documentation is worth reading, especially sections dedicated to
+#    this format, e.g. by running:
+#         info -n '(gettext)PO Files'
+#         info -n '(gettext)Header Entry'
+#
+#    Some information specific to po-debconf are available at
+#            /usr/share/doc/po-debconf/README-trans
+#         or http://www.debian.org/intl/l10n/po-debconf/README-trans
+#
+#    Developers do not need to manually edit POT or PO files.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: apt-proxy\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2004-07-16 10:00-0300\n"
+"PO-Revision-Date: 2004-08-13 15:32+0200\n"
+"Last-Translator: Jan Outrata <outrataj@upcase.inf.upol.cz>\n"
+"Language-Team: Czech <provoz@debian.cz>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=ISO-8859-2\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. Type: note
+#. Description
+#: ../templates:3
+msgid "Upgrading from pre-v1.9 packages."
+msgstr "Aktualizace z pre-v1.9 balíèkù."
+
+#. Type: note
+#. Description
+#: ../templates:3
+msgid "You seem to be upgrading from a version of apt-proxy previous to v1.9."
+msgstr "Zdá se, ¾e aktualizujete z verze apt-proxy pøed v1.9."
+
+#. Type: note
+#. Description
+#: ../templates:3
+msgid ""
+"apt-proxy has been rewritten in python and the new configuration file format "
+"is incompatible with previous version. Hopefully you will like the new "
+"format better :)"
+msgstr ""
+"apt-proxy bylo pøepsáno do pythonu a nový formát konfiguraèního "
+"souboru je nekompatibilní s pøedchozí verzí. Doufáme, ¾e shledáte nový "
+"formát lep¹ím :)"
+
+#. Type: note
+#. Description
+#: ../templates:3
+msgid ""
+"I will build /etc/apt-proxy/apt-proxy-v2.conf based on your old settings if "
+"you did't already have such file. In any case, a backup file will be written "
+"to /etc/apt-proxy/apt-proxy-v2.conf.backup"
+msgstr ""
+"Vytvoøím /etc/apt-proxy/apt-proxy-v2.conf na základì va¹ich starých "
+"nastaveních, pokud ji¾ takový soubor nemáte. V ka¾dém pøípadì bude "
+"zapsán zálo¾ní soubor do /etc/apt-proxy/apt-proxy-v2.conf.backup"
+
+#. Type: note
+#. Description
+#: ../templates:3
+msgid ""
+"There are also other issues documented in /usr/share/doc/apt-proxy/UPGRADING"
+msgstr ""
+"V /usr/share/doc/apt-proxy/UPGRADING jsou dokumentovány je¹tì dal¹í "
+"problémy."
+
+#. Type: note
+#. Description
+#: ../templates:19
+msgid "Upgrading issues"
+msgstr "Problémy aktualizace"
+
+#. Type: note
+#. Description
+#: ../templates:19
+msgid ""
+"The upgrading script dumped some warnings and they have been mailed to "
+"root@localhost."
+msgstr ""
+"Aktualizaèní skript vyprodukoval nìjaká varování, která byla zaslána "
+"mailem na root@localhost."
+
+#. Type: note
+#. Description
+#: ../templates:19
+msgid ""
+"You should read those warnings and /usr/share/doc/apt-proxy/UPGRADING and "
+"revise your configuration (/etc/apt-proxy/apt-proxy-v2.conf)"
+msgstr ""
+"Mìli byste si tato varování a /usr/share/doc/apt-proxy/UPGRADING "
+"pøeèíst a zkontrolovat va¹i konfiguraci "
+"(/etc/apt-proxy/apt-proxy-v2.conf)"
