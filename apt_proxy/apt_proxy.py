@@ -47,10 +47,11 @@ class FileType:
     """
     This is just a way to distinguish between different filetypes.
 
-    self.regex: regular expresion that should match. It could probably be
-    self.replaced with something simpler, but... o well, it works.
+    self.regex: regular expression that files of this type should
+    match. It could probably be replaced with something simpler,
+    but... o well, it works.
     
-    self.contype: string to the content-type http header.
+    self.contype: mime string for the content-type http header.
     
     mutable: is it a Packages/Sources/...
     
@@ -67,13 +68,16 @@ class FileType:
         else:
             return 0
 
+# Set up the list of filetypes that we are prepared to deal with.
+# If it is not in this list, then we will ignore the file and
+# return an error.
 filetypes = (
     FileType(re.compile(r"\.deb$"), "application/dpkg", 0),
-    FileType(re.compile(r"\.tar\.gz$"), "application/x-gzip", 0),
+    FileType(re.compile(r"\.tar\.gz$"), "application/x-gtar", 0),
     FileType(re.compile(r"\.dsc$"),"text/plain", 0),
     FileType(re.compile(r"\.diff\.gz$"), "application/x-gzip", 0),
     FileType(re.compile(r"\.bin$"), "application/octet-stream", 0),
-    FileType(re.compile(r"\.tgz$"), "application/x-gzip", 0),
+    FileType(re.compile(r"\.tgz$"), "application/x-gtar", 0),
 
     FileType(
     re.compile(r"/(Packages|Release|Sources|Contents-.*)(\.(gz|bz2))?$"),
@@ -82,11 +86,11 @@ filetypes = (
 
 class FileVerifier(protocol.ProcessProtocol):
     """
-    It tryes to verify the integrity of a file by running some external
+    It trys to verify the integrity of a file by running an external
     command.
 
-    self.deferred: a deferred that will be trigered when the command
-    finishes or times out.
+    self.deferred: a deferred that will be triggered when the command
+    completes, or if a timeout occurs.
 
     Sample:
     
@@ -94,7 +98,7 @@ class FileVerifier(protocol.ProcessProtocol):
             verifier.deferred.addCallbacks(callback_if_ok, callback_if_fail)
             verifier.deferred.arm()
 
-        then eigher callback_if_ok or callback_if_fail will be called
+        then either callback_if_ok or callback_if_fail will be called
         when the subprocess finishes execution.
 
     Checkout twisted.internet.defer.Deferred on how to use self.deferred
@@ -127,6 +131,7 @@ class FileVerifier(protocol.ProcessProtocol):
     def outReceived(self, data):
         #we only care about errors
         pass
+    
     def errReceived(self, data):
         self.data = self.data + data
 
@@ -184,11 +189,11 @@ class TempFile (file):
 
 class Fetcher:
     """
-    This is the base class for all Fetcher*, it tryies to hold as much
+    This is the base class for all Fetcher*, it tries to hold as much
     common code as posible.
 
-    Subclasses of this class are the ones responsable of contacting the backend
-    servers and fetching.
+    Subclasses of this class are the ones responsible for contacting
+    the backend servers and fetching the actual data.
     """
     gzip_convert = re.compile(r"/Packages$")
     post_convert = re.compile(r"/Packages.gz$")

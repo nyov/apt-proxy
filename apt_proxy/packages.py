@@ -198,7 +198,7 @@ class AptPackages:
       
 
     def get_mirror_versions(self, info):
-        "Find the available versions of the package descrived by 'info'"
+        "Find the available versions of the package described by 'info'"
         self.load()
         name=info['Package']
         vers = []
