@@ -1,13 +1,6 @@
 TODO list for apt-proxy
 
-- Change default user to apt-proxy.  Add debconf questions for username and
-  port number.  Create the user, enable the service in inetd, create the log
-  file and change ownership to the apt-proxy user.
-
-- Bzzt... contact established with upstream.  They are active and have sent an
-  update including cache cleaing that uses the Packages files to remove
-  versions that are no longer in the archives.  I have integrated it into my
-  local copy and will release in a few days if no problems arise.
+- Add debconf questions for default user and cache directory
 
 - Add more possible servers to default config file.  I would be grateful if
   people who are using alternative servers would file a wishlist bug containing
@@ -15,4 +8,4 @@ TODO list for apt-proxy
 
 - Work through the remaining bugs in the BTS.  Keep those reports coming in folks!
 
-Chris Halls, Jan 2002
+Chris Halls, Feb 2002
