@@ -1,3 +1,11 @@
+apt-proxy (1.3.2.3pre1) unstable; urgency=low
+
+  * Fix section typo in apt-proxy manpage (closes: #151208)
+  * Download compressed Packages.gz from rsync backend if no local file is
+    available.  Thanks to Roland Gerlach for the analysis.
+
+ -- Chris Halls <chris.halls@gmx.de>  Thu,  4 Jul 2002 09:11:29 +0200
+
 apt-proxy (1.3.2) unstable; urgency=low
 
   * Depend on binutils for ar (closes: #143573)
@@ -15,7 +23,7 @@ apt-proxy (1.3.2) unstable; urgency=low
   * Manuel Estrada Sainz: 
     - convert /dirname/../ into / (closes: #149166)
     - let apt-proxy-import accept relative pathnames (closes: #149200)
-    - delete aptproxy user in postrm (closes: #149200)
+    - delete aptproxy user in postrm (closes: #148383)
 
  -- Chris Halls <chris.halls@gmx.de>  Fri, 14 Jun 2002 17:05:35 +0200
 
