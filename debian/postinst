@@ -2,6 +2,43 @@
 
 #DEBHELPER#
 
-update-inetd --add "9999           stream  tcp     nowait.400      apt-user    /usr/sbin/tcpd /usr/sbin/apt-proxy /var/log/apt-proxy.log"
-update-inetd --disable 9999
+set -e
+case "$1" in
+    configure)
+	# First time installation only.  Upgrades skip this.
+	if [ "$2" = "" ]; then
+	    APTPROXY_USER=aptproxy
+	    APTPROXY_LOGFILE=/var/log/apt-proxy.log
+
+	    echo Adding apt-proxy service at port 9999 and creating $APTPROXY_USER user...
+	    # Create user
+	    if [ -x /usr/sbin/adduser ]; then
+	        id $APTPROXY_USER > /dev/null 2>&1 ||
+		    adduser --system --ingroup nogroup --home /var/cache/apt-proxy \
+		    --no-create-home \
+		    --shell /bin/sh --disabled-login $APTPROXY_USER
+	    fi
+
+
+	    # Add inetd service
+	    update-inetd --add "9999           stream  tcp     nowait.400      $APTPROXY_USER    \
+			    /usr/sbin/tcpd /usr/sbin/apt-proxy -l $APTPROXY_LOGFILE"
+
+	    # Make apt-proxy user own cache directory
+	    chown -R $APTPROXY_USER /var/cache/apt-proxy
+	    # Create a blank logfile owned by apt-proxy user
+	    touch $APTPROXY_LOGFILE
+	    chown $APTPROXY_USER:adm $APTPROXY_LOGFILE
+	    chmod 640 $APTPROXY_LOGFILE
+	fi
+        ;;
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        ;;
+esac
+
+exit 0
+
 
