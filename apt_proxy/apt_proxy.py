@@ -18,7 +18,7 @@
 from twisted.internet import reactor, defer
 from twisted.protocols import http, protocol, ftp
 from twisted.web import static
-import os, stat, signal, fcntl
+import os, stat, signal, fcntl, exceptions
 from os.path import dirname, basename
 import re
 import urlparse
@@ -353,7 +353,12 @@ class AptProxyClient:
 
         Let's everyone know that we are not the active client for our uri.
         """
-        del self.factory.runningClients[self.request.uri]
+        try:
+            del self.factory.runningClients[self.request.uri]
+        except exceptions.KeyError:
+            self.factory.debug("We are not on runningClients!!!")
+            self.factory.debug(str(self.factory.runningClients))
+            raise exceptions.KeyError
 
     def connectionFailed(self):
         """
