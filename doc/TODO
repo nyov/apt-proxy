@@ -97,6 +97,33 @@ Deal with permissions problems in the cache gracefully, not like this:
 22/08/2002 17:23 [-] exceptions.IOError: [Errno 13] Permission denied: '/var/cache/apt-proxy/security/dists/sarge/updates/non-free/binary-i386/Packages'
 22/08/2002 17:23 [AptProxyClientHttp,client] [http_client:9]GET:/debian-security/dists/sarge/updates/non-free/binary-i386/Rele
 
+---------------- Clean up of naming conventions -------------
+
+To help Chris get his head around the code :)
+
+Some suggestions that were hashed out:
+
+- Change 'client' -> 'downloader' where appropriate -
+16:39 < haggai> it makes it very difficult to understand what is going on
+16:40 < haggai> can we say maybe use a word like downloader or fetcher or retriever instead of client for the fetching code?
+16:43 < haggai> so AptProxyClient.activate(self, request)
+16:43 < haggai> becomes AptProxyDownloader.activate(self, request)
+16:44 < ranty> I would rather call it Downloader<Protocol>
+16:45 < haggai> so basically s/client/downloader everywhere that it does not refer to a real apt-get client
+
+- Remove AptProxy prefix -
+16:43 < ranty> since all that is already in module 'apt_proxy'
+16:44 < ranty> we could remove the AptProxy
+16:48 < ranty> maybe it should be just 'ap' to mean '(a)pt-(p)roxy'
+
+- Reduce imports at top of file -
+16:54 < ranty> but I don't understand how you plan to fix the namespace problem.
+16:56 < haggai> oh, not really.  My only suggestion is to avoid excessibe use of 'import', or maybe to split into smaller source files
+
+- Move aptProxyClientDownload function -
+17:07 < haggai> I didn't understand why aptProxyClientDownload is a standalone function and not a member of AptProxy
+17:11 < ranty> thinking over, it could probably be part of AptProxyRequest instead.
+
 ---------------- OLD LIST from v1 ---------------------------
 TODO list for apt-proxy
 
