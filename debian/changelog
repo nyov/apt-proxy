@@ -1,9 +1,9 @@
-apt-proxy (1.9.19+CVS) UNRELEASED; urgency=low
+apt-proxy (1.9.20) unstable; urgency=low
 
   * Close temporary files when finish to transfer data.
-    Closes: #281156. (Otavio)
-  * Change to use bsddb3 database library bacause it's thread safe and
-    faster then python native version. Closes: #262097. (Otavio)
+    Closes: #281156 (Otavio)
+  * Change to use bsddb3 database library bacause it's faster then python
+    native version. Closes: #262097 (Otavio)
   * Files were being stored in memory while they were downloaded, 
     removed.  Reduces CPU usage while downloading large files.
     Closes: #271820 (Chris)
@@ -12,7 +12,7 @@ apt-proxy (1.9.19+CVS) UNRELEASED; urgency=low
   * Change where we import the tempfile module to improve the
     speed. (Otavio)
 
- -- Chris Halls <halls@debian.org>  Sun, 28 Nov 2004 21:49:18 +0000
+ -- Otavio Salvador <otavio@debian.org>  Sun, 28 Nov 2004 20:32:34 -0200
 
 apt-proxy (1.9.19) unstable; urgency=low
 
