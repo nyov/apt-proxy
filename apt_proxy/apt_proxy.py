@@ -187,6 +187,7 @@ def aptProxyClientDownload(request, serve_cached=1):
         if len(dummy_client.requests)==0:
             #The request's are gone, the clients probably closed the conection
             log.debug("THE REQUESTS ARE GONE (Clients closed conection)")
+            dummy_client.aptEnd()
             return
         req = dummy_client.fix_ref_request()
         client_class = req.backend.client
@@ -889,6 +890,7 @@ class AptProxyClientFile(AptProxyClient):
 
     request = None
     laterID = None
+    file = None
     def if_modified(self, request):
         """
         Check if the file was 'modified-since' and tell the client if it
@@ -947,7 +949,8 @@ class AptProxyClientFile(AptProxyClient):
     def aptEnd(self):
         if self.laterID:
             reactor.cancelCallLater(self.laterID)
-        self.file.close()
+        if self.file:
+            self.file.close()
         AptProxyClient.aptEnd(self)
                                          
 class AptProxyBackend:
@@ -1202,7 +1205,11 @@ class AptLoopbackRequest(AptProxyRequest):
         "We don't care for the data, just want to know then it is served."
         pass
     def send_cached(self):
-        "If he wanted to know, tell dady that we are served."
+        """
+        If he wanted to know, tell dady that we are served.
+
+        This is redundant with the loop_serve_if_cached flag.
+        """
         if self.finish_cb:
             self.finish_cb()
         pass
