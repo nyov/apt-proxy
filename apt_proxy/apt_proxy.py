@@ -26,6 +26,8 @@ import string
 import shelve
 from twisted.python.failure import Failure
 import memleak
+from posixfile import SEEK_SET, SEEK_CUR, SEEK_END 
+from types import *
 
 #sibling imports
 import packages, misc
@@ -157,6 +159,23 @@ def findFileType(name):
             return type
     return None
 
+class TempFile (file):
+    def __init__(self, mode='w+b', bufsize=-1):
+        import tempfile
+        name = tempfile.mktemp('.apt-proxy')
+        file.__init__(self, name, mode, bufsize)
+        os.unlink(name)
+    def append(self, data):
+        self.seek(0, SEEK_END)
+        self.write(data)
+    def read(self, size=-1, start=None):
+        if start != None:
+            self.seek(start, SEEK_SET)
+        return file.read(self, size)
+    def size(self):
+        self.seek(0, SEEK_END)
+        return self.tell()
+
 class Fetcher:
     """
     This is the base class for all Fetcher*, it tryies to hold as much
@@ -198,8 +217,8 @@ class Fetcher:
             request.setResponseCode(self.status_code, self.status_message)
         for name, value in self.request.headers.items():
             request.setHeader(name, value)
-        if self.transfered != '':
-            request.write(self.transfered)
+        if self.transfered.size() != 0:
+            request.write(self.transfered.read(start=0))
 
     def remove_request(self, request):
         """
@@ -246,7 +265,7 @@ class Fetcher:
 
     def __init__(self, request=None):
         self.requests = []
-        self.transfered = ''
+        self.transfered = TempFile()
         if(request):
             self.activate(request)
             
@@ -281,15 +300,15 @@ class Fetcher:
         received.
         """
         if self.length != None:
-            self.transfered = self.transfered + data[:self.length]
+            self.transfered.append(data[:self.length])
             for req in self.requests:
                 req.write(data[:self.length])
         else:
-            self.transfered = self.transfered + data
+            self.transfered.append(data)
             for req in self.requests:
                 req.write(data)
 
-    def apDataEnd(self, buffer):
+    def apDataEnd(self, data):
         """
         Called by subclasses when the data transfer is over.
 
@@ -297,6 +316,7 @@ class Fetcher:
            -takes care or mtime and atime
            -finishes connection with server and the requests
         """
+        import shutil
         if (self.status_code == http.OK):
             dir = dirname(self.local_file)
             if(not os.path.exists(dir)):
@@ -304,7 +324,10 @@ class Fetcher:
             f = open(self.local_file, "w")
             fcntl.lockf(f.fileno(), fcntl.LOCK_EX)
             f.truncate(0)
-            f.write(buffer)
+            if type(data) is StringType:
+                f.write(data)
+            else:
+                shutil.copyfileobj(data, f)
             f.close()
             if self.local_mtime != None:
                 os.utime(self.local_file, (time.time(), self.local_mtime))

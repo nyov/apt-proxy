@@ -5,6 +5,9 @@
 
 ---------------- "Not so urgent" mark ---------------------------
 
+When a file transfer is finished, move the temporary file instead of coping
+it.
+
 Mirror house-keeping:MAX_VERSIONS
 	keep track of versions per distro (potato/woody/sid)
 		python-apt should help on that
