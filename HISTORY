@@ -1,3 +1,6 @@
+1.2.1:
+	Reset access times of old versions when copying
+	Add Contents- to control files for apt-file compatibility
 1.2.0:
 	Gerhard Muntingh:
 	  - Add logfile and configfile command line options
