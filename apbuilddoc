@@ -1,0 +1,6 @@
+#!/bin/sh
+[ ! -d html ] && mkdir html
+cd html
+PYTHONPATH="`pwd`:../apt_proxy" pydoc -w ../apt_proxy/*
+
+
