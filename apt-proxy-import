@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: apt-proxy-import,v 1.10 2002/04/04 10:49:39 haggai Exp $
+# $Id: apt-proxy-import,v 1.11 2002/04/12 10:57:16 ranty Exp $
 # Import package files from incoming directories
 #
 # Copyright 2002 Chris Halls <chris.halls@gmx.de>
@@ -13,21 +13,42 @@ VERSION=0.3
 CONFIG_FILE=/etc/apt-proxy/apt-proxy.conf
 EXACT_MOVING=on
 FUZZY_MATCHING="packages fuzzy_packages"
+echo=/bin/echo
 DPKG_NAME=/usr/bin/dpkg-name
 
 usage()
 {
-  echo "$PROGNAME version $VERSION: import package files into apt-proxy archive"
+  echo "Usage: $PROGNAME [OPTIONS] <directory> ..."
   echo
-  echo "usage: $PROGNAME [-c <config-file>] [-d] <directory> ...."
+  echo "apt-proxy-import imports .deb files into the apt-proxy cache."
   echo
-  echo -e "\t<directory>      - directory containing files to import."
-  echo -e "\t-c <config-file> - location of apt-proxy configuration file"
-  echo -e "\t-d		   - verbose"
+  echo "$PROGNAME should be run as the aptproxy user, or as " \
+	"root  so  that  it  can  set  the  file permissions on the " \
+	"imported files in the cache directory."
   echo
-  echo "example: $PROGNAME /var/cache/apt/archives"
-  echo "$PROGNAME should be run as the aptproxy user, or as root."
+  echo "apt-proxy-import's command option summary:"
   echo
+  $echo -e "  <directory>\t\t\t directory containing files to import."
+  echo
+  echo     "             \t\t\t e.g.: /var/cache/apt/archives"
+  echo
+  $echo -e "  -c, --config-file=config_file  set location of apt-proxy " \
+  	   "configuration file\n" \
+	   "                                where backend directories" \
+	   " are defined.\n\n"\
+	   "                                (default: $CONFIG_FILE)" 
+  echo
+  $echo -e "  -d, --verbose\t\t\t give verbose output"
+  $echo -e "  -h, --help\t\t\t show this help, then exit"
+  $echo -e "  -v, --version\t\t\t print version number, then exit"
+  echo
+  echo 
+  echo "Report bugs to Debian's Bug Tracking System:"
+  echo 
+  echo "First checkout reported bugs at http://bugs.debian.org/apt-proxy"
+  echo "and then if you still wish to report a bug  in  apt-proxy, please"
+  echo "see /usr/share/doc/debian/bug-reporting.txt or the reportbug(1)"
+  echo "command."
 }
 
 line_feedback()
@@ -147,7 +168,11 @@ while true ; do
 		CONFIG_FILE="$2"
 		shift 2
 		;;
-	  '-h'|'--help'|'--version'|'-v')
+	  '--version'|'-v')
+  		echo "$PROGNAME $VERSION"
+                exit 1
+                ;;
+	  '-h'|'--help')
                 usage
                 exit 1
                 ;;
