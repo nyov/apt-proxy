@@ -33,7 +33,7 @@ import calendar
 import sys
 
 # sibling imports
-from twisted.protocols import basic, protocol
+import basic, protocol
 
 # twisted imports
 from twisted.internet import interfaces, reactor
@@ -216,15 +216,8 @@ def toChunk(data):
     return "%x\r\n%s\r\n" % (len(data), data)
 
 def fromChunk(data):
-    """Convert chunk to string.
-
-    Returns tuple (result, remaining), may raise ValueError.
-    """
-    prefix, rest = string.split(data, '\r\n', 1)
-    length = int(prefix, 16)
-    if not rest[length:length+2] == '\r\n':
-        raise ValueError, "chunk must end with CRLF"
-    return rest[:length], rest[length+2:]
+    """Convert chunk to string."""
+    raise NotImplementedError
 
 
 class HTTPClient(basic.LineReceiver):
@@ -314,9 +307,6 @@ class Request:
         self.queued = queued
         self.received_headers = {}
         self.received_cookies = {}
-        self.headers = {} # outgoing headers
-        self.cookies = [] # outgoing cookies
-
         if queued:
             self.transport = StringIO()
         else:
@@ -381,6 +371,8 @@ class Request:
         from string import split
         self.args = {}
         self.stack = []
+        self.headers = {}
+        self.cookies = [] # outgoing cookies
         
         self.method, self.uri = command, path
         self.clientproto = version
@@ -451,12 +443,25 @@ class Request:
             del self.producer
         else:
             self.transport.unregisterProducer()
-
-
-    # private http response methods
     
+    
+    # http response methods
+    
+    def _sendStatus(self, code, resp=''):
+        """Send a status code."""
+        self.transport.write('%s %s %s\r\n' % (self.clientproto, code, resp))
+
+    def _sendHeader(self, name, value):
+        """Send a header."""
+        self.transport.write('%s: %s\r\n' % (name, value))
+
+    def _endHeaders(self):
+        """Finished sending headers."""
+        self.transport.write('\r\n')
+
     def _sendError(self, code, resp=''):
-        self.transport.write('%s %s %s\r\n\r\n' % (self.clientproto, code, resp))
+        self._sendStatus(code, resp)
+        self._endHeaders()
 
     
     # http request methods
@@ -496,22 +501,18 @@ class Request:
         """
         if not self.startedWriting:
             self.startedWriting = 1
-            version = self.clientproto
-            if version != "HTTP/0.9":
-                l = []
-                l.append('%s %s %s\r\n' % (version, self.code, self.code_message))
+            if self.clientproto != "HTTP/0.9":
+                self._sendStatus(self.code, self.code_message)
                 # if we don't have a content length, we sent data in chunked mode,
                 # so that we can support pipelining in persistent connections.
-                if version == "HTTP/1.1" and self.headers.get('content-length', None) is None:
-                    l.append("%s: %s\r\n" % ('Transfer-encoding', 'chunked'))
+                if self.clientproto == "HTTP/1.1" and self.headers.get('content-length', None) is None:
+                    self._sendHeader('Transfer-encoding', 'chunked')
                     self.chunked = 1
                 for name, value in self.headers.items():
-                    l.append("%s: %s\r\n" % (string.capitalize(name), value))
+                    self._sendHeader(string.capitalize(name), value)
                 for cookie in self.cookies:
-                    l.append('%s: %s\r\n' % ("Set-Cookie", cookie))
-                l.append("\r\n")
-                                
-                self.transport.write(string.join(l, ""))
+                    self._sendHeader("Set-Cookie", cookie)
+                self._endHeaders()
             
             # if this is a "HEAD" request, we shouldn't return any data
             if self.method == "HEAD":
@@ -585,13 +586,10 @@ class Request:
         return self.host
 
     def getClientIP(self):
-        if self.client[0] in ('INET', 'SSL'):
+        if self.client[0] == 'INET':
             return self.client[1]
         else:
             return None
-
-    def isSecure(self):
-        return (self.client[0] == 'SSL')
 
     def _authorize(self):
         # Authorization, (mostly) per the RFC
@@ -620,7 +618,7 @@ class Request:
         return self.password
 
     def getClient(self):
-        if self.client[0] not in ('INET', 'SSL'):
+        if self.client[0] != 'INET':
             return None
         host = self.client[1]
         try:
