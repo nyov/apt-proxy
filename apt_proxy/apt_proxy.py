@@ -1642,9 +1642,9 @@ class Factory(protocol.ServerFactory):
             # Handle upgrade to new format included on 1.9.20.
             except db.DBInvalidArgError:
                 log.debug('Upgrading from previous database format: %s' % filename + '.previous')
-                import bsddb
+                from bsddb import dbshelve as old_dbshelve
                 os.rename(filename, filename + '.previous')
-                previous_shelve = bsddb.dbshelve.open(filename + '.previous')
+                previous_shelve = old_dbshelve.open(filename + '.previous')
                 shelve = dbshelve.open(filename)
 
                 for k in previous_shelve.keys():
