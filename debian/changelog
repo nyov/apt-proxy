@@ -10,6 +10,7 @@ apt-proxy (1.9.13pre14) unstable; urgency=low
   * Major packaging cleanup to use better debhelper tools like dh_python
     and like (Otavio).
   * Swap maintainer and uploaders field as requested by Chris (Otavio).
+  * Change postinst to always check by user (Otavio). (closes: #258215)
 
  -- Otavio Salvador <otavio@debian.org>  Thu,  8 Jul 2004 12:01:32 -0300
 

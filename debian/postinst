@@ -11,16 +11,12 @@ db_version 2.0
 set -e
 case "$1" in
     configure)
-	# First time installation only.  Upgrades skip this.
-	if [ "$2" = "" ]; then
-
+	# Check if the user exist and do what is needed
+	if ! id $APTPROXY_USER > /dev/null 2>&1; then
 	    # Create user
-	    if [ -x /usr/sbin/adduser ]; then
-	        echo creating $APTPROXY_USER user...
-	        id $APTPROXY_USER > /dev/null 2>&1 ||
-		    adduser --quiet --system --ingroup nogroup \
-		    --home $CACHEDIR --no-create-home $APTPROXY_USER
-	    fi
+	    echo creating $APTPROXY_USER user...
+	    adduser --quiet --system --ingroup nogroup \
+		--home $CACHEDIR --no-create-home $APTPROXY_USER
 
 	    # Make apt-proxy user own cache directory
 	    chown -R $APTPROXY_USER $CACHEDIR
@@ -29,6 +25,7 @@ case "$1" in
 	    chown $APTPROXY_USER:adm $APTPROXY_LOGFILE
 	    chmod 640 $APTPROXY_LOGFILE
 	fi
+
 	PREV="$2"
 	db_fget $NAME/upgrading-v2 had_v2_conf || true
 	had_v2_conf=$RET
