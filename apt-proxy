@@ -2,12 +2,12 @@
 #
 # Copyright Paul Russell <rusty@linuxcare.com.au>
 # Released under the GPL version 2 or later
-#	Hacked by Stephen Rothwell <sfr@linuxcare.com>
+#	Fixed by Stephen Rothwell <sfr@linuxcare.com>
 #
 #	`perl!' -- Anton Blanchard
 #	`I was joking!' -- Paul Mackerras
 #	`Note that Rusty's name is at the top' -- Stephen Rothwell.
-APT_PROXY_VERSION=1.1.1
+APT_PROXY_VERSION=1.1.2
 
 # Before anything, save output in fd 3, and redirect others to arg1 if avail
 APT_PROXY_LOGFILE=${1:-/dev/null}
@@ -446,7 +446,8 @@ sweep_clean_unlock()
     SW_FILE=$1/.apt-proxy
 
     log Doing sweep of $1 in background...
-    for f in `find $1 -atime +$2 -name '*.deb' -o -name '*.tar.gz' -o -name '*.dsc' -o -name '*.diff.gz'`; do
+    find $1 \( -name '*.deb' -o -name '*.tar.gz' -o -name '*.dsc' -o -name '*.diff.gz' \) -a -atime +$2 |
+    while read f; do
 	log Sweeping clean $f
 	rm $f
     done
