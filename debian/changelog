@@ -1,6 +1,9 @@
 apt-proxy (1.9.5.6pre3) experimental; urgency=low
 
   * Migrate from python 2.2 to 2.3.
+  * Build-depend on python2.3-twisted - needed for invocation of
+    apt-proxy-import during documentation build (Chris).
+  * Better logs and a small fix (Chris).
 
  -- Manuel Estrada Sainz <ranty@debian.org>  Wed, 20 Aug 2003 16:43:43 +0200
 
