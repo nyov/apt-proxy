@@ -162,39 +162,49 @@ def aptProxyClientDownload(request, serve_cached=1):
     'serve_cached': this is somewhat of a hack only usefull for
     AptLoopbackRequests (See AptLoopbackRequest class for more information).
     """
-    def cached_cb(result, request, serve_cached):
+    def cached_cb(result, dummy_client):
         """ This is called if the file is properly cached. """
         log.debug("CACHED")
-        if serve_cached:
-            return request.send_cached()
-        else:
-            #warning, this may only be right for AptLoopbackRequest
-            request.finish()
-            return None
-    def not_cached_cb(result, request, running):
+        dummy_client.aptEnd()
+        for req in dummy_client.requests:
+            if req.loop_serve_if_cached:
+                req.send_cached()
+            else:
+                #warning, this may only be right for AptLoopbackRequest
+                req.finish()
+    def not_cached_cb(result, dummy_client, running):
         """
         The requested file was not there or didn't pass the integrity check.
         """
         log.debug("NOT_CACHED")
-        client_class = request.backend.client
-        if client_class.gzip_convert.search(request.uri):
-            client = AptProxyClientGzip(request)
+        if len(dummy_client.requests)==0:
+            #The request's are gone, the clients probably closed the conection
+            log.debug("THE REQUESTS ARE GONE")
+            return
+        req = dummy_client.requests[0]
+        dummy_client.remove_request(req)
+        dummy_client.aptEnd()
+        client_class = req.backend.client
+        if client_class.gzip_convert.search(req.uri):
+            client = AptProxyClientGzip(req)
         else:
-            client = client_class(request)
+            client = client_class(req)
 
-        if (client.post_convert.search(request.uri)
-            and not running.has_key(request.uri[:-3])):
-            log.debug("post converting: "+request.uri,'convert')
-            loop = AptLoopbackRequest(request)
-            loop.uri = request.uri[:-3]
-            loop.local_file = request.local_file[:-3]
+        dummy_client.transfer_requests(client)
+
+        if (client.post_convert.search(req.uri)
+            and not running.has_key(req.uri[:-3])):
+            log.debug("post converting: "+req.uri,'convert')
+            loop = AptLoopbackRequest(req)
+            loop.uri = req.uri[:-3]
+            loop.local_file = req.local_file[:-3]
             loop.process()
             #AptProxyClientGzip will attach as a request of the
             #original proxy client, efectively waiting for the
             #original file
             AptProxyClientGzip(loop)
-        return client
 
+    request.loop_serve_if_cached = serve_cached
     running = request.factory.runningClients
     if (running.has_key(request.uri)):
         #If we have an active client just use that
@@ -203,12 +213,16 @@ def aptProxyClientDownload(request, serve_cached=1):
         return running[request.uri]
 
     else:
+        #we make a generic client instance to hold other requests for the
+        #same file while the check is in process. We will transfer all the
+        #requests to a real client when the check is done.
+        dummy_client = AptProxyClient(request)
         #Standard Deferred practice
         log.debug("CHECKING_CACHED")
         d = request.check_cached()
         d.addCallbacks(cached_cb, not_cached_cb,
-                       (request,serve_cached,), None,
-                       (request,running,), None)
+                       (dummy_client,), None,
+                       (dummy_client, running,), None)
         d.arm()
 
 class AptProxyClient:
@@ -221,7 +235,7 @@ class AptProxyClient:
     proxy_client = None
     status_code = http.OK
     status_message = None
-	
+        
     def insert_request(self, request):
         """
         Request should be served through this client because it asked for the
@@ -258,7 +272,7 @@ class AptProxyClient:
         if len(self.requests) == 0:
             log.debug("Last request removed",'client')
             if not self.factory.finish_horphans:
-                if self.transport:
+                if hasattr(self, 'transport') and self.transport:
                     log.debug(
                         "telling the transport to loseConnection",'client')
                     self.transport.loseConnection()
@@ -266,11 +280,18 @@ class AptProxyClient:
                     self.loseConnection()
         else:
             self.request = self.requests[0]
+        request.proxy_client = None
+
+    def transfer_requests(self, client):
+        "Transfer all requests from self to client"
+        for req in self.requests:
+            self.remove_request(req)
+            client.insert_request(req)
 
     def setResponseCode(self, code, message=None):
         "Set response code for all clients"
         self.status_code = code
-	self.status_message = message
+        self.status_message = message
         for req in self.requests:
             req.setResponseCode(code, message)
 
@@ -669,7 +690,7 @@ class AptProxyClientGzip(AptProxyClient, protocol.ProcessProtocol):
         """
         if self.loop_req.code != http.OK:
             self.setResponseCode(self.loop_req.code,
-	                         self.loop_req.code_message)
+                                 self.loop_req.code_message)
             self.aptDataReceived("")
             self.aptDataEnd("")
             return
