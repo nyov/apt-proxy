@@ -21,10 +21,11 @@ machine, have a look at INSTALL for manual installation instructions.
 
 Using apt-proxy with Debian Potato
 ----------------------------------
-Since I modified the build scripts to use debhelper 3, it is no longer to build
-this package on Potato.  However, you can still install and use a package that
-has been built on a Woody system, or downloaded from the Woody archives.
-(Thanks to Thorsten Gunkel for testing this and other aspects of the package.)
+Since I modified the build scripts to use debhelper 3, it is no longer possible
+to build this package on Potato.  However, you can still install and use a
+package that has been built on a Woody system, or downloaded from the Woody
+archives.  (Thanks to Thorsten Gunkel for testing this and other aspects of the
+package.)
 
 Frequently Asked Questions
 --------------------------
@@ -46,11 +47,18 @@ A: There is a problem with the syntax in an add_backend line in apt-proxy.conf.
    You should either delete the line, or move it further down to follow a line
    that does not end in a backslash.
 
+- Client setup -
+
 Q: A connection cannot be established with apt-proxy on a remote machine.
    Nothing appears in the apt-proxy.log file.
 
 A: apt-proxy is run by tcpd, which may deny connections depending on how it is
-   set up.  The standard ALL: PARANOID in /etc/hosts.deny will deny acess to
-   clients whose hostname cannot be looked up.
+   set up.  If a connection is denied by tcpd, you will find a log message in
+   /var/log/daemon.log such as:
+       apt-proxy[nnnn]: refused connect from <hostname>
+
+   You should check /etc/hosts.allow and hosts.deny.  For example, the standard
+   ALL: PARANOID in /etc/hosts.deny will deny acess to clients whose hostname
+   cannot be looked up.
 
 April 2002
