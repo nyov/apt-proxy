@@ -253,7 +253,7 @@ class AptProxyClient:
         If this is our last request, we may also close the connection with the
         server depending on the configuration.
 
-        We keep the first request for reference even if the client closed the
+        We keep the last request for reference even if the client closed the
         connection.
         """
         self.requests.remove(request)
@@ -843,6 +843,8 @@ class AptProxyRequest(http.Request):
     """
     All real request's come as an instance of this class.
     """
+    local_mtime = None
+    local_size = None
     def simplify_path(self, path):
         """
         change //+ with /
@@ -896,7 +898,6 @@ class AptProxyRequest(http.Request):
                 deferred.callback(None)
 
         deferred = defer.Deferred()
-        self.local_mtime = None
         if os.path.exists(self.local_file):
             verifier = FileVerifier(self)
             verifier.deferred.addCallbacks(file_ok, deferred.errback,
