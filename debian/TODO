@@ -6,10 +6,6 @@ TODO list for apt-proxy
 - Make it more clear that apt-proxy should not be configured as an http proxy,
   but as an http server, or support using apt-proxy as a proxy...
 
-- Do not start if run as root - it is unnecessarily risky and someone starting
-  apt-proxy as root from the command line ends up with directories owned by root
-  in the cache, which is a problem
-
 - Add debconf questions for default user and cache directory
 
 - Add more possible servers to default config file.  I would be grateful if
@@ -19,7 +15,7 @@ TODO list for apt-proxy
 - Work through the remaining wishlist bugs in the BTS.  Keep those reports
   coming in folks!
 
-- Rewrite in perl.  Join the apt-proxy-user list or #apt-proxy on IRC if you
+- Rewrite in Python.  Join the apt-proxy-user list or #apt-proxy on IRC if you
   want to be involved!
 
-Chris Halls, April 2002
+Chris Halls, June 2002
