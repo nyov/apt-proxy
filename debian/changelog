@@ -8,11 +8,13 @@ apt-proxy (1.3.6) unstable; urgency=low
   * Set PATH to standard system path.  You can override this in apt-proxy.conf
     if you need PATH set to semething else. (closes: #170286)
   * Add conversion script by Michael (Micksa) Slade.  This reads sources.list
-    and creates an example sources.list and apt-proxy.conf.  Installed in 
+    and creates an example sources.list and apt-proxy.conf.  Installed in
     /usr/share/doc/apt-proxy/examples/apt-proxy-mkconfig until it has been
     documented.
+  * Apply patch from Ian Bruce to fix uncompressed Packages rsyncing 
+    (closes: #166305)
 
- -- Chris Halls <halls@debian.org>  Wed, 22 Jan 2003 10:29:12 +0100
+ -- Chris Halls <halls@debian.org>  Wed, 22 Jan 2003 11:19:21 +0100
 
 apt-proxy (1.3.5) unstable; urgency=low
 

@@ -1,7 +1,7 @@
 #!/bin/ash
 # (You may safely change the above to /bin/sh if you do not have ash available)
 #
-# $Id: apt-proxy,v 1.44.2.7 2003/01/13 12:33:44 haggai Exp $
+# $Id: apt-proxy,v 1.44.2.8 2003/01/22 10:23:14 haggai Exp $
 # Copyright Paul Russell <rusty@samba.org>
 # Released under the GPL version 2 or later
 #	Fixed by Stephen Rothwell <sfr@canb.auug.org.au>
@@ -14,7 +14,7 @@
 #	`Perl!!!  Please?' -- Martin Schwenke
 #       `Python and twisted!' -- Moshe Zadka
 #       'Lets do it, ranty!' -- Chris Halls
-APT_PROXY_VERSION=1.3.5
+APT_PROXY_VERSION=1.3.6
 
 # Default values
 APT_PROXY_LOGFILE=/dev/null
@@ -284,7 +284,13 @@ download_url()
 		    TMP_FILE=$DL_DESTDIR/$TMP_DESTFILE
 		    TMP_URL=`echo $DL_URL | sed 's/\.gz$//'`
 		    
-		    [ $TMP_FILE -ot $DL_FILE ] && gunzip -c < $DL_FILE > $TMP_FILE 
+		    if [ -e $DL_FILE ]
+		    then
+			if [ ! -e $TMP_FILE ] || [ $TMP_FILE -ot $DL_FILE ]
+			then
+			    gunzip < $DL_FILE > $TMP_FILE 
+			fi
+		    fi
 
 		    if [ -f $TMP_FILE ]; then
 		        # We have an uncompressed file to rsync against
