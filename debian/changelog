@@ -8,6 +8,8 @@ apt-proxy (1.9.12.pre13) experimental; urgency=low
   * Improved debug information when somebody try to use a not implemented
     method (Otavio).
   * Add some misssing filetypes (.txt, .html and .gz) (Otavio).
+  * Fix problem with numeric ports when used in backends, thanks to
+    Philipp Weis <pweis@pweis.com> (Otavio). (closes: #257507)
 
  -- Otavio Salvador <otavio@debian.org>  Tue,  1 Jun 2004 00:54:43 -0300
 

@@ -1146,6 +1146,10 @@ class Backend:
         if is_rsync:
             self.scheme = 'rsync'
         self.fetcher = self.fetchers[self.scheme]
+        try:
+            self.port = int(self.port)
+        except ValueError:
+            pass 
 
         self.timeout = self.factory.timeout
         self.passive_ftp = self.factory.passive_ftp
