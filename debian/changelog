@@ -1,4 +1,4 @@
-apt-proxy-v2 (1.9.4.5pre1) experimental; urgency=low
+apt-proxy-v2 (1.9.4.5pre3) experimental; urgency=low
 
   * Cleanup some internal code (Manuel)
   * Recognise twisted 1.0 (Manuel)
@@ -6,6 +6,9 @@ apt-proxy-v2 (1.9.4.5pre1) experimental; urgency=low
     file (Manuel)
   * Fix apt-proxy-import and add experimental fuzzy import of unknown versions
     (Manuel)
+  * Add apt-proxy-v1tov2 conversion script (Manuel)
+  * Add support for 'off' in max_versions, max_age, cleanup_freq config
+    parameters (Manuel)
 
  -- Chris Halls <halls@debian.org>  Tue,  5 Nov 2002 07:27:07 +0100
 

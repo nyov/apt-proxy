@@ -5,6 +5,16 @@
 
 Make max_age=0 and/or max_age='off' mean 'infinity'.
 
+Update the documentation to v2
+ - apt-proxy(8)
+ - apt-proxy.conf(5)
+ - apt-proxy-import(8)
+ - README
+ - INSTALL
+
+New manpage
+ - apt-proxy-v1tov2(8)
+
 ---------------- "Not so urgent" mark ---------------------------
 
 Add a configuration parameter which says 'never delete the final version of
