@@ -14,8 +14,8 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from twisted.internet import reactor, defer, abstract
-from twisted.protocols import http, protocol, ftp
+from twisted.internet import reactor, defer, abstract, protocol
+from twisted.protocols import http, ftp
 from twisted.web import static
 import os, stat, signal, fcntl, exceptions
 from os.path import dirname, basename
@@ -134,7 +134,7 @@ class FileVerifier(protocol.ProcessProtocol):
         log.debug("Process Timedout:",'verify')
         self.failed()
         
-    def processEnded(self):
+    def processEnded(self, reason=None):
         """
         This get's automatically called when the process finishes, we check
         the status and report through the Deferred.
@@ -695,7 +695,7 @@ class AptProxyClientFtp(AptProxyClient, protocol.Protocol):
         self.setResponseCode(http.OK)
         self.aptDataReceived(data)
 
-    def connectionLost(self):
+    def connectionLost(self, reason=None):
         """
         Maybe we should do some recovery here, I don't know, but the Deferred
         should be enough.
@@ -785,7 +785,7 @@ class AptProxyClientGzip(AptProxyClient, protocol.ProcessProtocol):
         os.kill(self.process.pid, signal.SIGTERM)
         self.process.connectionLost()
 
-    def processEnded(self):
+    def processEnded(self, reason=None):
         log.debug("Status: %d" %(self.process.status),'gzip')
         if self.process.status != 0:
             self.setResponseCode(http.NOT_FOUND)
@@ -845,7 +845,7 @@ class AptProxyClientRsync(AptProxyClient, protocol.ProcessProtocol):
     def errReceived(self, data):
         log.debug(data,'rsync_client')
 
-    def processEnded(self):
+    def processEnded(self, reason=None):
         log.debug("Status: %d" %(self.process.status),'rsync_client')
         if self.process.status != 0:
             self.setResponseCode(http.NOT_FOUND)
@@ -1084,7 +1084,7 @@ class AptProxyRequest(http.Request):
         self.factory=channel.factory
         http.Request.__init__(self, channel, queued)
 
-    def connectionLost(self):
+    def connectionLost(self, reason=None):
         """
         The connection with the client was lost, remove this request from its
         proxy client.
@@ -1201,7 +1201,7 @@ class AptProxy(http.HTTPChannel):
         log.debug("End of request.")
         http.HTTPChannel.allContentReceived(self)
 
-    def connectionLost(self):
+    def connectionLost(self, reason=None):
         "If the connection is lost, notify all my requets"
         for req in self.requests:
             req.connectionLost()

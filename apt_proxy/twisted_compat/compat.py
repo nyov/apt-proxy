@@ -1,7 +1,7 @@
 from twisted import copyright
 
 #This is a gross hack to get non-released features
-if copyright.version == "0.19.0":
+if copyright.version in ("0.99.0","0.99.1rc4"):
     print "Updating twisted's process module."
     import process as new_process
     from twisted.internet import process
