@@ -31,6 +31,8 @@ install: build
 
 	install -g root -o root -m 755 \
 		apt-proxy debian/apt-proxy/usr/sbin/apt-proxy
+	install -g root -o root -m 755 \
+		apt-proxy-import debian/apt-proxy/usr/sbin/apt-proxy-import
 	install -g root -o root -m 644 \
 		apt-proxy.conf debian/apt-proxy/etc/apt-proxy/apt-proxy.conf
 
