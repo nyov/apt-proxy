@@ -103,6 +103,9 @@ def factoryConfig(factory):
             log.msg("WARNING: backend %s contains '/' (ignored)"%(name))
             continue
         servers = conf.get(name, 'backends').split()
+        if len(servers) == 0:
+            log.msg("WARNING: [%s] has no backend servers (skiped)"%name)
+            continue
         server = servers[0]
         if server[-1] == '/':
             log.msg ("WARNING: removing slash at the end of %s"%(server))
