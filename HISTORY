@@ -1,3 +1,25 @@
+1.2.0:
+	Gerhard Muntingh:
+	  - Add logfile and configfile command line options
+	Chris Halls:
+	  - Integrate debian packaging directory into source
+	  - Revert to using dd while streaming because tail does not
+	    return an error when the file is moved away from under it.  Fixes
+	    the most common file corruption problems while streaming
+	  - Check for corrupted .deb and .gz files in the cache before sending
+	    them to the client.
+	  - Use the package filelists logic from Martin Schwenke to send the
+	    size of package files before downloading, meaning connection
+	    keep-alive logic can be used.
+1.1.4:
+	Martin Schwenke:
+	  - Add MAX_VERIONS to limit the number of versions of a particular
+	    package to keep.
+	  - Fix bug in cleanup that caused files from other packages to be deleted
+1.1.3:
+        Stephen Rothwell:
+   	  - Use stat and tail if available instead of wc -c and dd 
+	  - Honour client keep-alive header
 1.1.0:
 	Added keep-alive support: large speedup.
 	Added `+' prefix for preferred backends for control files.
