@@ -125,6 +125,7 @@ class FileVerifier(protocol.ProcessProtocol):
         this should not happen, but if we timeout, we pretend that the
         operation failed.
         """
+        self.laterID=None
         log.debug("Process Timedout:",'verify')
         log.debug("verication failed",'verify',1)
         self.deferred.errback(None)
@@ -134,14 +135,15 @@ class FileVerifier(protocol.ProcessProtocol):
         This get's automatically called when the process finishes, we check
         the status and report through the Deferred.
         """
-        reactor.cancelCallLater(self.laterID)
         log.debug("Process Status: %d" %(self.process.status),'verify')
         log.debug(self.data, 'verify')
-        if self.process.status == 0:
-            self.deferred.callback(None)
-        else:
-            log.debug("verication failed",'verify')
-            self.deferred.errback(None)
+        if self.laterID:
+            reactor.cancelCallLater(self.laterID)
+            if self.process.status == 0:
+                self.deferred.callback(None)
+            else:
+                log.debug("verication failed",'verify')
+                self.deferred.errback(None)
 
 def findFileType(name):
     "Look for the FileType of 'name'"
@@ -165,7 +167,7 @@ def aptProxyClientDownload(request, serve_cached=1):
         """ This is called if the file is properly cached. """
         log.debug("CACHED")
         dummy_client.aptEnd()
-        for req in dummy_client.requests:
+        for req in dummy_client.requests[:]:
             dummy_client.remove_request(req)
             if req.loop_serve_if_cached:
                 req.send_cached()
@@ -181,8 +183,8 @@ def aptProxyClientDownload(request, serve_cached=1):
             #The request's are gone, the clients probably closed the conection
             log.debug("THE REQUESTS ARE GONE")
             return
-        req = dummy_client.requests[0]
-        dummy_client.remove_request(req)
+        dummy_client.fix_ref_request()
+        req = dummy_client.request
         dummy_client.aptEnd()
         client_class = req.backend.client
         if client_class.gzip_convert.search(req.uri):
@@ -216,7 +218,7 @@ def aptProxyClientDownload(request, serve_cached=1):
         #we make a generic client instance to hold other requests for the
         #same file while the check is in process. We will transfer all the
         #requests to a real client when the check is done.
-        dummy_client = AptProxyClient(request)
+        dummy_client = AptProxyClientDummy(request)
         #Standard Deferred practice
         log.debug("CHECKING_CACHED")
         d = request.check_cached()
@@ -244,6 +246,8 @@ class AptProxyClient:
         We also have to get it up to date, give it all received data, send it
         the appropriate headers and set the response code.
         """
+        if request in self.requests:
+            raise 'this request is already assigned to this client'
         self.requests.append(request)
         request.proxy_client = self
 
@@ -401,6 +405,58 @@ class AptProxyClient:
         #Make sure that next time nothing will happen
         self.connectionFailed = lambda : log.debug('connectionFailed(2)',
                                                    'client','9')
+
+class AptProxyClientDummy(AptProxyClient):
+    """
+    """
+    gzip_convert = re.compile(r"^Nothing should match this$")
+    post_convert = re.compile(r"^Nothing should match this$")
+    proxy_client = None
+    status_code = http.INTERNAL_SERVER_ERROR
+    status_message = None
+        
+    def insert_request(self, request):
+        """
+        """
+        if request in self.requests:
+            raise 'this request is already assigned to this client'
+        self.requests.append(request)
+        request.proxy_client = self
+
+    def remove_request(self, request):
+        """
+        """
+        #make sure that it has updated values, since the requests
+        #may be cached and we need them to serve it.
+        request.local_mtime = self.request.local_mtime
+        request.local_size = self.request.local_size
+
+        self.requests.remove(request)
+        request.proxy_client = None
+
+    def fix_ref_request(self):
+        if self.requests != []:
+            if self.request not in self.requests:
+                request = self.requests[0]
+                request.local_mtime = self.request.local_mtime
+                request.local_size = self.request.local_size
+                self.request = request
+            self.remove_request(self.request)
+        else:
+            self.request = None
+
+    def __init__(self, request):
+        log.debug(self.__class__)
+        self.requests = [request]
+        self.factory = request.factory
+        self.request = request
+        self.running_client = None
+
+        request.proxy_client = self
+        if self.factory.runningClients.has_key(request.uri):
+            raise 'There already is a running client'
+        self.factory.runningClients[request.uri]=self
+
         
 class AptProxyClientHttp(AptProxyClient, http.HTTPClient):
 
@@ -825,39 +881,27 @@ class AptProxyClientFile(AptProxyClient):
         request.setHeader("Last-modified",
                           http.datetimeToString(request.local_mtime))
         self.factory.file_served(request.uri)
-        request.registerProducer(self, 0)
+        self.readBuffer()
 
-    def resumeProducing(self):
+    def readBuffer(self):
         if not self.request:
             return
         data = self.file.read(abstract.FileDescriptor.bufferSize)
 
-        self.setResponseCode(http.OK)
         self.aptDataReceived(data)
 
         if self.file.tell() == self.size:
-            self.request.unregisterProducer()
             self.aptDataReceived("")
             for req in self.requests:
                 req.finish()
             self.aptEnd()
-                                
-    def pauseProducing(self):
-        pass
-
-    def stopProducing(self):
-        self.remove_request(self.request)
-
-    def remove_request(self, request):
-        if request == self.request:
-            request.unregisterProducer()
-        AptProxyClient.remove_request(self, request)
-        if len(self.requests) > 0:
-            self.request.registerProducer(self, 0)
         else:
-            self.file.close()
-            self.aptEnd()
-        
+            reactor.callLater(0, self.readBuffer)
+                                
+    def aptEnd(self):
+        self.file.close()
+        AptProxyClient.aptEnd(self)
+
 class AptProxyBackend:
     """
     Holds the backend caracteristics, including the proxy client class to be
@@ -1023,6 +1067,7 @@ class AptProxyRequest(http.Request):
         #proxy_client assigned
         if self.proxy_client:
             self.proxy_client.remove_request(self)
+        self.finish()
 
     def process(self):
         """
@@ -1033,6 +1078,7 @@ class AptProxyRequest(http.Request):
 
         if self.factory.disable_pipelining:
             self.setHeader('Connection','close')
+            self.channel.persistent = 0
 
         if self.method != 'GET':
             #we currently only support GET
