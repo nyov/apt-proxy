@@ -1,8 +1,8 @@
 Source: apt-proxy-v2
 Section: admin
 Priority: extra
-Maintainer: Chris Halls <chris.halls@gmx.de>
-Uploaders: Manuel Estrada Sainz <ranty@debian.org>
+Maintainer: Manuel Estrada Sainz <ranty@debian.org>
+Uploaders: Chris Halls <halls@debian.org>
 Standards-Version: 3.5.6
 Build-Depends-Indep: debhelper (>> 3.0.0), help2man
 
