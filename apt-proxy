@@ -1,13 +1,13 @@
 #! /bin/sh
 #
-# Copyright Paul Russell <rusty@linuxcare.com.au>
+# Copyright Paul Russell <rusty@samba.org>
 # Released under the GPL version 2 or later
-#	Fixed by Stephen Rothwell <sfr@linuxcare.com>
+#	Fixed by Stephen Rothwell <sfr@canb.auug.org.au>
 #
 #	`perl!' -- Anton Blanchard
 #	`I was joking!' -- Paul Mackerras
 #	`Note that Rusty's name is at the top' -- Stephen Rothwell.
-APT_PROXY_VERSION=1.1.2
+APT_PROXY_VERSION=1.1.3
 
 # Before anything, save output in fd 3, and redirect others to arg1 if avail
 APT_PROXY_LOGFILE=${1:-/dev/null}
@@ -29,6 +29,50 @@ log()
     echo "$@" >> $APT_PROXY_LOGFILE
 }
 
+# Determine the size of a file
+#	file_size(file name)
+#
+if [ -x "/usr/bin/stat" ]; then
+    file_size()
+    {
+	[ -z "$1" ] && return 1
+	set -- `/usr/bin/stat -tl "$1"`
+	[ -z "$2" ] && return 1
+	echo $2
+    }
+else
+    file_size()
+    {
+	[ -z "$1" ] && return 1
+	echo `wc -c < "$1"`
+    }
+fi
+
+# Dump the chunk of a file skipping $1 bytes for an
+# optional length (to end of file if missing)
+#	dump_part_file(file name, start[, length])
+#
+if tail -c +10 /dev/null 2>/dev/null; then
+    dump_part_file()
+    {
+	dpf_start=`expr $2 + 1`
+	if [ -n "$3" ]; then
+	    tail -c +$dpf_start "$1" | head -c $3
+	else
+	    tail -c +$dpf_start "$1"
+	fi
+    }
+else
+    dump_part_file()
+    {
+	if [ -n "$3" ]; then
+	    dd ibs=1 obs=16384 skip=$2 count=$3 if="$1"
+	else
+	    (dd bs=1 count=$2 of=/dev/null 2>/dev/null && cat) < "$1"
+	fi
+    }
+fi
+	
 # Write a http reply header
 #	write_header(response code, [content type] [content length]
 #			[last modified time] [content encoding]
@@ -397,29 +441,24 @@ stream_file()
 {
     SF_OFFSET=0
 
-    # wc -c handles symlinks
-    while SF_LEN=`wc -c < "$1"`; do
+    while SF_LEN=`file_size "$1"`; do
 	SF_COUNT=`expr $SF_LEN - $SF_OFFSET`
 	if [ "$SF_COUNT" -gt 4096 ]; then
 	    debug Doing $SF_COUNT bytes at $SF_OFFSET...
-	    dd ibs=1 obs=16384 skip=$SF_OFFSET count=$SF_COUNT if="$1" >&3 ||
-		break
-	    # Remove the damn spaces `wc' puts in.
-	    SF_OFFSET=`echo $SF_LEN`
+	    dump_part_file "$1" $SF_OFFSET $SF_COUNT >&3 || break
+	    SF_OFFSET=$SF_LEN
 	fi
 	sleep 1
     done 2>/dev/null
 
     # Race: wait for lock to vanish (may have to move file)
-    while [ -f $2.lock ]; do sleep 1; done
+    while [ -f "$2.lock" ]; do sleep 1; done
 
     # Dump the rest.
-    if (dd bs=1 count=$SF_OFFSET of=/dev/null 2>/dev/null && cat) < $2 >&3
-    then :
-    else
-	log Delivered partial file $2.
+    dump_part_file "$2" $SF_OFFSET >&3 || {
+	log Delivered partial file "$2".
 	exit 1
-    fi
+    }
 }
 
 # Delete any expired files older than that just served.
@@ -492,10 +531,11 @@ find_and_cat()
 
 # For all the requests in a particular session
 while true; do
-    unset DO_CLEANUP SIZE SIZE_FILE IMS_DATE UNCOMPRESS REQUEST
+    unset DO_CLEANUP SIZE SIZE_FILE IMS_DATE UNCOMPRESS REQUEST KEEP_ALIVE
 
     while read PREFIX LINE
     do
+    	debug "$PREFIX $LINE"
 	LC_PREFIX="`echo $PREFIX | tr -d '\015' | tr '[A-Z]' '[a-z]'`"
 	case "$LC_PREFIX" in
 	get)
@@ -505,6 +545,10 @@ while true; do
 	    IMS_DATE=$LINE
 	    debug "If-Modified-Since $IMS_DATE"
 	    IMS_DATE=`date -u -d "$IMS_DATE" '+%s'`
+	    ;;
+	connection:)
+	    KEEP_ALIVE="`echo $LINE | tr -d '\015' | tr '[A-Z]' '[a-z]'`"
+	    debug "Connection $KEEP_ALIVE"
 	    ;;
 	'')
 	    debug Finished processing request
@@ -546,7 +590,7 @@ while true; do
 	    # Can't stream, we need to compress.
 	    if wait_for_stream $FRONT; then
 		if [ ! -f $FRONT.gz -o $FRONT -nt $FRONT.gz ]; then
-		    gzip -9 < $FRONT > $FRONT.gz
+		    gzip -9n < $FRONT > $FRONT.gz
 		    touch -r $FRONT $FRONT.gz
 		fi
 	    fi
@@ -617,6 +661,26 @@ while true; do
 	conenc=
 	;;
 
+    *.bin)
+	resolve_url $REQUEST
+	[ -f $FRONT ] ||
+	    STREAM="`fetch_file_start $URL_REST $FRONT_BASE $BACKS`"
+	[ -n "$CLEANUP_DAYS" ] && DO_CLEANUP=1
+
+	contype=application/octet-stream
+	conenc=
+	;;
+
+    *.tgz)
+	resolve_url $REQUEST
+	[ -f $FRONT ] ||
+	    STREAM="`fetch_file_start $URL_REST $FRONT_BASE $BACKS`"
+	[ -n "$CLEANUP_DAYS" ] && DO_CLEANUP=1
+
+	contype=application/x-gzip
+	conenc=
+	;;
+
     *)
 	bad_url $REQUEST Unknown extension.
 	;;
@@ -646,8 +710,6 @@ while true; do
 	if [ -f $FRONT ]; then
 	    # File already exists in entirity.  Give local answers.
 	    rm -f $FRONT.nonexist
-	    # wc -c avoids symlink problem.
-	    SIZE=`wc -c < $FRONT`
 	    DATE="`date -u -R -r $FRONT`"
 	    # Turn date into seconds. 
 	    FILE_DATE=`date -u '+%s' -d "$DATE"`
@@ -655,6 +717,7 @@ while true; do
 		write_header "304 HIT"
 		continue
 	    fi
+	    SIZE=`file_size $FRONT`
 	else
 	    # Golly!
 	    CAUSE=`fgrep -v -x 'client: nothing to do' $FRONT.fail 2>/dev/null`
@@ -670,13 +733,14 @@ while true; do
     write_header "200 OK" "$contype" "$SIZE" "$DATE" "$conenc" "$REQUEST"
     stream_file "$STREAM" "$FRONT"
 
-    # close sockets - this makes fetching files with wget sane ...
-    exec 0>&- 3>&-
-
     # Now, derive the uncompressed file.
     if [ -n "$UNCOMPRESS" ]; then
-	gunzip < $FRONT > $UNCOMPRESS
-	touch -r $FRONT $UNCOMPRESS
+	(
+	    # close the sockets as this may take some time
+	    exec 0>&- 3>&-
+	    gunzip < $FRONT > $UNCOMPRESS
+	    touch -r $FRONT $UNCOMPRESS
+	) &
     fi
 
     [ -n "$DO_CLEANUP" ] && cleanup_old $FRONT $CLEANUP_DAYS
@@ -687,9 +751,14 @@ while true; do
 	    find $FRONT_BASE/.apt-proxy -mtime +$CLEAN_SWEEP |
 		fgrep -q -x $FRONT_BASE/.apt-proxy
 	then
-	    my_lockfile $FRONT_BASE/.apt-proxy &&
-		sweep_clean_unlock $FRONT_BASE $CLEAN_SWEEP &
+	    (
+		# close the sockets as this may take some time
+		exec 0>&- 3>&-
+		my_lockfile $FRONT_BASE/.apt-proxy &&
+		    sweep_clean_unlock $FRONT_BASE $CLEAN_SWEEP
+	    ) &
 	fi
     fi
     if [ -z "$SIZE" ]; then log Aborting: Unknown size for $REQUEST; break; fi
+    if [ "$KEEP_ALIVE" '!=' keep-alive ]; then break; fi
 done
