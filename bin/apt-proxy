@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2.2
 
 from twisted.internet.app import Application
 import apt_proxy.apt_proxy
