@@ -34,7 +34,7 @@ apt-proxy (1.2.9.7) sourceforge; urgency=low
 apt-proxy (1.2.9.6) sourceforge; urgency=low
 
   * Fix race if two clients request the same file, with help from Sacha to
-    reproduce.
+    reproduce. (closes: #140348)
   * I would like to upload to Debian unstable once 1.2.2 hits Woody in 5 days.
     Please let me know if you are aware of any remaining issues!
 
