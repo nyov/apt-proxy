@@ -56,8 +56,8 @@ def factoryConfig(factory, shell):
         'complete_clientless_downloads': '0',
         'debug': '0',
 	'telnet_port': '0',
-	'telnet_user': 'aptproxy',
-	'telnet_pass': 'aptproxy',
+	'telnet_user': '',
+	'telnet_pass': '',
         'timeout': '30',
         'cleanup_freq': '600',
         'cache_dir': '/var/cache/apt-proxy',
@@ -124,6 +124,9 @@ def factoryConfig(factory, shell):
         if len(servers) > 1:
             log.msg("WARNING: using only first server on backend "+name)
 
-    shell.port = conf.getint(DEFAULTSECT, 'telnet_port')
     shell.username = conf.get(DEFAULTSECT, 'telnet_user')
     shell.password = conf.get(DEFAULTSECT, 'telnet_pass')
+    if shell.username and shell.password:
+        shell.port = conf.getint(DEFAULTSECT, 'telnet_port')
+    else:
+        shell.port = 0
