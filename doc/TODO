@@ -4,9 +4,13 @@
 #####################################
 
 Revise all documentation.
+        - migration guide for v1 users
 
 Revise debian packing:
-	postinst should call apt-proxy-v1tov2.
+	postinst should help migration:
+         - if upgrading from < 1.9 to >= 1.9 and there is no
+	   /etc/apt-proxy/apt-proxy-v2.conf, run apt-proxy-v1tov2 to
+	   create apt-proxy-v2.conf.
 
 ---------------- "Not so urgent" mark ---------------------------
 
