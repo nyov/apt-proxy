@@ -186,7 +186,13 @@ download_url()
 		$WGET --non-verbose --timestamping --no-host-directories \
 		     --no-directories -O $DL_TEMPFILE $DL_URL > $DL_LOG 2>&1
 	        RET=$?
-		[ $RET = 0 ] && mv $DL_TEMPFILE $DL_DESTDIR/$DL_DESTFILE
+		if [ $RET = 0 ];then
+		    # Success - move file to final location
+		    mv $DL_TEMPFILE $DL_DESTDIR/$DL_DESTFILE
+		else
+		    # Remove empty file created by wget
+		    rm -f $DL_TEMPFILE
+		fi
 	    else
 	    	# Directory
 		debug $WGET --non-verbose --timestamping --no-host-directories \
@@ -194,7 +200,13 @@ download_url()
 		$WGET --non-verbose --timestamping --no-host-directories \
 		     --no-directories -O $DL_TEMPFILE $DL_URL/ > $DL_LOG 2>&1
 	        RET=$?
-		[ $RET = 0 ] && mkdir $DL_DESTDIR$DL_DESTFILE && rm $DL_LOG
+		if [ $RET = 0 ];then
+		    # Success - create directory
+		    mkdir $DL_DESTDIR$DL_DESTFILE && rm $DL_LOG
+		else
+		    # Remove empty file created by wget
+		    rm -f $DL_TEMPFILE
+		fi
 	    fi
 	    debug "wget: `cat $DL_LOG`"
 	    ;;
