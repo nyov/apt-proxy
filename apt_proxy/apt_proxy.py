@@ -18,6 +18,7 @@
 from twisted.internet import reactor, defer
 from twisted.protocols import http, protocol, ftp
 from twisted.web import static
+from twisted.python import log
 import os, stat, signal, fcntl, exceptions
 from os.path import dirname, basename
 import re
@@ -26,6 +27,7 @@ import time
 import string
 import shelve
 from cStringIO import StringIO
+from twisted.python.failure import Failure
 
 #sibling imports
 import packages, misc
@@ -374,6 +376,9 @@ class AptProxyClient:
         self.setResponseCode(http.SERVICE_UNAVAILABLE)
         self.aptDataReceived("")
         self.aptDataEnd(self.transfered)
+        #Because of a bug in tcp.Client we may be called twice,
+        #Make sure that next time nothing will happen
+        self.connectionFailed = lambda : log.msg('connectionFailed(2)')
         
 class AptProxyClientHttp(AptProxyClient, http.HTTPClient):
 
@@ -488,7 +493,22 @@ class AptProxyClientFtp(AptProxyClient, protocol.Protocol):
         self.remote_file = (self.request.backend.path + "/" 
                             + self.request.backend_uri)
         self.status_code = http.NOT_FOUND
-        self.ftpclient = ftp.FTPClient(passive=0)
+	#ftp.FTPClient doesn't handle control connection failed
+	#We work around it.
+        class MyFTPClient(ftp.FTPClient):
+            def connectionFailed(self):
+                log.msg("MyFTPClient: Connection Failed")
+                self.apt_owner.status_code = http.SERVICE_UNAVAILABLE
+                #self.apt_owner.ftpFinish(http.SERVICE_UNAVAILABLE)
+                class dummy:
+                    def loseConnection(self):
+                        pass
+                self.transport = dummy()
+                self.nextDeferred.errback(Failure(ftp.CommandFailed('Connection Failed')))
+                self.apt_owner.connectionFailed()
+            
+        self.ftpclient = MyFTPClient(passive=0)
+        self.ftpclient.apt_owner=self
         self.ftpclient.debug = self.factory.do_debug
 
         reactor.clientTCP(request.backend.host, request.backend.port,
@@ -518,9 +538,14 @@ class AptProxyClientFtp(AptProxyClient, protocol.Protocol):
             
             Someone should check that this is timezone independent.
             """
-            code, msg = msgs[0].split()
+            if client.status_code == http.SERVICE_UNAVAILABLE:
+                #The control connetion failed
+                return
+            code = None
+            if not fail:
+                code, msg = msgs[0].split()
             mtime = None
-            if (not fail) and (code == '213'):
+            if code == '213':
                 time_tuple=time.strptime(msg[:14], "%Y%m%d%H%M%S")
                 #replace day light savings with -1 (current)
                 time_tuple = time_tuple[:8] + (-1,)
@@ -593,19 +618,6 @@ class AptProxyClientFtp(AptProxyClient, protocol.Protocol):
         should be enough.
         """
         self.factory.debug("ftp: lost connection")
-
-    def connectionFailed(self):
-        """
-        This is now handled in AptProxyClient, we could probably just remove
-        this method.
-        Or is this already taken care of by the Deferred and we should keep
-        an empry function here? we may end doing it twice otherwise, which is
-        not good.
-        """
-        self.factory.debug("ftp: connection failed")
-        self.setResponseCode(http.NOT_FOUND)
-        self.aptDataReceived("")
-        self.aptDataEnd(self.transfered)
 
 class AptProxyClientGzip(AptProxyClient, protocol.ProcessProtocol):
     """
