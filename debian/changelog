@@ -1,3 +1,14 @@
+apt-proxy (1.2.9.2) sourceforge; urgency=low
+
+  * Only download uncompressed packages files when rsyncing.  Do not attempt
+    to get uncompressed sources, release or contents files.  When downloading
+    uncompressed files with rsync, use compress switch (closes: #94226)
+  * Fix lockfile name used during clean sweep.  Thanks to Lele Gaifax for the
+    patch.
+  * Fix an error where stale lockfiles were not deleted
+
+ -- Chris Halls <chris.halls@nikocity.de>  Wed,  6 Mar 2002 15:37:09 +0100
+
 apt-proxy (1.2.9.1) sourceforge; urgency=low
 
   * Add http/ftp support using wget. (closes: #83199)
