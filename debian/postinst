@@ -59,8 +59,8 @@ case "$1" in
 		db_go
 	    fi
 	fi
-	# We changed the database backend so rebuild all database.
-	if dpkg --compare-versions "$PREV" lt-nl 1.9.22; then
+	# Older versions got database permissions wrong #288829
+	if dpkg --compare-versions "$PREV" lt-nl 1.9.27; then
 	    if [ -d /var/cache/apt-proxy/.apt-proxy ]; then
 		echo "Fixing database owner."
 		chown -R aptproxy.nogroup /var/cache/apt-proxy/.apt-proxy

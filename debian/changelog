@@ -1,6 +1,8 @@
-apt-proxy (1.9.26.pre27) unstable; urgency=low
+apt-proxy (1.9.27) unstable; urgency=low
 
-  * Delay database directory creation until after uid change. Closes: #288829
+  * Delay database directory creation until after uid change.
+    Older installations are fixed by chmoding directory in
+    postinst.  Closes: #288829
   * Fix exception in apt-proxy-import. Closes: #296574
   * Close connection where necessary after sending complete file.
     Closes: #288905
@@ -11,7 +13,7 @@ apt-proxy (1.9.26.pre27) unstable; urgency=low
      - Improve output and remove first sleep, thanks
        again Herbert Thielen.  Closes: #296875
 
- -- Chris Halls <halls@debian.org>  Fri, 25 Feb 2005 12:05:25 +0000
+ -- Chris Halls <halls@debian.org>  Fri, 25 Feb 2005 20:53:20 +0000
 
 apt-proxy (1.9.26) unstable; urgency=low
 
