@@ -1,3 +1,5 @@
+File permision's on the cache are too strict, there is nothing wrong in all
+users reading the debs and Packages files.
 
 It seams to get stuck some times on packages download.
 
