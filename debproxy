@@ -1,5 +1,5 @@
 #!/usr/bin/env python2.2
-#
+# -*- python -*-
 # debproxy: A caching proxy server that understands Debian archives
 # (C) 2000-2001 Chris Lawrence <lawrencc@debian.org>
 # You may freely use and modify this software under the conditions of
@@ -118,6 +118,7 @@ def parse_packages_file(packages):
             raise
         
     packs = packfile.split('\n\n')
+    print 'Found %d package entries.' % len(packs)
     del packfile
 
     for package in packs:
@@ -270,7 +271,7 @@ def check_packages_integrity(localdir, dist, sect=''):
 
 def find_files(info, dir, names):
     filelist, patterns = info
-    names2 = map(lambda x: os.path.join(dir, x), names[:])
+    names2 = [os.path.join(dir, x) for x in names]
 
     matches = []
     for pattern in patterns:
@@ -320,18 +321,20 @@ def check_archive_integrity():
             keep_files_dict[f] = 1
         
         filelist = []
-        print 'Scanning for obsolete files in '+os.path.abspath(localdir)+'...',
+        print 'Scanning for obsolete files in',os.path.abspath(localdir)+'...',
         sys.stdout.flush()
-        os.path.walk(localdir, find_files, (filelist, ["*.diff.gz", "*.tar.gz",
-                                                       "*.dsc", "*.deb"]))
+        for subdir in ['pool', 'dists']:
+            os.path.walk(os.path.join(localdir, subdir), find_files,
+                         (filelist, ["*.diff.gz", "*.tar.gz",
+                                     "*.dsc", "*.deb"]))
         bytes_saved = deleted = 0
         filelist.sort()
         for f in filelist:
             if f not in keep_files_dict:
                 try:
-                    bytes_saved += os.path.getsize(f)
-                    deleted = deleted+1
                     unlink(f)
+                    deleted = deleted+1
+                    bytes_saved += os.path.getsize(f)
                 except OSError:
                     pass
         print '%d files, freed %.1fk' % (deleted, bytes_saved/1024.0)
