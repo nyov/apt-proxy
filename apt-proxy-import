@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: apt-proxy-import,v 1.13 2002/05/28 07:48:31 haggai Exp $
+# $Id: apt-proxy-import,v 1.14 2002/05/28 17:43:32 haggai Exp $
 # Import package files from incoming directories
 #
 # Copyright 2002 Chris Halls <chris.halls@gmx.de>
@@ -244,7 +244,7 @@ for directory in $@; do
         $DPKG_NAME -k -s "$APT_PROXY_CACHE/dpkg-name.links" "$directory"/*.deb \
 	    | line_feedback
     fi
-exit
+
     for file in "$APT_PROXY_CACHE"/dpkg-name.links/*; do
 
     	filename=`basename $file`

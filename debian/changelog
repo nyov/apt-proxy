@@ -1,4 +1,4 @@
-apt-proxy (1.3.1.2pre1) unstable; urgency=low
+apt-proxy (1.3.1.2pre2) unstable; urgency=low
 
   * Depend on binutils for ar (closes: #143573)
   * Accept '~' characters in URLs
@@ -10,8 +10,9 @@ apt-proxy (1.3.1.2pre1) unstable; urgency=low
   * Refuse to run apt-proxy as the root user.  This is not a good idea
     security-wise.
   * Check for write permission in backend directories
+  * (Remove exit from apt-proxy-import in pre1)
 
- -- Chris Halls <chris.halls@gmx.de>  Tue, 28 May 2002 08:23:38 +0200
+ -- Chris Halls <chris.halls@gmx.de>  Tue, 28 May 2002 19:39:36 +0200
 
 apt-proxy (1.3.1) unstable; urgency=low
 
