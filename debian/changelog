@@ -30,7 +30,6 @@ apt-proxy (1.2.0-1) unstable; urgency=low
     from README (closes: #132439)
   * Merge remaining information from README about finding rsync servers into
     apt-proxy.conf manpage.
-  * Add missing depdendency on gzip
   * Add UK rsync servers to default apt-proxy.conf, thanks to Simon Huggins.
 
  -- Chris Halls <chris.halls@nikocity.de>  Mon,  4 Feb 2002 13:24:24 +0100
