@@ -1,7 +1,7 @@
 #!/bin/sh
 # Import package files from incoming directories
 #
-# Copyright 2002 Chris Halls <chris.halls@nikocity.de>
+# Copyright 2002 Chris Halls <chris.halls@gmx.de>
 #           GPLv2 or higher
 #
 # Use: apt-proxy-import directory-name ...
