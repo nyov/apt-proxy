@@ -124,6 +124,8 @@ Deal with permissions problems in the cache gracefully, not like this:
 22/08/2002 17:23 [-] exceptions.IOError: [Errno 13] Permission denied: '/var/cache/apt-proxy/security/dists/sarge/updates/non-free/binary-i386/Packages'
 22/08/2002 17:23 [AptProxyClientHttp,client] [http_client:9]GET:/debian-security/dists/sarge/updates/non-free/binary-i386/Rele
 
+Accept numeric ports in backend configuration
+
 ---------------- Clean up of naming conventions -------------
 
 To help Chris get his head around the code :)
