@@ -29,9 +29,11 @@ a package, even if older than max_age'
 When a file transfer is finished, move the temporary file instead of coping
 it.
 
-Mirror house-keeping:MAX_VERSIONS
-	keep track of versions per distro (potato/woody/sid)
+Mirror house-keeping:
+MAX_VERSIONS: keep track of versions per distro (potato/woody/sid)
 		python-apt should help on that
+MAX_CACHE_SIZE: new parameter to limit the maximum disk size that apt-proxy
+                uses for the cache directory
 
 Take care of python-apt memory leak:
 	deb http://ftp.uk.debian.org/debian/ sid main non-free contrib
