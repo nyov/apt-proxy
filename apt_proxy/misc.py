@@ -63,7 +63,10 @@ class DomainLogger:
     def msg(self, msg, domain='log', level=9):
         "Logs 'msg' if domain and level are appropriate"
         if self.isEnabled(domain, level):
-            python.log.msg("[%s:%d]%s"%(domain,level,msg))
+            try:
+                python.log.msg("[%s:%d]%s"%(domain,level,msg))
+            except IOError:
+                pass
     def debug(self, msg, domain='debug', level=9):
         "Usefull to save typing on new debuging messages"
         self.msg(msg, domain, level)
