@@ -1,3 +1,14 @@
+apt-proxy-v2 (1.9.4.5pre1) experimental; urgency=low
+
+  * Cleanup some internal code (Manuel)
+  * Recognise twisted 1.0 (Manuel)
+  * Fix slowdown and memory usage for large files by streaming to a temporary
+    file (Manuel)
+  * Fix apt-proxy-import and add experimental fuzzy import of unknown versions
+    (Manuel)
+
+ -- Chris Halls <halls@debian.org>  Tue,  5 Nov 2002 07:27:07 +0100
+
 apt-proxy-v2 (1.9.4) experimental; urgency=low
 
   * Support for twisted 0.99.2. (Manuel)
@@ -11,14 +22,14 @@ apt-proxy-v2 (1.9.4) experimental; urgency=low
     apt-proxy when connecting to backends (those are now 'fetchers') (Manuel)
   * Tighten dependency on python-apt to (>= 2.1.3-4)
   * Add Build-Depends-Indep python2.2-twisted (>= 0.99.2)
-  * Add support for Packages/Sources/Contents/Release.bz2 file extentions and
+  * Add support for Packages/Sources/Contents/Release.bz2 file extensions and
     verification.  Add Depends: bzip2.
 
  -- Chris Halls <chris.halls@gmx.de>  Wed, 16 Oct 2002 20:56:10 +0200
 
 apt-proxy-v2 (1.9.3) experimental; urgency=low
 
-  * Improve debuging messages (Manuel+Chris)
+  * Improve debugging messages (Manuel+Chris)
   * Change default cache directory to /var/cache/apt-proxy - using
     apt-proxy v1 and v2 is OK, as long as you don't use both at once.
     The directory /var/cache/apt-proxy will not be deleted if this package is
