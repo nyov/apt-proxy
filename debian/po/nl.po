@@ -1,0 +1,87 @@
+#
+#    Translators, if you are not familiar with the PO format, gettext
+#    documentation is worth reading, especially sections dedicated to
+#    this format, e.g. by running:
+#         info -n '(gettext)PO Files'
+#         info -n '(gettext)Header Entry'
+#
+#    Some information specific to po-debconf are available at
+#            /usr/share/doc/po-debconf/README-trans
+#         or http://www.debian.org/intl/l10n/po-debconf/README-trans
+#
+#    Developers do not need to manually edit POT or PO files.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: apt-proxy\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2004-07-16 10:00-0300\n"
+"PO-Revision-Date: 2004-11-09 01:09+0100\n"
+"Last-Translator: Bart Cornelis <cobaco@linux.be>\n"
+"Language-Team: debian-l10n-duth <debian-l10n-dutch@lists.debian.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=iso-8859-15\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. Type: note
+#: ../templates:3
+msgid "Upgrading from pre-v1.9 packages."
+msgstr "Er wordt opgewaardeerd van pre-v1.9 pakketten."
+
+#. Type: note
+#: ../templates:3
+msgid "You seem to be upgrading from a version of apt-proxy previous to v1.9."
+msgstr "Zo te zien waardeert u op van een apt-proxy versie ouder dan v1.9."
+
+#. Type: note
+#: ../templates:3
+msgid ""
+"apt-proxy has been rewritten in python and the new configuration file format "
+"is incompatible with previous version. Hopefully you will like the new "
+"format better :)"
+msgstr ""
+"apt-proxy is herschreven in python en het nieuwe bestandsformaat van het "
+"configuratiebestand is incompatibel met de de vorige versie. Hopelijk vindt "
+"u het nieuwe formaat beter :-)"
+
+#. Type: note
+#: ../templates:3
+msgid ""
+"I will build /etc/apt-proxy/apt-proxy-v2.conf based on your old settings if "
+"you did't already have such file. In any case, a backup file will be written "
+"to /etc/apt-proxy/apt-proxy-v2.conf.backup"
+msgstr ""
+"Als u dit bestand nog niet heeft, wordt /etc/apt-proxy/apt-proxy-v2.conf "
+"opgebouwd aan de hand van uw oude instellingen. Zowieso wordt er een "
+"reservekopie opgeslagen onder de naam /etc/apt-proxy/apt-proxy-v2.conf.backup"
+
+#. Type: note
+#: ../templates:3
+msgid ""
+"There are also other issues documented in /usr/share/doc/apt-proxy/UPGRADING"
+msgstr ""
+"Er zijn verdere issues gedocumenteerd in /usr/share/doc/apt-proxy/UPGRADING"
+
+#. Type: note
+#: ../templates:19
+msgid "Upgrading issues"
+msgstr "Opwaarderingsissues"
+
+#. Type: note
+#: ../templates:19
+msgid ""
+"The upgrading script dumped some warnings and they have been mailed to "
+"root@localhost."
+msgstr ""
+"Het opwaarderingsscript gaf enkele waarschuwingen; deze zijn naar "
+"root@localhost gemaild."
+
+#. Type: note
+#: ../templates:19
+msgid ""
+"You should read those warnings and /usr/share/doc/apt-proxy/UPGRADING and "
+"revise your configuration (/etc/apt-proxy/apt-proxy-v2.conf)"
+msgstr ""
+"U kunt deze waarschuwingen en /usr/share/doc/apt-proxy/UPGRADING best "
+"nalezen en vervolgens uw configuratie herzien (/etc/apt-prox/apt-proxy-v2."
+"conf)"

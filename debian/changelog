@@ -18,6 +18,10 @@ apt-proxy (1.9.18+CVS) UNRELEASED; urgency=low
     - Closes: #219427: deals badly with connection-limited ftp sources
     - Closes: #261066: Doesn't download completely some files
   * Document the meaning of disable_pipelining in apt-proxy.conf manpage (Chris)
+  * Debconf Translations:
+    - Dutch (nl.po) by cobaco <cobaco@linux.be>. Closes: #280487. (Otavio)
+    - Danish (da.po) by Morten Brix Pedersen <morten@wtf.dk>. 
+      Closes: #276692. (Otavio)
 
  -- Chris Halls <halls@debian.org>  Mon, 11 Oct 2004 18:01:22 +0100
 
