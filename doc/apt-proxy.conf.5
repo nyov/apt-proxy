@@ -45,7 +45,10 @@ deletion from the cache.
 .TP
 .B max_versions
 If different from \fBoff\fP, indicates the maximum number of versions of a
-\&.deb to keep.
+\&.deb to keep.  This is the number of versions per distribution, for example
+setting max_versions to 2 will ensure that a maximum of 6 packages would be kept:
+the last 2 stable versions, the last 2 testing versions and the last 2 unstable
+versions.
 
 .TP
 .B passive_ftp

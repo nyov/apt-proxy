@@ -5,6 +5,11 @@
 
 This is part of the Debian GNU/Linux package for apt-proxy v2.
 
+apt-proxy v2 is dedicated to Manuel Estrada 'ranty' Sainz, who rewrote 
+apt-proxy version 1 in Python.  He died in a tragic car accident while
+returning from the Free Software conference held at Valencia, Spain in May
+2004.  http://www.debian.org/News/2004/20040515
+
 If you have installed apt-proxy using the Debian package, you now need to
 do the following:
 
@@ -27,9 +32,9 @@ installed, which may not be the case on a non-Debian machines.
 Using apt-proxy with Debian Potato/Woody?
 -----------------------------------------
 
-apt-proxy will not easily work on this version of Debian, it requires versions
-of twisted, python and python-apt not present in them.  Upgrade to Sarge or
-stick with version 1.
+apt-proxy versoin 2 will not easily work on this version of Debian, it requires
+versions of twisted, python and python-apt not present in them.  Upgrade to
+Sarge or stick with version 1.
 
 Upgrading from apt-proxy v1
 ---------------------------

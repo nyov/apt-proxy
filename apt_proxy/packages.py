@@ -205,13 +205,12 @@ class AptPackages:
         return None
       
 
-    def get_mirror_versions(self, info):
-        "Find the available versions of the package described by 'info'"
+    def get_mirror_versions(self, package_name):
+        "Find the available versions of the package name given"
         self.load()
-        name=info['Package']
         vers = []
         try:
-            for pack_vers in self.cache[name].VersionList:
+            for pack_vers in self.cache[package_name].VersionList:
                 vers.append(pack_vers.VerStr)
         except KeyError:
             pass
@@ -235,16 +234,16 @@ def get_mirror_path(factory, file):
             paths.append('/'+backend.base+'/'+path)
     return paths
 
-def get_mirror_versions(factory, file):
+def get_mirror_versions(factory, package):
     """
-    Look for the available version of a package in all backends.
+    Look for the available version of a package in all backends, given
+    an existing package name
     """
-    info = AptDpkgInfo(file)
     all_vers = []
     for backend in factory.backends:
-        vers = backend.packages.get_mirror_versions(info)
+        vers = backend.packages.get_mirror_versions(package)
         for ver in vers:
-            path = backend.packages.get_mirror_path(info['Package'], ver)
+            path = backend.packages.get_mirror_path(package, ver)
             all_vers.append((ver, "%s/%s"%(backend.base,path)))
     return all_vers
 
@@ -315,8 +314,9 @@ def import_file(factory, dir, file):
         cache_path = paths[0]
     else:
         log.debug("Not found, trying to guess", 'import')
-        cache_path = closest_match(AptDpkgInfo(dir+'/'+file),
-                                get_mirror_versions(factory, dir+'/'+file))
+        info = AptDpkgInfo(dir+'/'+file)
+        cache_path = closest_match(info,
+                                get_mirror_versions(factory, info['Package']))
     if cache_path:
         log.debug("MIRROR_PATH:"+ cache_path, 'import')
         src_path = dir+'/'+file
@@ -352,7 +352,7 @@ def test(factory, file):
     print "Exact Match:"
     print "\t%s:%s"%(info['Version'], path)
 
-    vers = get_mirror_versions(factory, file)
+    vers = get_mirror_versions(factory, info['Package'])
     print "Other Versions:"
     for ver in vers:
         print "\t%s:%s"%(ver)

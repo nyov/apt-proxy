@@ -1586,37 +1586,64 @@ class Factory(protocol.ServerFactory):
         if self.max_versions == None:
             #max_versions is disabled
             return
-        
+        package_name = None
         cache_dir = self.cache_dir
-        info = {}
-        def compare(a, b):
-            """ This function is just for string.sort """
-            def version(uri):
-                return info[uri]['Version']
-            import apt_pkg
-            return apt_pkg.VersionCompare(version(a), version(b))
+
+        cached_packages = []   # all packages in cache directory
+        current_packages = []  # packages referenced by Packages files
+        
+        import apt_pkg
+        def reverse_compare(a, b):
+            """ Compare package versions in reverse order """
+            return apt_pkg.VersionCompare(b[0], a[0])
 
         if len(packages) <= self.max_versions:
             return
 
-        from packages import AptDpkgInfo
+        from packages import AptDpkgInfo, get_mirror_versions
         for uri in packages[:]:
             if not os.path.exists(cache_dir +'/'+ uri):
                 packages.remove(uri)
             else:
                 try:
-                    info[uri] = AptDpkgInfo(cache_dir +'/'+ uri)
+                    info = AptDpkgInfo(cache_dir +'/'+ uri)
+                    cached_packages.append([info['Version'], uri])
+                    package_name = info['Package']
                 except SystemError:
                     log.msg("Found problems with %s, aborted cleaning"%(uri),
                             'max_versions')
                     return
                 
-        packages.sort(compare)
-        log.debug(str(packages), 'max_versions')
-        while len(packages) > self.max_versions:
-            log.debug("Removing " + cache_dir +'/'+ packages[0], 'max_versions')
-            os.unlink(cache_dir +'/'+ packages[0])
-            del packages[0]
+        if len(info):
+            import apt_pkg
+            cached_packages.sort(reverse_compare)
+            log.debug(str(cached_packages), 'max_versions')
+            
+            current_packages = get_mirror_versions(self, package_name)
+            current_packages.sort(reverse_compare)
+            log.debug("Current Versions: " + str(current_packages), 'max_versions')
+            
+            version_count = 0
+            
+            while len(cached_packages):
+                #print 'current:',len(current_packages),'cached:',len(cached_packages), 'count:', version_count
+                if len(current_packages):
+                    compare_result = apt_pkg.VersionCompare(current_packages[0][0], cached_packages[0][0])
+                    #print 'compare_result %s , %s = %s ' % (
+                    #              current_packages[0][0], cached_packages[0][0], compare_result)
+                else:
+                    compare_result = -1
+                    
+                if compare_result >= 0:
+                    log.debug("reset at "+ current_packages[0][1], 'max_versions')
+                    del current_packages[0]
+                    version_count = 0
+                else:
+                    version_count += 1
+                    if version_count > self.max_versions:
+                        log.msg("Deleting " + cache_dir +'/'+ cached_packages[0][1], 'max_versions')
+                        os.unlink(cache_dir +'/'+ cached_packages[0][1])
+                    del cached_packages[0]
 
     def clean_old_files(self):
         """
