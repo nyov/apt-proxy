@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: apt-proxy-import,v 1.15 2002/06/14 13:58:27 haggai Exp $
+# $Id: apt-proxy-import,v 1.16 2002/06/14 14:27:59 ranty Exp $
 # Import package files from incoming directories
 #
 # Copyright 2002 Chris Halls <chris.halls@gmx.de>
@@ -236,7 +236,7 @@ for directory in $@; do
     #about dpkg-name:
     #	The best we could get out of dpkg-name, without renaming the files on
     #	place, was making symlinks with the right name on a certain directory,
-    #	and that it the reason for creating "$APT_PROXY_CACHE/dpkg-name.links/"
+    #	and that is the reason for creating "$APT_PROXY_CACHE/dpkg-name.links/"
     #   Unfortunately, dpkg-name from potato does not support the -k option, so
     #   we have to copy the files instead before renaming
     if ($DPKG_NAME -k 2>&1) | grep -q "can't find \`-k'"; then
@@ -247,6 +247,12 @@ for directory in $@; do
     else
         # Use dpkg-name to create links
 	info Creating links with correct names with dpkg-name
+
+	if ! expr "$directory" : '/' > /dev/null; then
+		# dpkg-name doesn't handle relative pathnames, so we make sure
+		# that $directory is an absolute pathname
+		directory="$PWD/$directory"
+	fi
         $DPKG_NAME -k -s "$APT_PROXY_CACHE/dpkg-name.links" "$directory"/*.deb \
 	    | line_feedback
     fi
