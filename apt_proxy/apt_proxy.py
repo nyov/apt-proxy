@@ -383,6 +383,10 @@ class Fetcher:
                     os.utime(self.local_file, (time.time(), 0))
 
             self.factory.file_served(self.request.uri)
+
+            if self.request.backend.packages == None:
+                 #Create a packages parser object for the backend
+                 self.request.backend.packages = packages.AptPackages(self.request.backend, self.factory)
             self.request.backend.packages.packages_file(self.request.uri)
         
         if self.transport:
@@ -1205,10 +1209,8 @@ class Backend:
         self.timeout = self.factory.timeout
         self.passive_ftp = self.factory.passive_ftp
 
-        #Create a packages parser object for the backend
-        packages.AptPackages(self, factory)
+        self.packages = None
         factory.backends.append(self)
-
 
     def __str__(self):
         return ('(' + self.base + ') ' + self.scheme + '://' +

@@ -1,3 +1,10 @@
+apt-proxy (1.9.24.svn) UNRELEASED; urgency=low
+
+  * Otavio Salvador and Chris Halls
+    - Postpone database creating to first request. Closes: #288829.
+
+ -- Otavio Salvador <otavio@debian.org>  Fri, 14 Jan 2005 19:55:56 -0200
+
 apt-proxy (1.9.24) unstable; urgency=low
 
   * Fix module import.
