@@ -22,6 +22,8 @@ apt-proxy (1.9.18+CVS) UNRELEASED; urgency=low
     - Dutch (nl.po) by cobaco <cobaco@linux.be>. Closes: #280487. (Otavio)
     - Danish (da.po) by Morten Brix Pedersen <morten@wtf.dk>. 
       Closes: #276692. (Otavio)
+  * Fix apt-proxy(8) backend name to debian instead of main. 
+    Closes: #277447. (Otavio)
 
  -- Chris Halls <halls@debian.org>  Mon, 11 Oct 2004 18:01:22 +0100
 
