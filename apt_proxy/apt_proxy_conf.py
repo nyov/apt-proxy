@@ -16,7 +16,6 @@
 
 from apt_proxy import Backend
 from misc import log
-import packages
 import os
 from ConfigParser import ConfigParser,DEFAULTSECT
     
@@ -65,7 +64,8 @@ def factoryConfig(factory, shell = None):
         'max_age': '10',
         'import_dir': '/var/cache/apt-proxy/import',
         'disable_pipelining': '0',
-        'passive_ftp': 'on'
+        'passive_ftp': 'on',
+        'dynamic_backends': 'on'
         }
     conf = MyConfigParser(defaults)
     if os.path.exists('/etc/apt-proxy/apt-proxy-v2.conf'):
@@ -84,6 +84,7 @@ def factoryConfig(factory, shell = None):
     factory.cleanup_freq = conf.gettime(DEFAULTSECT, 'cleanup_freq', 1)
     factory.do_debug = conf.get(DEFAULTSECT, 'debug')
     factory.passive_ftp = conf.getboolean(DEFAULTSECT, 'passive_ftp')
+    factory.dynamic_backends = conf.getboolean(DEFAULTSECT, 'dynamic_backends')
     if factory.debug != '0':
         factory.debug = {'debug':'9'}
         for domain in factory.do_debug.split():
@@ -115,22 +116,14 @@ def factoryConfig(factory, shell = None):
             if server[-1] == '/':
                 log.msg ("Removing unnecessary '/' at the end of %s"%(server))
                 server = server[0:-1]
-            backend = Backend(name, server)
+            backend = Backend(name, server, factory)
                 
             if conf.has_option(name, 'timeout'):
                 backend.timeout = conf.gettime(name, 'timeout')
-            else:
-                backend.timeout = factory.timeout
                     
             if conf.has_option(name, 'passive_ftp'):
                 backend.passive_ftp = conf.getboolean(name, 'passive_ftp')
-            else:
-                backend.passive_ftp = factory.passive_ftp
                                 
-            #Create a packages parser object for the backend
-            packages.AptPackages(backend, factory)
-            factory.backends.append(backend)
-
     if shell:
         shell.username = conf.get(DEFAULTSECT, 'telnet_user')
         shell.password = conf.get(DEFAULTSECT, 'telnet_pass')

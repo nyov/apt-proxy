@@ -56,6 +56,12 @@ Specify \fBon\fP to use passive FTP, which works from behind a firewall,
 but may not be supported on all servers.  Specify \fBoff\fP to use active
 FTP instead.  Default: on
 
+.TP
+.B dynamic_backends
+By default apt-proxy will add HTTP backends dynamicaly if not already
+defined. Specify \fBoff\fP to restrict the available backends to those
+listed in the configuration file.  Default: on
+
 .PP
 .SH BACKENDS
 All other sections will be interpreted as backend names, and the options

@@ -24,6 +24,7 @@ import re
 import urlparse
 import time
 import string
+import packages
 from twisted.python.failure import Failure
 import memleak
 from twisted.internet import error
@@ -1119,8 +1120,9 @@ class Backend:
         'rsync': 873,
         }
 
-    def __init__(self, base, uri):
+    def __init__(self, base, uri, factory):
         self.base = base
+        self.factory = factory
 
         # hack because urlparse doesn't support rsync
         if uri[0:5] == 'rsync':
@@ -1140,6 +1142,14 @@ class Backend:
         if is_rsync:
             self.scheme = 'rsync'
         self.fetcher = self.fetchers[self.scheme]
+
+        self.timeout = self.factory.timeout
+        self.passive_ftp = self.factory.passive_ftp
+
+        #Create a packages parser object for the backend
+        packages.AptPackages(self, factory)
+        factory.backends.append(self)
+
 
     def __str__(self):
         return ('(' + self.base + ') ' + self.scheme + '://' +
@@ -1296,9 +1306,19 @@ class Request(http.Request):
                 self.backend_uri = uri
                 break
         else:
-            log.debug("abort - non existent Backend")
-            self.finishCode(http.NOT_FOUND, "NON-EXISTENT BACKEND")
-            return
+            if not self.factory.dynamic_backends:
+                log.debug("abort - non existent Backend")
+                self.finishCode(http.NOT_FOUND, "NON-EXISTENT BACKEND")
+                return
+
+            # We are using dynamic backends so we will use the name as
+            # the hostname to get the files.
+            log.debug("Adding " + self.uri[1:].split('/')[0] + " backend dynamicaly")
+            self.backend = Backend(self.uri[1:].split('/')[0],
+                                   "http://" + self.uri[1:].split('/')[0], self.factory)
+
+            self.backend_uri = self.backend.check_path(self.uri)
+            
 
         self.filetype = findFileType(self.uri)
 
