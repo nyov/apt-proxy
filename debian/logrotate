@@ -4,4 +4,8 @@
 	weekly
 	delaycompress
 	missingok
+	postrotate
+		invoke-rc.d --quiet apt-proxy restart > /dev/null
+	endscript
+	notifempty
 }
