@@ -61,4 +61,58 @@ A: apt-proxy is run by tcpd, which may deny connections depending on how it is
    ALL: PARANOID in /etc/hosts.deny will deny acess to clients whose hostname
    cannot be looked up.
 
+Q: Is apt-proxy really a proxy or is it an HTTP server?
+
+A: Strictly speaking, apt-proxy behaves like an HTTP server, not a proxy.  It
+   is very similar in concept to a proxy, because it sits between the client
+   and the backend server, forwarding requests to remote servers.  With a true
+   proxy, such as Squid, apt sends a request to the proxy for a file from
+   another site, such as ftp.debian.org.  Yet this doesn't make sense for
+   apt-proxy, because it decides itself which backend to use depending on
+   availablilty and type of file requested.  It also has the advantage that all
+   the apt clients do not have to be reconfigured whenever there is a change to
+   the backend server that is to be used.
+
+Q: My web proxy does not know about the apt-proxy machine (for example, you are
+   using a proxy at your ISP), and I can't get apt to contact apt-proxy, even
+   though I have added this to apt.conf: 
+   
+       Acquire::http::Proxy::<host> "DIRECT";
+
+A: Have you got http_proxy set?  From the apt.conf manpage:
+      "The http_proxy environment variable will override all settings."
+   
+   So you must unset http_proxy before running apt.
+
+- Using apt-proxy with other clients -
+
+Q: What else is apt-proxy known to work with?  How do I configure it?
+
+A1: wget.  For example, to get the Woody Release file:
+	wget http://localhost:9999/main/dists/woody/Release
+    
+    If you normally use a proxy, and that proxy is not aware of the machine that
+    apt-proxy is running, on you may need to specify --proxy=off.
+
+A2: debootstrap, which uses wget.  This means you can easily install new
+    machine using the packages out of your apt-proxy cache.  In boot floppies,
+    specify http://APTPROXY:9999/main as your debian mirror (replacing APTPROXY
+    with the name or IP address of the machine where apt-proxy is running).
+
+A3: rootstrap, a tool for making root images for user-mode-linux.  Assuming
+    that you are running rootstrap on the same machine as apt-proxy and have
+    used the default network addresses 192.168.10.x, put this in
+    rootstrap.conf:
+
+        mirror=http://192.168.10.1:9999/main
+
+    [Note: during testing, we encountered a strange problem where rootstrap
+    thought the architecture was i386-none, so we had to add --arch=i386 to the
+    deboostrap call in /usr/lib/rootstrap/modules/debian.]
+
+A4: pbuilder, which also uses debootstrap.  Add this to /etc/pbuilderrc:
+
+	MIRRORSITE=http://APTPROXT:9999/main
+	NONUSMIRRORSITE=http://APTPROXT:9999/non-US
+
 April 2002
