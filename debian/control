@@ -8,7 +8,7 @@ Build-Depends-Indep: debhelper (>= 4.1.13), po-debconf, help2man, python-twisted
 
 Package: apt-proxy
 Architecture: all
-Depends: debconf (>= 0.5.00), ${python:Depends}, python-twisted, python-apt (>= 0.5.8), bzip2, logrotate
+Depends: debconf (>= 0.5.00), ${python:Depends}, python-twisted, python-apt (>= 0.5.8), python-bsddb3, bzip2, logrotate
 Conflicts: apt-proxy-v2 (<= 1.9.5)
 Replaces: apt-proxy-v2 (<= 1.9.5)
 Suggests: rsync

@@ -1599,18 +1599,19 @@ class Factory(protocol.ServerFactory):
             os.makedirs(db_dir)
 
         def open_shelve(filename):
-            from bsddb import db,dbshelve
+            from bsddb3 import db,dbshelve
             log.debug('Opening database ' + filename)
 
             shelve = dbshelve.DBShelf()
             if os.path.exists(filename):
                 try:
                     shelve.verify(filename)
+                    shelve = dbshelve.open(filename)
                 except:
                     os.rename(filename, filename+'.error')
+                    shelve = dbshelve.open(filename)
                     log.msg(filename+' was corrupt: recreated','db', 1)
-
-            shelve = dbshelve.open(filename)
+                    
             return shelve
             
         self.update_times = open_shelve(db_dir+'/update.db')

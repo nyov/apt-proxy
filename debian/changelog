@@ -2,6 +2,8 @@ apt-proxy (1.9.19+CVS) UNRELEASED; urgency=low
 
   * Close temporary files when finish to transfer data.
     Closes: #281156. (Otavio)
+  * Change to use bsddb3 database library bacause it's thread safe and
+    faster then python native version.
 
  -- Otavio Salvador <otavio@debian.org>  Thu, 18 Nov 2004 17:06:15 -0200
 
