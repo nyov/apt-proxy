@@ -4,11 +4,8 @@ apt-proxy-import - A script for importing packages into the apt-proxy cache.
 
 /apt-proxy-import imports /
 It uses the package lists to determine where each file should be
-placed, so you should run \fBapt-get update\fP to allow apt-proxy to 
+placed, so you should run \fB'apt-get update'\fP to allow apt-proxy to 
 update the package lists before running apt-proxy-import.
-
-[OPTIONS]
-\fBconfig_file\fP is used to find the backend directories and file lists.
 
 [USING TO BOOTSTRAP A NEW APT-PROXY CACHE]
 If you have been using apt standalone, you probably have built up a
@@ -22,14 +19,14 @@ these files into apt-proxy as follows:
 .PP
 2. Import files from apt's cache:
 .nf
-    apt-proxy-import /var/cache/apt/archives
+    apt-proxy-import -i /var/cache/apt/archives
 .fi
 
 [IMPORTING APT-MOVE CACHE]
 You can import the apt-move generated cache into apt-proxy using the following command:
 .PP
 .nf
-    find /var/cache/apt-move -type d | xargs apt-proxy-import
+    find /var/cache/apt-move -type d | xargs apt-proxy-import -i  
 .fi
 .PP
 This runs apt-proxy-import in each directory in the apt-file cache.
@@ -46,7 +43,8 @@ This runs apt-proxy-import in each directory in the apt-file cache.
 .ad
 
 [BUGS]
-apt-proxy-import does not use MAX_VERSIONS to clean the cache directory on import.
+apt-proxy-import does not use \fImax_age\fR or \fImax_versions\fR to clean the
+cache directory on import.
 .PP
 It does not yet import source.tar.gz or Packages files.
 .PP
