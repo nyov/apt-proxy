@@ -623,11 +623,11 @@ while true; do
 	    BASEFILE_NAME=`basename $REQUEST`
 	    case $SIZE_FILE in
 	    Packages)
-		SIZE=`find_and_cat Packages $FRONT_BASE $URL_SUBDIR | grep-dctrl -e -F Filename "/$BASEFILE_NAME$" -s Size | cut -d\  -f2`
+		SIZE=`find_and_cat Packages $FRONT_BASE $URL_SUBDIR | grep-dctrl -e -F Filename "/$BASEFILE_NAME$" -s Size | cut -d\  -f2 | head -1`
 		;;
 	    Sources)
 		PACKAGE_NAME="`basename $REQUEST | cut -d_ -f1`"
-		SIZE=`find_and_cat Sources $FRONT_BASE $URL_SUBDIR | grep-dctrl -X -P  "$PACKAGE_NAME" -s Files | fgrep $BASEFILE_NAME | cut -d\  -f3`
+		SIZE=`find_and_cat Sources $FRONT_BASE $URL_SUBDIR | grep-dctrl -X -P  "$PACKAGE_NAME" -s Files | fgrep $BASEFILE_NAME | cut -d\  -f3 | head -1`
 		;;
 	    esac
 	    debug Derived size: $SIZE
@@ -681,4 +681,5 @@ while true; do
 		sweep_clean_unlock $FRONT_BASE $CLEAN_SWEEP &
 	fi
     fi
+    if [ -z "$SIZE" ]; then log Aborting: Unknown size for $REQUEST; break; fi
 done
