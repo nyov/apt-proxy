@@ -42,13 +42,28 @@ import os, SimpleHTTPServer, BaseHTTPServer, sys, urlparse, urllib
 import posixpath, httplib, rfc822, time, shlex, whrandom, gzip
 import cStringIO, socket, errno
 
+# Use timeoutsocket if available
+try:
+    raise IOError
+    import timeoutsocket
+    from timeoutsocket import Timeout
+except:
+    # We need some exception, borrow a vaguely useful one
+    timeoutsocket = None
+    Timeout = IOError
+
+# This stuff should probably be in an RC file
 PORT  = 9999  # Port to listen on
 SLEEP = 0.5   # Time to wait between attempts to retrieve the URL, in sec
 BYTES = 16384 # How many bytes to push through at once
 
-DEBUGLEVEL = 0 # Debugging level for httplib.HTTPConnection
+DEBUGLEVEL = 1 # Debugging level for httplib.HTTPConnection
 
-CHECK_MD5 = 0  # Should we check MD5sums?
+CHECK_MD5 = 0  # Should we check MD5sums when in check mode?
+
+PERSISTENT_UPSTREAM = 0 # Should we keep upstream connections alive?
+
+FORK = 0 # Should we fork?
 
 def parse_apt_sources(file):
     mirrors = []
@@ -323,6 +338,14 @@ def check_archive_integrity():
                     pass
         print '%d files, freed %.1fk' % (deleted, bytes_saved/1024.0)
 
+def make_connection(host):
+    conn = httplib.HTTPConnection(host)
+    conn.set_debuglevel(DEBUGLEVEL)
+    if timeoutsocket:
+        conn.connect()
+        conn.sock.set_timeout(15)
+    return conn
+
 class ProxyHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def setup(self):
         SimpleHTTPServer.SimpleHTTPRequestHandler.setup(self)
@@ -344,8 +367,9 @@ class ProxyHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
             if not found:
                 # print 'Adding connection for', host
-                conn = httplib.HTTPConnection(host)
-                conn.set_debuglevel(DEBUGLEVEL)
+                conn = None
+                if PERSISTENT_UPSTREAM:
+                    conn = make_connection(host)
                 self.conns[key].append( (host, url, conn) )
 
         self.extensions_map.update( { '.deb' : 'application/x-debian-package',
@@ -497,8 +521,9 @@ class ProxyHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 continue
 
             if not conn:
-                conn = httplib.HTTPConnection(host)
-                conn.set_debuglevel(DEBUGLEVEL)
+                conn = make_connection(host)
+
+            print conn, os.getpid()
 
             headers = {'User-Agent' : self.server_version}
             if local_exists:
@@ -511,6 +536,7 @@ class ProxyHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             response = None
             while not response:
                 conn.request('GET', netpath, headers=headers)
+                    
                 while not response:
                     try:
                         response = conn.getresponse()
@@ -519,11 +545,16 @@ class ProxyHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                     except httplib.BadStatusLine, x:
                         print 'Bad Status Line:', x.line
                         conn.close()
+                    except Timeout:
+                        print 'Socket timeout'
+                        conn.close()
+                        conn = make_connection(host)
+                        conn.request('GET', netpath, headers=headers)
+                        
                 if not response.msg.headers:
                     print 'Something fishy going on... restarting connection'
                     conn.close()
-                    conn = httplib.HTTPConnection(host)
-                    conn.set_debuglevel(DEBUGLEVEL)
+                    conn = make_connection(host)
                     response = None
 
             try:
@@ -809,7 +840,8 @@ class ForkingHTTPServer(SocketServer.ForkingMixIn,
                         BaseHTTPServer.HTTPServer): pass
 
 # Disable forking by doing this
-#ForkingHTTPServer = BaseHTTPServer.HTTPServer
+if not FORK:
+    ForkingHTTPServer = BaseHTTPServer.HTTPServer
 
 def usage():
     print 'debproxy - A replicating caching proxy server for Debian.'
