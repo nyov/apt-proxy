@@ -24,7 +24,6 @@ import urlparse
 import time
 import string
 import shelve
-from cStringIO import StringIO
 from twisted.python.failure import Failure
 import memleak
 
@@ -1221,9 +1220,10 @@ class LoopbackRequest(Request):
 
     Look at FetcherGzip for a sample.
     """
+    import cStringIO
     local_mtime = None
     headers = {}
-    content = StringIO()
+    content = cStringIO.StringIO()
     def __init__(self, other_req, finish=None):
         self.finish_cb = finish
         http.Request.__init__(self, None, 1)
