@@ -1646,7 +1646,7 @@ class Factory(protocol.ServerFactory):
                 previous_shelve = bsddb.dbshelve.open(filename + '.previous')
                 shelve = dbshelve.open(filename)
 
-                for k previous_shelve.keys():
+                for k in previous_shelve.keys():
                     shelve[k] = previous_shelve[k]
                     
             return shelve
