@@ -77,10 +77,6 @@ for any file, how ever many users request it from the proxy.
 .ad
 .PP
 .SH "BUGS"
-http support is not yet streamlined.  In particular, uncompressed Packages
-files are requested if a previous Packages file is available in the apt-proxy
-cache.  This is because of the rsync logic, and will be fixed shortly.
-
 Packages are not compressed using gzip --rsyncable, which gives a 30%
 reduction in bytes transferred for binary packages, and much greater for
 source and other packages.
