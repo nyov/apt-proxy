@@ -14,7 +14,7 @@ build-stamp:
 clean:
 	dh_testdir
 	dh_testroot
-	rm -f build-stamp install-stamp
+	rm -f build-stamp install-stamp AptProxy-shutdown.tap
 	find . -name "*.pyc" |xargs -r rm
 	dh_clean
 

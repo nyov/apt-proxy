@@ -13,6 +13,8 @@ Update the documentation to v2
 New manpage
  - apt-proxy-v1tov2(8)
 
+Fix ftp backends
+
 ---------------- "Not so urgent" mark ---------------------------
 
 Add a configuration parameter which says 'never delete the final version of
