@@ -191,15 +191,16 @@ class TempFile (file):
         os.close(fd)
         file.__init__(self, name, mode, bufsize)
         os.unlink(name)
-    def append(self, data):
         self.seek(0, SEEK_END)
+    def append(self, data):
         self.write(data)
     def read(self, size=-1, start=None):
         if start != None:
             self.seek(start, SEEK_SET)
-        return file.read(self, size)
-    def size(self):
+	data = file.read(self, size)
         self.seek(0, SEEK_END)
+        return data
+    def size(self):
         return self.tell()
 
 class Fetcher:
@@ -599,7 +600,6 @@ class FetcherHttp(Fetcher, http.HTTPClient):
 
     def rawDataReceived(self, data):
         self.apDataReceived(data)
-        http.HTTPClient.rawDataReceived(self, data)
 
     def handleResponse(self, buffer):
         if self.length != 0:
@@ -1548,6 +1548,7 @@ class Channel(http.HTTPChannel):
         log.debug("Client connection closed")
         if log.isEnabled('memleak'):
             memleak.print_top_10()
+        #reactor.stop()   # use for shutting down apt-proxy when a client disconnects
 
 class Factory(protocol.ServerFactory):
     """
