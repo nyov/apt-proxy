@@ -71,6 +71,13 @@ By default apt-proxy will add HTTP backends dynamicaly if not already
 defined. Specify \fBoff\fP to restrict the available backends to those
 listed in the configuration file.  Default: on
 
+.TP
+.B disable_pipelining
+apt-proxy can use HTTP pipelining to fetch several files at once (up to 10), but
+this can generate multiple connections to each backend server.  Pipelining is
+disabled by default until this is fixed.  Set to \fB0\fP to enable experimental
+http pipelining.  Default: 1
+
 .PP
 .SH BACKENDS
 All other sections will be interpreted as backend names, and the options

@@ -1598,6 +1598,7 @@ class Factory(protocol.ServerFactory):
 
         def open_shelve(filename):
             from bsddb import db,dbshelve
+            log.debug('Opening database ' + filename)
 
             shelve = dbshelve.DBShelf()
             if os.path.exists(filename):

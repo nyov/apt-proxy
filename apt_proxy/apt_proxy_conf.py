@@ -65,7 +65,7 @@ def factoryConfig(factory, shell = None):
         'max_versions': '3',
         'max_age': '10',
         'import_dir': '/var/cache/apt-proxy/import',
-        'disable_pipelining': '0',
+        'disable_pipelining': '1',
         'passive_ftp': 'on',
         'dynamic_backends': 'on',
         'http_proxy': ''

@@ -9,8 +9,17 @@ apt-proxy (1.9.18+CVS) UNRELEASED; urgency=low
     Chet Murthy <chetsky@gmail.com> by the patch.
   * Change default apt-proxy.conf file to use debian-non-US instead of
     non-US. (closes: #273973, #267427)
+  * Disable pipelining by default (disable_pipelining=1) until the pipelining
+    logic is more sensible and does not attempt multiple connections to
+    the same backend server (Chris)
+    - Closes: #272217: extreme delays in fetching any packages
+    - Closes: #274426: Apt-proxy v2 has a long delay between files
+    - Closes: #251192: stuck connections
+    - Closes: #219427: deals badly with connection-limited ftp sources
+    - Closes: #261066: Doesn't download completely some files
+  * Document the meaning of disable_pipelining in apt-proxy.conf manpage (Chris)
 
- -- Otavio Salvador <otavio@debian.org>  Sat, 18 Sep 2004 11:19:04 -0300
+ -- Chris Halls <halls@debian.org>  Mon, 11 Oct 2004 18:01:22 +0100
 
 apt-proxy (1.9.18) unstable; urgency=low
 
