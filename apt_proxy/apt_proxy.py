@@ -1527,7 +1527,7 @@ class Factory(protocol.ServerFactory):
     This is the center of apt-proxy, it holds all configuration and global data
     and gets attached everywhere.
 
-    Factory receives incommng client connections and creates a Channel for
+    Factory receives incoming client connections and creates a Channel for
     each client request.
 
     interesting attributes:
