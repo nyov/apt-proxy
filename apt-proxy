@@ -72,6 +72,7 @@ The configuration file $CONFIG_FILE is $@.<P>\r
 add_backend()
 {
     [ $# -ge 3 ] || bad_config Bad add_backend "$@".
+    [ -d $2 ] || bad_config apt-proxy directory "$2" doesn\'t exist\!
     APT_PROXY_BACKENDS="$APT_PROXY_BACKENDS`echo $@ | tr -s ' \t' ,` "
 }
 
