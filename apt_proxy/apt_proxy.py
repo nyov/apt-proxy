@@ -598,6 +598,9 @@ class AptProxyClientFtp(AptProxyClient, protocol.Protocol):
         """
         This is now handled in AptProxyClient, we could probably just remove
         this method.
+        Or is this already taken care of by the Deferred and we should keep
+        an empry function here? we may end doing it twice otherwise, which is
+        not good.
         """
         self.factory.debug("ftp: connection failed")
         self.setResponseCode(http.NOT_FOUND)
