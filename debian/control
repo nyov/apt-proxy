@@ -10,6 +10,7 @@ Package: apt-proxy
 Architecture: all
 Depends: wget | rsync, grep-dctrl, tcpd, netbase, ash
 Recommends: apt
+Suggests: wget, rsync, dpkg-dev
 Description: Debian archive proxy and partial mirror builder
  apt-proxy automatically builds a Debian HTTP mirror based
  on requests which pass through the proxy.  It's great for
