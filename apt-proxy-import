@@ -8,7 +8,7 @@
 # Use: apt-proxy-import directory-name ...
 #
 PROGNAME=apt-proxy-import
-VERSION=0.2
+VERSION=0.3
 CONFIG_FILE=/etc/apt-proxy/apt-proxy.conf
 EXACT_MOVING=on
 FUZZY_MATCHING="packages fuzzy_packages"
