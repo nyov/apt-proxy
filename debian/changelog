@@ -1,3 +1,9 @@
+apt-proxy (1.9.21.pre22) unstable; urgency=low
+
+  * Load database when requested. Closes: #283685. (Otavio)
+
+ -- Otavio Salvador <otavio@debian.org>  Thu,  2 Dec 2004 19:04:50 -0200
+
 apt-proxy (1.9.21) unstable; urgency=low
 
   * Fix caching of files that was broken in 1.9.20, thanks

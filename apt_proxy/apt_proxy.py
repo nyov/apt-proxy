@@ -1609,8 +1609,7 @@ class Factory(protocol.ServerFactory):
     cleanup_freq = None
     max_versions = None
     max_age = None
-    
-    
+
     def periodic(self):
         "Called periodically as configured mainly to do mirror maintanace."
         log.debug("Doing periodic cleaning up")
@@ -1624,13 +1623,7 @@ class Factory(protocol.ServerFactory):
         self.runningFetchers = {}
         pass
 
-    def startFactory(self):
-        if self.do_debug:
-            log.addDomains(self.debug)
-        db_dir = self.cache_dir+'/'+status_dir+'/db'
-        if not os.path.exists(db_dir):
-            os.makedirs(db_dir)
-
+    def __getattr__ (self, name):
         def open_shelve(filename):
             from bsddb3 import db,dbshelve
             log.debug('Opening database ' + filename)
@@ -1642,14 +1635,30 @@ class Factory(protocol.ServerFactory):
                 except:
                     os.rename(filename, filename+'.error')
                     log.msg(filename+' could not be opened, moved to '+filename+'.error','db', 1)
-                    log.msg('recreating '+ filename,'db', 1)
+                    log.msg('Recreating '+ filename,'db', 1)
             shelve = dbshelve.open(filename)
                     
             return shelve
-            
-        self.update_times = open_shelve(db_dir+'/update.db')
-        self.access_times = open_shelve(db_dir+'/access.db')
-        self.packages = open_shelve(db_dir+'/packages.db')
+
+        db_dir = self.cache_dir+'/'+status_dir+'/db'
+        if not os.path.exists(db_dir):
+            os.makedirs(db_dir)
+
+        if name == 'update_times':
+            self.update_times = open_shelve(db_dir+'/update.db')
+            return self.update_times
+        elif name == 'access_times':
+            self.access_times = open_shelve(db_dir+'/access.db')
+            return self.access_times
+        elif name == 'packages':
+            self.packages = open_shelve(db_dir+'/packages.db')
+            return self.packages
+        else:
+            raise AttributeError(name)
+
+    def startFactory(self):
+        if self.do_debug:
+            log.addDomains(self.debug)
 
         #start periodic updates
         self.recycler = misc.MirrorRecycler(self, 1)
@@ -1658,6 +1667,7 @@ class Factory(protocol.ServerFactory):
             reactor.callLater(self.cleanup_freq, self.periodic)
         import apt_pkg
         apt_pkg.InitSystem()
+
     def clean_versions(self, packages):
         """
         Remove entries for package versions which are not in cache, and delete
