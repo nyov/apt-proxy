@@ -1,5 +1,11 @@
 TODO list for apt-proxy
 
+- Return a better error message if the backend servers do not exist, rather
+  than 'directory does not exist'
+
+- Make it more clear that apt-proxy should not be configured as an http proxy,
+  but as an http server, or support using apt-proxy as a proxy...
+
 - Add debconf questions for default user and cache directory
 
 - Add more possible servers to default config file.  I would be grateful if
@@ -12,4 +18,4 @@ TODO list for apt-proxy
 - Rewrite in perl.  Join the apt-proxy-user list or #apt-proxy on IRC if you
   want to be involved!
 
-Chris Halls, Feb 2002
+Chris Halls, April 2002
