@@ -1,4 +1,4 @@
-apt-proxy (1.9.23.pre24) unstable; urgency=low
+apt-proxy (1.9.24) unstable; urgency=low
 
   * Fix module import.
   * Add some debug/log messages when upgrading database
@@ -8,7 +8,7 @@ apt-proxy (1.9.23.pre24) unstable; urgency=low
       example
   * debian/manpages: use wildcard to install pages
 
- -- Chris Halls <halls@debian.org>  Fri,  3 Dec 2004 18:20:42 +0000
+ -- Chris Halls <halls@debian.org>  Fri,  3 Dec 2004 19:21:23 +0000
 
 apt-proxy (1.9.23) unstable; urgency=low
 
