@@ -1,2 +1,3 @@
 #!/bin/sh
-PYTHONPATH="`pwd`" twistd -n -y bin/apt-proxy
+echo "----------- `date` -------------------" >> aptest.log
+PYTHONPATH="`pwd`" twistd -n -y bin/apt-proxy | tee -a aptest.log
