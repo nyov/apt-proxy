@@ -1,8 +1,9 @@
                  	apt-proxy README
 
-              Chris Halls <chris.halls@gmx.de>
+              Chris Halls <halls@debian.org>
+      Revised by Manuel Estrada Sainz <ranty@debian.org>
 
-This is part of the Debian GNU/Linux package for apt-proxy.
+This is part of the Debian GNU/Linux package for apt-proxy v2.
 
 If you have installed apt-proxy using the Debian package, you now need to
 do the following:
@@ -11,55 +12,47 @@ do the following:
    the apt-proxy.conf(5) manpage for details.
 2. Point your apt clients to the proxy.  See the apt-proxy(8) manpage for
    details.
-3. run apt-get update on a client, to initialise the archive directories and
-   filelists.
+3. run apt-get update on a client, to initialize the archive directories and
+   file lists.
 4. If you have an apt cache directory full of .debs, you can use
    apt-proxy-import(8) to copy them into the apt-proxy archive.
 
 If you are installing from the source tar.gz, for example on a non-Debian
 machine, have a look at INSTALL for manual installation instructions.
 
-Using apt-proxy with Debian Potato
-----------------------------------
-Since I modified the build scripts to use debhelper 3, it is no longer possible
-to build this package on Potato.  However, you can still install and use a
-package that has been built on a Woody system, or downloaded from the Woody
-archives.  (Thanks to Thorsten Gunkel for testing this and other aspects of the
-package.)
+NOTE: Forget that for now, there is no support for installing on non-Debian
+machines currently, and that may take a while. It also depends on apt being
+installed, which may not be the case on a non-Debian machines.
+
+Using apt-proxy with Debian Potato/Woody
+----------------------------------------
+
+apt-proxy will not easily work on this version of Debian, it requires versions
+of twisted, python and python-apt not present in them.
+
+Using apt-proxy with Debian Sarge(testing)
+------------------------------------------
+
+apt-proxy requires twisted 1.0.0 or higher, until it hits Sarge, you can
+install it from http://twistedmatrix.com/users/moshez/apt, and it will
+probably work, but keep in mind that apt-proxy v2 is quite young, and it is
+being developed in sid.
+
+Upgrading from apt-proxy v1
+---------------------------
+
+The maintainer scripts should have converted apt-proxy.conf to the new format
+as apt-proxy-v2.conf, and that will be used instead so you can upgrade and
+downgrade freely.
+
+FIXME: This is too short a description, should be extended when we actually
+implement this behavior.
 
 Frequently Asked Questions
 --------------------------
 Here are some of the issues that have been raised about apt-proxy:
 
-- Initial configuration -
-
-Q: apt-proxy refuses to serve files and apt reports 500 Bad Configuration
-
-A: There is a problem with the syntax in an add_backend line in apt-proxy.conf.
-   One common mistake is to try to comment out a line which is continued from
-   the last line:
-   
-   add_backend /main/                 \
-   $APT_PROXY_CACHE/debian/           \
-   #       ftp.us.debian.org::debian/ \    <---- This does not work
-	   ftp.de.debian.org::debian/ 
-
-   You should either delete the line, or move it further down to follow a line
-   that does not end in a backslash.
-
 - Client setup -
-
-Q: A connection cannot be established with apt-proxy on a remote machine.
-   Nothing appears in the apt-proxy.log file.
-
-A: apt-proxy is run by tcpd, which may deny connections depending on how it is
-   set up.  If a connection is denied by tcpd, you will find a log message in
-   /var/log/daemon.log such as:
-       apt-proxy[nnnn]: refused connect from <hostname>
-
-   You should check /etc/hosts.allow and hosts.deny.  For example, the standard
-   ALL: PARANOID in /etc/hosts.deny will deny acess to clients whose hostname
-   cannot be looked up.
 
 Q: Is apt-proxy really a proxy or is it an HTTP server?
 
@@ -69,7 +62,7 @@ A: Strictly speaking, apt-proxy behaves like an HTTP server, not a proxy.  It
    proxy, such as Squid, apt sends a request to the proxy for a file from
    another site, such as ftp.debian.org.  Yet this doesn't make sense for
    apt-proxy, because it decides itself which backend to use depending on
-   availablilty and type of file requested.  It also has the advantage that all
+   availability and type of file requested.  It also has the advantage that all
    the apt clients do not have to be reconfigured whenever there is a change to
    the backend server that is to be used.
 
@@ -115,4 +108,4 @@ A4: pbuilder, which also uses debootstrap.  Add this to /etc/pbuilderrc:
 	MIRRORSITE=http://APTPROXT:9999/main
 	NONUSMIRRORSITE=http://APTPROXT:9999/non-US
 
-April 2002
+November 2002
