@@ -169,9 +169,9 @@ def aptProxyClientDownload(request, serve_cached=1):
     def cached_cb(result, dummy_client):
         """ This is called if the file is properly cached. """
         log.debug("Using cached copy of %s"%(dummy_client.request.local_file))
+        requests = dummy_client.requests[:]
         dummy_client.aptEnd()
-        for req in dummy_client.requests[:]:
-            dummy_client.remove_request(req)
+        for req in requests:
             if req.loop_serve_if_cached:
                 req.send_cached()
             else:
@@ -188,17 +188,17 @@ def aptProxyClientDownload(request, serve_cached=1):
             #The request's are gone, the clients probably closed the conection
             log.debug("THE REQUESTS ARE GONE (Clients closed conection)")
             return
-        dummy_client.fix_ref_request()
-        req = dummy_client.request
-        dummy_client.aptEnd()
+        req = dummy_client.fix_ref_request()
         client_class = req.backend.client
         if client_class.gzip_convert.search(req.uri):
-            client = AptProxyClientGzip(req)
+            client = AptProxyClientGzip()
         else:
-            client = client_class(req)
+            client = client_class()
 
         dummy_client.transfer_requests(client)
-
+        dummy_client.aptEnd()
+        client.activate(req)
+        
         if (client.post_convert.search(req.uri)
             and not running.has_key(req.uri[:-3])):
             log.debug("post converting: "+req.uri,'convert')
@@ -241,6 +241,10 @@ class AptProxyClient:
     proxy_client = None
     status_code = http.OK
     status_message = None
+    requests = None
+    request = None
+    length = None
+    running_client = None
         
     def insert_request(self, request):
         """
@@ -254,8 +258,13 @@ class AptProxyClient:
             raise 'this request is already assigned to this client'
         self.requests.append(request)
         request.proxy_client = self
+        if (self.request):
+            self.update_request(request)
 
-        #get the new request up to date
+    def update_request(self, request):
+        """
+        get a new request up to date
+        """
         request.local_mtime = self.request.local_mtime
         request.local_size = self.request.local_size
         if(self.status_code != None):
@@ -308,18 +317,23 @@ class AptProxyClient:
         for req in self.requests:
             req.setHeader(name, value)
 
-    def __init__(self, request):
+    def __init__(self, request=None):
+        self.requests = []
+        self.transfered = ''
+        if(request):
+            self.activate(request)
+            
+    def activate(self, request):
         log.debug(self.__class__)
         self.local_file = request.local_file
         self.local_mtime = request.local_mtime
-        self.requests = [request]
-        self.length = None
-        self.transfered = ''
         self.factory = request.factory
         self.request = request
-        self.running_client = None
         data = request.content.read()
 
+        for req in self.requests:
+            self.update_request(req)
+        self.requests.append(request)
 
         log.debug("Request uri: " + request.uri,'client')
 
@@ -392,6 +406,15 @@ class AptProxyClient:
             log.debug("We are not on runningClients!!!",'client')
             log.debug(str(self.factory.runningClients),'client')
             raise exceptions.KeyError
+        for req in self.requests[:]:
+            self.remove_request(req)
+
+    def aptEndCached(self):
+        self.setResponseCode(http.OK)
+        requests = self.requests[:]
+        self.aptEnd()    
+        for req in requests:
+            req.send_cached()
 
     def connectionFailed(self):
         """
@@ -448,8 +471,10 @@ class AptProxyClientDummy(AptProxyClient):
             self.remove_request(self.request)
         else:
             self.request = None
+            
+        return self.request
 
-    def __init__(self, request):
+    def activate(self, request):
         log.debug(self.__class__)
         self.requests = [request]
         self.factory = request.factory
@@ -468,8 +493,8 @@ class AptProxyClientHttp(AptProxyClient, http.HTTPClient):
         'last-modified',
         'content-length'
         ]
-    def __init__(self, request):
-        AptProxyClient.__init__(self, request)
+    def activate(self, request):
+        AptProxyClient.activate(self, request)
         if not request.proxy_client:
             return
 
@@ -508,12 +533,7 @@ class AptProxyClientHttp(AptProxyClient, http.HTTPClient):
         if self.status_code == http.NOT_MODIFIED:
             log.debug("NOT_MODIFIED",'http_client')
             self.transport.loseConnection()
-
-            self.aptEnd()
-
-            for req in self.requests:
-                req.setResponseCode(http.OK)
-                req.send_cached()
+            self.aptEndCached()
 
     def rawDataReceived(self, data):
         self.aptDataReceived(data)
@@ -567,8 +587,8 @@ class AptProxyClientFtp(AptProxyClient, protocol.Protocol):
     NOTE: Twisted's ftp client code uses it's own timeouts here and there,
     so the timeout specified for the backend may not always be used
     """
-    def __init__ (self, request):
-        AptProxyClient.__init__(self, request)
+    def activate (self, request):
+        AptProxyClient.activate(self, request)
         if not request.proxy_client:
             return
 
@@ -608,10 +628,7 @@ class AptProxyClientFtp(AptProxyClient, protocol.Protocol):
     def ftpFinishCached(self):
         "Finish the transfer giving the requests the cached file."
         self.ftpclient.quit()
-        self.aptEnd()
-        self.setResponseCode(http.OK)
-        for req in self.requests:
-            req.send_cached()
+        self.aptEndCached()
 
     def ftpFetchMtime(self):
         "Get the modification time from the server."
@@ -715,8 +732,8 @@ class AptProxyClientGzip(AptProxyClient, protocol.ProcessProtocol):
     gzip_convert = post_convert
 
     exe = '/bin/gzip'
-    def __init__(self, request):
-        AptProxyClient.__init__(self, request)
+    def activate(self, request):
+        AptProxyClient.activate(self, request)
         if not request.proxy_client:
             return
 
@@ -761,10 +778,7 @@ class AptProxyClientGzip(AptProxyClient, protocol.ProcessProtocol):
         if os.path.exists(self.local_file):
             old_mtime = os.stat(self.local_file)[stat.ST_MTIME]
         if self.local_mtime == old_mtime:
-            self.aptEnd()
-            for req in self.requests:
-                req.setResponseCode(http.OK)
-                req.send_cached()
+            self.aptEndCached()
         else:
             self.process = reactor.spawnProcess(self, self.exe, self.args)
 
@@ -810,8 +824,8 @@ class AptProxyClientRsync(AptProxyClient, protocol.ProcessProtocol):
         if not os.path.exists(LD_PRELOAD):
             LD_PRELOAD='/usr/lib/apt-proxy/rsync_hack.so'
 
-    def __init__ (self, request):
-        AptProxyClient.__init__(self, request)
+    def activate (self, request):
+        AptProxyClient.activate(self, request)
         if not request.proxy_client:
             return
 
@@ -857,10 +871,7 @@ class AptProxyClientRsync(AptProxyClient, protocol.ProcessProtocol):
 
         elif self.transfered == '':
             log.debug("NOT_MODIFIED",'rsync_client')
-            self.aptEnd()
-            for req in self.requests:
-                req.setResponseCode(http.OK)
-                req.send_cached()
+            self.aptEndCached()
             return
         if os.path.exists(self.local_file):
             self.local_mtime = os.stat(self.local_file)[stat.ST_MTIME]
@@ -873,8 +884,8 @@ class AptProxyClientFile(AptProxyClient):
     gzip_convert = post_convert
 
     request = None
-    def __init__(self, request):
-        AptProxyClient.__init__(self, request)
+    def activate(self, request):
+        AptProxyClient.activate(self, request)
         if not request.proxy_client:
             return
 
