@@ -17,6 +17,7 @@
 from apt_proxy import Backend
 from misc import log
 import os
+import urlparse
 from ConfigParser import ConfigParser,DEFAULTSECT
     
 class MyConfigParser(ConfigParser):
@@ -120,14 +121,18 @@ def factoryConfig(factory, shell = None):
             if server[-1] == '/':
                 log.msg ("Removing unnecessary '/' at the end of %s"%(server))
                 server = server[0:-1]
-            backend = Backend(name, server, factory)
+            if urlparse.urlparse(server)[0] in ['http', 'ftp', 'rsync']:
+                backend = Backend(name, server, factory)
                 
-            if conf.has_option(name, 'timeout'):
-                backend.timeout = conf.gettime(name, 'timeout')
-                    
-            if conf.has_option(name, 'passive_ftp'):
-                backend.passive_ftp = conf.getboolean(name, 'passive_ftp')
-                                
+                if conf.has_option(name, 'timeout'):
+                    backend.timeout = conf.gettime(name, 'timeout')
+                
+                if conf.has_option(name, 'passive_ftp'):
+                    backend.passive_ftp = conf.getboolean(name, 'passive_ftp')
+            else:
+                log.msg ("WARNING: Wrong server '%s' found in backend '%s'. It was skiped." % (server, name))
+                continue
+                                                
     if shell:
         shell.username = conf.get(DEFAULTSECT, 'telnet_user')
         shell.password = conf.get(DEFAULTSECT, 'telnet_pass')

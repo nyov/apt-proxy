@@ -1,3 +1,9 @@
+apt-proxy (1.9.15+SVN20040728) unstable; urgency=low
+
+  * Woraround when found a wrong server (Otavio).  (closes: #260788)
+
+ -- Otavio Salvador <otavio@debian.org>  Wed, 28 Jul 2004 20:17:44 -0300
+
 apt-proxy (1.9.15) unstable; urgency=low
 
   * Add support for upstream proxy servers (Otavio). (closes: #258904)
