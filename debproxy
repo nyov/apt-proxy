@@ -269,8 +269,8 @@ def check_archive_integrity():
     foundsrc = {}
     checked = {}
 
-    unlink = show_filename
-    # unlink = os.unlink
+    # unlink = show_filename
+    unlink = os.unlink
     
     for (local, type, url, dist, sects) in mirrors:
         if local not in locals:
