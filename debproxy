@@ -33,7 +33,7 @@
 #  - Auto-prefetch of packages based on past fetches, priority
 
 __version__ = "0.1"
-MIRRORLOC = "/sdc1/debian"
+MIRRORLOC = "/mirror/debian"
 
 VERSION = 'debproxy '+__version__
 
