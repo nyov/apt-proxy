@@ -1,8 +1,14 @@
 apt-proxy (1.9.23.pre24) unstable; urgency=low
 
   * Fix module import.
+  * Add some debug/log messages when upgrading database
+  * apt-proxy.8:
+    - Add Otavio to authors
+    - Change example deb lines: 'woody' to 'stable' and add security
+      example
+  * debian/manpages: use wildcard to install pages
 
- -- Otavio Salvador <otavio@debian.org>  Fri,  3 Dec 2004 16:12:10 -0200
+ -- Chris Halls <halls@debian.org>  Fri,  3 Dec 2004 18:20:42 +0000
 
 apt-proxy (1.9.23) unstable; urgency=low
 

@@ -1626,29 +1626,31 @@ class Factory(protocol.ServerFactory):
     def __getattr__ (self, name):
         def open_shelve(filename):
             from bsddb3 import db,dbshelve
-            log.debug('Opening database ' + filename)
-
+ 
             shelve = dbshelve.DBShelf()
             if os.path.exists(filename):
-                try:
-                    shelve.verify(filename)
-                except:
-                    os.rename(filename, filename+'.error')
-                    log.msg(filename+' could not be opened, moved to '+filename+'.error','db', 1)
-                    log.msg('Recreating '+ filename,'db', 1)
+                 try:
+                     log.debug('Verifying database: ' + filename)
+                     shelve.verify(filename)
+                 except:
+                     os.rename(filename, filename+'.error')
+                     log.msg(filename+' could not be opened, moved to '+filename+'.error','db', 1)
+                     log.msg('Recreating '+ filename,'db', 1)
             try:
-                shelve = dbshelve.open(filename)
+               log.debug('Opening database ' + filename)
+               shelve = dbshelve.open(filename)
 
             # Handle upgrade to new format included on 1.9.20.
             except db.DBInvalidArgError:
-                log.debug('Upgrading from previous database format: %s' % filename + '.previous')
-                from bsddb import dbshelve as old_dbshelve
+                log.msg('Upgrading from previous database format: %s' % filename + '.previous')
+                import bsddb.dbshelve
                 os.rename(filename, filename + '.previous')
-                previous_shelve = old_dbshelve.open(filename + '.previous')
+                previous_shelve = bsddb.dbshelve.open(filename + '.previous')
                 shelve = dbshelve.open(filename)
 
                 for k in previous_shelve.keys():
                     shelve[k] = previous_shelve[k]
+                log.msg('Upgrade complete')
                     
             return shelve
 

@@ -1,5 +1,5 @@
 .\" Man page copied from apt.conf man page.
-.TH "apt-proxy" "8" "05 Feb 2002" "apt-proxy" ""
+.TH "apt-proxy" "8" "03 Dec 2004" "apt-proxy" ""
 .SH "Name"
 apt\-proxy \- A proxy for saving bandwidth to Debian servers
 .SH SYNOPSIS
@@ -20,12 +20,13 @@ Once \fBapt\-proxy\fP is configured, users then edit their
 protocol to serve clients), like so:
 
 .nf
-deb http://SERVER:9999/debian woody main contrib non\-free
-deb http://SERVER:9999/non\-US woody/non\-US main contrib non\-free
-deb\-src http://SERVER:9999/main woody main contrib non\-free
-deb\-src http://SERVER:9999/non\-US woody/non\-US main contrib non\-free
+deb http://SERVER:9999/debian stable main contrib non\-free
+deb\-src http://SERVER:9999/debian stable main contrib non\-free
 
-deb http://SERVER:9999/helixcode/ woody main
+deb http://SERVER:9999/non\-US stable/non\-US main contrib non\-free
+deb\-src http://SERVER:9999/non\-US stable/non\-US main contrib non\-free
+
+deb http://aptproxy:9999/security stable/updates main contrib non-free
 .fi
 
 What path should be specified after the server name and port number
@@ -64,10 +65,7 @@ users request it from the proxy.
 Packages are not compressed using gzip \-\-rsyncable, which gives a 30%
 reduction in bytes transferred for binary packages, and much greater for
 source and other packages.
-
-NOTE: v2 doesn't officially support rsync backends, so for now the above does
-not apply.
 .PP
-.SH "AUTHOR"
-apt\-proxy v2 was written by Manuel Estrada Sainz and is maintained by Chris 
-Halls.
+.SH "AUTHORS"
+apt\-proxy v2 was written by Manuel Estrada Sainz and is maintained by Otavio
+Salvador and Chris Halls.
