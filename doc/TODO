@@ -3,22 +3,17 @@
 ## Talk to moshez before releasing ##
 #####################################
 
-Update the documentation to v2
- - apt-proxy(8)
- - apt-proxy.conf(5)
- - apt-proxy-import(8)
- - README
- - INSTALL
+Revise all documentation.
 
-New manpage
- - apt-proxy-v1tov2(8)
-
-Fix ftp backends
+Revise debian packing:
+	postinst should call apt-proxy-v1tov2.
 
 ---------------- "Not so urgent" mark ---------------------------
 
 Add a configuration parameter which says 'never delete the final version of
 a package, even if older than max_age'
+	Maybe it should be "never delete files which still appear in current
+	Packages.gz listings"
 
 When a file transfer is finished, move the temporary file instead of coping
 it.
