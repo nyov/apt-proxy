@@ -1,0 +1,64 @@
+.\" Man page copied from apt-proxy man page.
+.TH "apt-proxy-import" "8" "26 Feb 2002" "apt-proxy-import" ""
+.SH "Name"
+apt-proxy-import \- A script for importing packages into the apt-proxy cache
+.SH SYNOPSIS
+.B apt-proxy-import
+.I "[-c <config-file>] [directory-name] ..."
+.br
+.PP
+.SH "DESCRIPTION"
+apt-proxy-import imports \fB.deb\fP files into the apt-proxy cache.
+It uses the package lists to determine where each file should be
+placed, so you should run \fBapt-get update\fP to allow apt-proxy to 
+update the package lists before running apt-proxy-import.
+.PP
+apt-proxy-import should be run as the aptproxy user, or as root
+so that it can set the file permissions on the imported files in the
+cache directory.
+.PP
+.SH OPTIONS
+apt-proxy-import's command options are as follows:
+.TP
+.B -c <configfile>
+Specify what file the apt-proxy config is stored in, defaults to
+/etc/apt-proxy.conf.  This is used to find the backend directories
+and file lists.
+.br
+.TP
+.B -h, --help 
+Display a brief command line summary
+.PP
+.SH "USING TO BOOTSTRAP A NEW APT-PROXY CACHE"
+If you have been using apt standalone, you probably have built up a
+large collection of .debs in apt's cache directory.  You can import 
+these files into apt-proxy as follows:
+.PP
+1. Update apt-proxy's filelists:
+.nf
+apt-get update
+.fi
+.PP
+2. Import files from apt's cache:
+.nf
+apt-proxy-import /var/cache/apt/archives
+.fi\
+.PP
+.SH "FILES"
+/etc/apt-proxy/apt-proxy\&.conf
+.PP
+.SH "SEE ALSO"
+.na
+.nh
+.BR apt-proxy (8),
+.BR apt-proxy.conf (5)
+.hy
+.ad
+.PP
+.SH "BUGS"
+It does not yet import source.tar.gz or Packages files.
+.PP
+You must run it as the apt-proxy user or as root.
+.PP
+.SH "AUTHOR"
+Chris Halls <chris.halls@nikocity.de>

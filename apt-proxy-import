@@ -1,0 +1,149 @@
+#!/bin/sh
+# Import package files from incoming directories
+#
+# Copyright 2002 Chris Halls <chris.halls@nikocity.de>
+#           GPLv2 or higher
+#
+# Use: apt-proxy-import directory-name ...
+#
+PROGNAME=apt-proxy-import
+VERSION=0.1
+CONFIG_FILE=/etc/apt-proxy/apt-proxy.conf
+
+usage()
+{
+  echo "$PROGNAME version $VERSION: import package files into apt-proxy archive"
+  echo
+  echo "usage: $PROGNAME [-c <config-file>] [-d] <directory> ...."
+  echo
+  echo "\t<directory>      - directory containing files to import."
+  echo "\t-c <config-file> - location of apt-proxy configuration file"
+  echo "\t-d		   - verbose"
+  echo
+  echo "example: $PROGNAME /var/cache/apt/archives"
+  echo "$PROGNAME should be run as the aptproxy user, or as root."
+  echo
+}
+
+
+add_backend()
+{
+    if [ -n "`ls $2.apt-proxy-filelists/* 2>/dev/null`" ] ;then
+        BACKENDS="$BACKENDS $2.apt-proxy-filelists/*"
+    else
+        debug "Backend $2 does not have filelists - skipped"
+    fi
+}
+
+# Given a directory, print out all the parents in forwards order.
+# (taken from apt-proxy)
+#	directories(pathname)
+directories()
+{
+    DR_TOTAL=""
+    for dr_d in `echo $1 | tr / ' '`; do
+	DR_TOTAL="$DR_TOTAL/$dr_d"
+	echo "$DR_TOTAL"
+    done
+}
+
+debug()
+{
+    [ -n "$VERBOSE" ] && echo "$@"
+}
+
+unset VERBOSE
+
+# Parse command line
+while [ $# -gt 0 ]; do
+	case "$1" in
+	  '-c')
+ 		shift
+		CONFIG_FILE="$1"
+		shift
+		;;
+	  '-h'|'--help'|'--version'|'-v')
+                usage
+                exit 1
+                ;;
+	  '-d'|'--verbose')
+		VERBOSE=1
+		shift
+		;;
+	  '--')
+ 		# end of options
+                shift
+                break
+		;;
+	  *)
+		break
+		;;
+	esac
+done
+
+[ $# -eq 0 ] && usage && exit 1
+
+. $CONFIG_FILE
+
+if [ -z "$BACKENDS" ]; then
+  echo "No backend filelists found."
+  exit 1
+fi
+
+for directory in $@; do
+
+    if [ ! -d "$directory" ]; then
+        echo "directory not found:$@" 
+	continue
+    fi
+
+    for file in $directory/*; do
+
+    	filename=`basename $file`
+	
+	case "$filename" in
+	*.deb)
+	    cachepaths=`grep -h "/$filename " $BACKENDS* | cut -f1 -d' ' | uniq`
+
+	    if [ -n "$cachepaths" ]; then
+
+		for f in $cachepaths; do
+
+		    dirname=`dirname $f`
+		    if [ ! -d "$dirname" ]; then
+			debug "Making directory $dirname"
+			unset DR_LAST
+			for DR in `directories $dirname`; do
+			  if [ -d "$DR_LAST" -a ! -d "$DR" ]; then
+			    mkdir "$DR" &&
+			    chown --reference "$DR_LAST" "$DR" ||
+				  echo "mkdir+chown $DR FAILED"
+			  fi
+			  DR_LAST="$DR"
+			done
+		    fi
+
+		    if [ -f $f ]; then
+			debug "Skipping $filename - already in directory $dirname"
+		    else
+			echo "importing $filename"
+			cp -p "$file" "$f" &&
+			  chown --reference "$dirname" "$file" ||
+			      echo "cp+chown $file $f FAILED"
+		    fi
+		done
+	    else
+		echo "skipped $filename"
+	    fi
+	    ;;
+	 *)
+	    debug "Skipping $filename - unsupported type"
+	 esac
+    done
+done
+
+exit 0
+
+        
+
+
