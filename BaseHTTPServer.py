@@ -341,7 +341,8 @@ class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
         self.send_header('Content-Length', len(content))
         self.send_header('Content-Type', 'text/html')
         self.end_headers()
-        self.wfile.write(content)
+        if self.command != 'HEAD':
+            self.wfile.write(content)
 
     error_message_format = DEFAULT_ERROR_MESSAGE
 
