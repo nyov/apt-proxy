@@ -63,6 +63,9 @@ consider acting as a real proxy instead of as a "fake" server, this way
 sources.list wouldn't need to be modified and apt could be forced to ignore
 http_proxy environment variable.
 
+consider doing file integrity checks after downloading instead of before
+serving to improve performance.
+
 autogenerate backend configuration using netselect-apt or similar
 
 Consider implementing rproxy
