@@ -59,6 +59,10 @@ Mirror house-keeping:Generate Packages/Release/... for the currently available
 	
 auto generate a sample sources.list for clients
 
+consider acting as a real proxy instead of as a "fake" server, this way
+sources.list wouldn't need to be modified and apt could be forced to ignore
+http_proxy environment variable.
+
 autogenerate backend configuration using netselect-apt or similar
 
 Consider implementing rproxy
