@@ -2,10 +2,6 @@
 #####################################
 ## Talk to moshez before releasing ##
 #####################################
-#read Twisted/doc/howto/plugin.html #
-#####################################
-
-Generate Packages from Packages.gz and viceversa (DONE)
 
 Mirror house-keeping:support apt-proxy-import operations again (DONE?)
 	Consider using apt-listchanges' python modules to parse the .deb files
@@ -16,18 +12,10 @@ Mirror house-keeping:support apt-proxy-import operations again (DONE?)
 		Look for all versions of the package on the listings and move
 		it to the path of the version just on top of it.
 
-Mirror house-keeping:last used (DONE?)
-	only files which apt-proxy fetched or accessed at least once are taken
-	into acount.
-	
 Mirror house-keeping:MAX_VERSIONS (DONE?)
 	version numbers are not properly taken into account
 	keep track of versions per distro (potato/woody/sid)
 		python-apt should help on that
-
-actually implement timeouts, defaults are currently used everywhere. (DONE)
-
-Real config file handler (DONE)
 
 ---------------- "Not so urgent" mark ---------------------------
 Take care of python-apt memory leak:
@@ -40,9 +28,10 @@ Take care of python-apt memory leak:
 		leak 360KB (3676-4036) in increments of 36 kB
 		0.15KB per iteration.
 
-
 If we overwrite a cached file while it is being read by an static.FileTransfer
 things may go wrong.
+	Maybe we should write an AptProxyClientFile so it can be added to
+	factory.runningClients to prevent that.
 
 Cleanup orphan entries in packages.db also
 
@@ -51,8 +40,6 @@ Implement HEAD method
 Parse options:
 	--conf
 	...
-
-allow time to be specified like "3m" or "2h"
 
 per backend 'min_age'
 	we won't bother to update a Packages file before it is "min_age" old
@@ -65,17 +52,11 @@ rsync only Packages files, for the rest only ftp and http
 Consider "Pargma: no-cache" and "Cache-Control: no-cache" to make the client
 	do "verify_file" and tell us that the file is corrupt
 
-on ftp: list for mtime and use it for if-modified-since purposes
-
 try to use libapt's backend clients
-
-look at python-apt
 
 generate a config file from sources.list
 
 Is process.Process a producer? 
-
-Use bsddb dictionary to keep last request dates and such.
 
 Mirror house-keeping:Generate Packages/Release/... for the currently available
 	stuff
