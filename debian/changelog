@@ -1,13 +1,20 @@
-apt-proxy-v2 (1.9.3+4pre2) experimental; urgency=low
+apt-proxy-v2 (1.9.4) experimental; urgency=low
 
-  * Add support for twisted up to 0.99.1rc4.  Pipelining disabled due to a bug
-    in twisted. (Manuel)
+  * Support for twisted 0.99.2. (Manuel)
+  * Migrate from python 2.1 to 2.2 (Manuel)
   * Fix cache directory names in maintainer scripts to use
     /var/cache/apt-proxy.
   * Some general bugfixing (Manuel)
   * Fix problem with 2 char directories (Simon Hyde)
+  * Dump memory usage on connection close to check for leaks
+  * Rename lots of class names so that the word 'client' only means apt, not
+    apt-proxy when connecting to backends (those are now 'fetchers') (Manuel)
+  * Tighten dependency on python-apt to (>= 2.1.3-4)
+  * Add Build-Depends-Indep python2.2-twisted (>= 0.99.2)
+  * Add support for Packages/Sources/Contents/Release.bz2 file extentions and
+    verification.  Add Depends: bzip2.
 
- -- Chris Halls <chris.halls@gmx.de>  Mon,  2 Sep 2002 10:21:20 +0200
+ -- Chris Halls <chris.halls@gmx.de>  Wed, 16 Oct 2002 20:56:10 +0200
 
 apt-proxy-v2 (1.9.3) experimental; urgency=low
 
