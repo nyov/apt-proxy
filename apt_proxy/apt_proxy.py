@@ -89,6 +89,12 @@ filetypes = (
     FileType(re.compile(r"/(Packages|Release(\.gpg)?|Sources|Contents-.*)"
                         r"(\.(gz|bz2))?$"), 
              "text/plain", 1),
+
+    FileType(re.compile(r"\.rpm$"), "application/rpm", 0),
+
+    FileType(re.compile(r"/(pkglist|release|srclist)(\.(\w|-)+)?"
+                        r"(\.(gz|bz2))?$"), 
+             "text/plain", 1),
     )
 
 class FileVerifier(protocol.ProcessProtocol):
