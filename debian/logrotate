@@ -1,0 +1,7 @@
+/var/log/apt-proxy.log {
+	rotate 4
+	compress
+	weekly
+	delaycompress
+	missingok
+}
