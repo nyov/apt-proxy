@@ -16,7 +16,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from twisted.python import usage
-from apt_proxy.apt_proxy_conf import aptProxyFactoryConfig
+from apt_proxy.apt_proxy_conf import factoryConfig
 from apt_proxy import packages
 import sys
 
@@ -49,7 +49,10 @@ class DummyFactory:
         print msg
         
 factory = DummyFactory()
-aptProxyFactoryConfig(factory)
+factoryConfig(factory)
+if factory.do_debug:
+    from apt_proxy.misc import log
+    log.addDomains(factory.debug)
 
 if config.opts['debug']:
     print 'debug'
