@@ -15,7 +15,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from twisted.internet import reactor, defer
+from twisted.internet import reactor, defer, abstract
 from twisted.protocols import http, protocol, ftp
 from twisted.web import static
 import os, stat, signal, fcntl, exceptions
@@ -167,6 +167,7 @@ def aptProxyClientDownload(request, serve_cached=1):
         log.debug("CACHED")
         dummy_client.aptEnd()
         for req in dummy_client.requests:
+            dummy_client.remove_request(req)
             if req.loop_serve_if_cached:
                 req.send_cached()
             else:
@@ -806,6 +807,58 @@ class AptProxyClientRsync(AptProxyClient, protocol.ProcessProtocol):
         self.aptDataReceived("")
         self.aptDataEnd(self.transfered)
 
+
+class AptProxyClientFile(AptProxyClient):
+    post_convert = re.compile(r"^Should not match anything$")
+    gzip_convert = post_convert
+
+    request = None
+    def __init__(self, request):
+        AptProxyClient.__init__(self, request)
+        if not request.proxy_client:
+            return
+
+        self.size = request.local_size
+        self.file = open(self.local_file,'rb')
+        fcntl.lockf(self.file.fileno(), fcntl.LOCK_SH)
+        
+        request.setHeader("Content-Length", request.local_size)
+        request.setHeader("Last-modified",
+                          http.datetimeToString(request.local_mtime))
+        self.factory.file_served(request.uri)
+        request.registerProducer(self, 0)
+
+    def resumeProducing(self):
+        if not self.request:
+            return
+        data = self.file.read(abstract.FileDescriptor.bufferSize)
+
+        self.setResponseCode(http.OK)
+        self.aptDataReceived(data)
+
+        if self.file.tell() == self.size:
+            self.request.unregisterProducer()
+            self.aptDataReceived("")
+            for req in self.requests:
+                req.finish()
+            self.aptEnd()
+                                
+    def pauseProducing(self):
+        pass
+
+    def stopProducing(self):
+        self.remove_request(self.request)
+
+    def remove_request(self, request):
+        if request == self.request:
+            request.unregisterProducer()
+        AptProxyClient.remove_request(self, request)
+        if len(self.requests) > 0:
+            self.request.registerProducer(self, 0)
+        else:
+            self.file.close()
+            self.aptEnd()
+        
 class AptProxyBackend:
     """
     Holds the backend caracteristics, including the proxy client class to be
@@ -885,6 +938,12 @@ class AptProxyRequest(http.Request):
         self.write("")
         self.finish()
 
+    def finish(self):
+        http.Request.finish(self)
+        if self.factory.disable_pipelining:
+            if hasattr(self.transport, 'loseConnection'):
+                self.transport.loseConnection()
+
     def check_cached(self):
         """
         check the existence and ask for the integrity of the requested file and
@@ -943,14 +1002,14 @@ class AptProxyRequest(http.Request):
             self.finish()
             return None
 
-        f = open(self.local_file,'rb')
-        self.setHeader("Content-Length", self.local_size)
-        self.setHeader("Last-modified",
-                       http.datetimeToString(self.local_mtime))
-        self.factory.file_served(self.uri)
-        fcntl.lockf(f.fileno(), fcntl.LOCK_SH)
-        #static.FileTransfer will close the file efectively removing the lock
-        return static.FileTransfer(f, self.local_size, self)
+        running = self.factory.runningClients
+        if (running.has_key(self.uri)):
+            #If we have an active client just use that
+            log.debug("have active client",'file_client')
+            running[self.uri].insert_request(self)
+            return running[self.uri]
+
+        return AptProxyClientFile(self)
 
     def __init__(self, channel, queued):
         self.factory=channel.factory
@@ -963,7 +1022,7 @@ class AptProxyRequest(http.Request):
         """
         #If it is waiting for a file verification it may not have a
         #proxy_client assigned
-        if hasattr(self, 'proxy_client'):
+        if self.proxy_client:
             self.proxy_client.remove_request(self)
 
     def process(self):
