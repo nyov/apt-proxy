@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 #
 # Copyright (C) 2002 Manuel Estrada Sainz <ranty@debian.org>
 #

@@ -15,6 +15,7 @@ clean:
 	dh_testdir
 	dh_testroot
 	rm -f build-stamp install-stamp
+	find . -name "*.pyc" |xargs -r rm
 	dh_clean
 
 install: install-stamp
@@ -41,7 +42,11 @@ install-stamp: build-stamp
 	
 	# Temporary rename to stop apt-proxy-v1 and -v2 clashing
 	mv $(PKGDIR)/usr/sbin/apt-proxy $(PKGDIR)/usr/sbin/apt-proxy-v2
-	#mv $(PKGDIR)/
+	mv $(PKGDIR)/usr/sbin/apt-proxy-import $(PKGDIR)/usr/sbin/apt-proxy-import-v2
+	mv $(PKGDIR)/usr/share/man/man8/apt-proxy.8 $(PKGDIR)/usr/share/man/man8/apt-proxy-v2.8 
+	mv $(PKGDIR)/usr/share/man/man5/apt-proxy.conf.5 $(PKGDIR)/usr/share/man/man5/apt-proxy-v2.conf.5 
+	mv $(PKGDIR)/etc/apt-proxy/apt-proxy.conf $(PKGDIR)/etc/apt-proxy/apt-proxy-v2.conf
+
 	touch install-stamp
 
 binary-arch: build install

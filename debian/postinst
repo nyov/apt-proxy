@@ -2,29 +2,28 @@
 
 #DEBHELPER#
 
+PYVER=2.1
+NAME=apt-proxy-v2
+APTPROXY_USER=aptproxy
+APTPROXY_LOGFILE=/var/log/$NAME.log
+CACHEDIR=/var/cache/$NAME
+
 set -e
 case "$1" in
     configure)
 	# First time installation only.  Upgrades skip this.
 	if [ "$2" = "" ]; then
-	    APTPROXY_USER=aptproxy
-	    APTPROXY_LOGFILE=/var/log/apt-proxy.log
 
-	    echo Adding apt-proxy service at port 9999 and creating $APTPROXY_USER user...
 	    # Create user
 	    if [ -x /usr/sbin/adduser ]; then
+	        echo creating $APTPROXY_USER user...
 	        id $APTPROXY_USER > /dev/null 2>&1 ||
 		    adduser --quiet --system --ingroup nogroup \
 		    --home /var/cache/apt-proxy --no-create-home $APTPROXY_USER
 	    fi
 
-
-	    # Add inetd service
-	    update-inetd --add "9999           stream  tcp     nowait.400      $APTPROXY_USER    \
-			    /usr/sbin/tcpd /usr/sbin/apt-proxy -l $APTPROXY_LOGFILE"
-
 	    # Make apt-proxy user own cache directory
-	    chown -R $APTPROXY_USER /var/cache/apt-proxy
+	    chown -R $APTPROXY_USER $CACHEDIR
 	    # Create a blank logfile owned by apt-proxy user
 	    touch $APTPROXY_LOGFILE
 	    chown $APTPROXY_USER:adm $APTPROXY_LOGFILE
@@ -38,6 +37,14 @@ case "$1" in
         ;;
 esac
 
+# Compile python
+case "$1" in
+    configure|abort-upgrade|abort-remove|abort-deconfigure)
+        dpkg --listfiles $NAME | grep '\.py$' | \
+	     xargs -n 1 /usr/bin/python$PYVER -c 'import py_compile,sys;py_compile.compile(sys.argv[1])'
+	dpkg --listfiles $NAME | grep '\.py$' | \
+	     xargs -n 1 /usr/bin/python$PYVER -O -c 'import py_compile,sys;py_compile.compile(sys.argv[1])'
+    ;;
+esac
+
 exit 0
-
-

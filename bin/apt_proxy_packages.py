@@ -1,4 +1,3 @@
-#!/usr/bin/python -u
 #
 # Copyright (C) 2002 Manuel Estrada Sainz <ranty@debian.org>
 #

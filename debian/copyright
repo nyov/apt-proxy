@@ -1,10 +1,7 @@
 This is the Debian GNU/Linux packaged version of apt-proxy
 
-It was originally written by Rusty Russel.  See the top of the
-apt-proxy script for the current list of authors and contributors.
-
-Debian package originally put together by Raphael Bossek and
-now maintained by Chris Halls
+Version 2 was written by Manuel Estrada Sainz.  The original version was by
+Rusty Russel.  The package is maintained by Chris Halls
 
 The project homepage is at
   http://sourceforge.net/projects/apt-proxy
