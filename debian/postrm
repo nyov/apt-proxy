@@ -5,5 +5,6 @@
 if test "$1" = "purge"; then
   echo y|update-inetd --remove 9999 2>&1 > /dev/null
   rm -rf /var/log/apt-proxy.log
+  rm -rf /var/cache/apt-proxy
 fi
 
