@@ -335,11 +335,12 @@ class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
         content = (self.error_message_format %
                    {'code': code, 'message': message, 'explain': explain})
         self.send_response(code, message)
-        if code != 304:
-            self.send_header('Content-Length', len(content))
+#        if code != 304:
+#            self.send_header('Content-Length', len(content))
         self.send_header('Content-Type', 'text/html')
+        self.send_header('Connection', 'close')
         self.end_headers()
-        if self.command != 'HEAD' and code != 304:
+        if self.command != 'HEAD' and code >= 200 and code not in (204, 304):
             self.wfile.write(content)
 
     error_message_format = DEFAULT_ERROR_MESSAGE
@@ -360,6 +361,7 @@ class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
         if self.request_version != 'HTTP/0.9':
             self.wfile.write("%s %d %s\r\n" %
                              (self.protocol_version, code, message))
+            # print (self.protocol_version, code, message)
         self.send_header('Server', self.version_string())
         self.send_header('Date', self.date_time_string())
 
