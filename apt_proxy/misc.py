@@ -50,6 +50,7 @@ class DomainLogger:
 
     def addDomains(self, domains):
         self.enabled.update(domains)
+        #print "enabled: ", self.enabled
     def isEnabled(self, domain, level=9):
         domains = self.enabled.keys()
         if domain in domains and level > self.enabled[domain]:
@@ -60,16 +61,28 @@ class DomainLogger:
         else:
             return 0
 
-    def msg(self, msg, domain='log', level=9):
+    def msg(self, msg, domain='log', level=4):
         "Logs 'msg' if domain and level are appropriate"
+        #print 'domain:', domain, 'level:', level
         if self.isEnabled(domain, level):
             try:
-                python.log.msg("[%s:%d]%s"%(domain,level,msg))
+                python.log.msg("[%s] %s"%(domain, msg))
             except IOError:
                 pass
     def debug(self, msg, domain='debug', level=9):
-        "Usefull to save typing on new debuging messages"
-        self.msg(msg, domain, level)
+        "Useful to save typing on new debuging messages"
+        if self.isEnabled(domain, level):
+            try:
+                python.log.debug("[%s] %s"%(domain, msg))
+            except IOError:
+                pass
+    def err(self, msg, domain='error', level=9):
+        "Log an error message"
+        try:
+            python.log.err("[%s] %s"%(domain, msg))
+        except IOError:
+            pass
+        
 
 # Prevent log being replace on reload.  This only works in cpython.
 try:
@@ -141,14 +154,14 @@ class MirrorRecycler:
             self.cur_uri = uri
             self.pending = os.listdir(self.cur_dir)
             if not self.pending:
-                log.msg("PRUNING EMPTY:"+path,'recycle')
+                log.msg("Pruning empty directory: "+path,'recycle')
                 os.removedirs(path)
         else:
             if os.path.isfile(path):
                 #print "PATH:", path
                 #print "URI: ", uri
                 if not self.factory.access_times.has_key(uri):
-                    log.msg("RECYCLING:"+ uri,'recycle')
+                    log.msg("Adopting new file: "+ uri,'recycle')
                     self.factory.access_times[uri] = os.path.getatime(path)
             else:
                 log.msg("UNKNOWN:"+path,'recycle')
