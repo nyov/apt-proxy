@@ -17,10 +17,10 @@
 from apt_proxy import Backend
 from misc import log
 import packages
-import ConfigParser, os
-from ConfigParser import DEFAULTSECT
+import os
+from ConfigParser import ConfigParser,DEFAULTSECT
     
-class MyConfigParser(ConfigParser.ConfigParser):
+class MyConfigParser(ConfigParser):
     """
     Adds 'gettime' to ConfigParser to interpret the suffixes.
     Interprets 'disabled_keyword' as disabled (None).

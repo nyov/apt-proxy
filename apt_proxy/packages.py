@@ -14,9 +14,9 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import apt_pkg, apt_inst, sys, time, os, stat
+import apt_pkg, apt_inst, sys, os, stat
 from os.path import dirname, basename
-import re, signal, shelve, shutil, fcntl
+import re, shelve, shutil, fcntl
 from twisted.internet import process
 import apt_proxy, copy, UserDict
 from misc import log
@@ -29,8 +29,9 @@ class AptDpkgInfo(UserDict.UserDict):
 
     See AptPackages.get_mirror_path
     """
-    data = {}
+
     def __init__(self, filename):
+        UserDict.UserDict.__init__(self)
         try:
             filehandle = open(filename);
             try:

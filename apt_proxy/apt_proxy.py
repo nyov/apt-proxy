@@ -36,8 +36,8 @@ SEEK_END = 2
 from types import *
 
 #sibling imports
-import packages, misc
-from misc import log
+import misc
+log = misc.log
 
 from twisted_compat import compat
 
@@ -154,6 +154,7 @@ class FileVerifier(protocol.ProcessProtocol):
         This get's automatically called when the process finishes, we check
         the status and report through the Deferred.
         """
+        __pychecker__ = 'unusednames=reason'
         #log.debug("Process Status: %d" %(self.process.status),'verify')
         #log.debug(self.data, 'verify')
         if self.laterID:
@@ -173,7 +174,7 @@ def findFileType(name):
 class TempFile (file):
     def __init__(self, mode='w+b', bufsize=-1):
         import tempfile
-        name = tempfile.mktemp('.apt-proxy')
+        (fd, name) = tempfile.mkstemp('.apt-proxy')
         file.__init__(self, name, mode, bufsize)
         os.unlink(name)
     def append(self, data):
@@ -202,6 +203,7 @@ class Fetcher:
     requests = None
     request = None
     length = None
+    transport = None
         
     def insert_request(self, request):
         """
@@ -212,7 +214,8 @@ class Fetcher:
         the appropriate headers and set the response code.
         """
         if request in self.requests:
-            raise 'this request is already assigned to this Fetcher'
+            raise RuntimeError, \
+                  'this request is already assigned to this Fetcher'
         self.requests.append(request)
         request.apFetcher = self
         if (self.request):
@@ -246,7 +249,7 @@ class Fetcher:
         if len(self.requests) == 0:
             log.debug("Last request removed",'client')
             if not self.factory.finish_horphans:
-                if hasattr(self, 'transport') and self.transport:
+                if self.transport:
                     log.debug(
                         "telling the transport to loseConnection",'client')
                     self.transport.loseConnection()
@@ -286,7 +289,7 @@ class Fetcher:
         self.local_mtime = request.local_mtime
         self.factory = request.factory
         self.request = request
-        data = request.content.read()
+        request.content.read()
 
         for req in self.requests:
             self.update_request(req)
@@ -294,7 +297,7 @@ class Fetcher:
 
         request.apFetcher = self
         if self.factory.runningFetchers.has_key(request.uri):
-            raise 'There already is a running fetcher'
+            raise RuntimeError, 'There already is a running fetcher'
         self.factory.runningFetchers[request.uri]=self
 
     def apDataReceived(self, data):
@@ -438,7 +441,8 @@ class FetcherDummy(Fetcher):
         """
         """
         if request in self.requests:
-            raise 'this request is already assigned to this Fetcher'
+            raise RuntimeError, \
+                  'this request is already assigned to this Fetcher'
         self.requests.append(request)
         request.apFetcher = self
 
@@ -506,6 +510,7 @@ class FetcherHttp(Fetcher, http.HTTPClient):
         self.endHeaders()
 
     def handleStatus(self, version, code, message):
+        __pychecker__ = 'unusednames=version,message'
         self.status_code = int(code)
 
         self.setResponseCode(self.status_code)
@@ -669,6 +674,7 @@ class FetcherFtp(Fetcher, protocol.Protocol):
     def ftpFetchList(self):
         "If ftpFetchSize didn't work try to get the size with a list command."
         def apFtpListFinish(msg, filelist, fetcher, fail):
+            __pychecker__ = 'unusednames=msg'
             if fail:
                 fetcher.ftpFinish(http.INTERNAL_SERVER_ERROR)
                 return
@@ -688,6 +694,7 @@ class FetcherFtp(Fetcher, protocol.Protocol):
     def ftpFetchFile(self):
         "And finally, we ask for the file."
         def apFtpFetchFinish(msg, code, status, fetcher):
+            __pychecker__ = 'unusednames=msg,status'
             fetcher.ftpFinish(code)
         d = self.ftpclient.retrieveFile(self.remote_file, self)
         d.addCallbacks(apFtpFetchFinish, apFtpFetchFinish,
@@ -704,6 +711,7 @@ class FetcherFtp(Fetcher, protocol.Protocol):
         Maybe we should do some recovery here, I don't know, but the Deferred
         should be enough.
         """
+        __pychecker__ = 'unusednames=reason'
         log.debug("lost connection",'ftp_client')
 
 class FetcherGzip(Fetcher, protocol.ProcessProtocol):
@@ -810,6 +818,7 @@ class FetcherGzip(Fetcher, protocol.ProcessProtocol):
                     log.debug('Threw away exception OSError no such process')
 
     def processEnded(self, reason=None):
+        __pychecker__ = 'unusednames=reason'
         log.debug("Status: %d" %(self.process.status),'gzip')
         if self.process.status != 0:
             self.setResponseCode(http.NOT_FOUND)
@@ -870,6 +879,7 @@ class FetcherRsync(Fetcher, protocol.ProcessProtocol):
         log.debug(data,'rsync_client')
 
     def processEnded(self, reason=None):
+        __pychecker__ = 'unusednames=reason'
         log.debug("Status: %d" %(self.process.status),'rsync_client')
         if self.process.status != 0:
             self.setResponseCode(http.NOT_FOUND)
@@ -1024,6 +1034,7 @@ class Request(http.Request):
     local_mtime = None
     local_size = None
     serve_if_cached = 1
+    apFetcher = None
     
     def simplify_path(self, old_path):
         """
@@ -1070,6 +1081,7 @@ class Request(http.Request):
             Now we check NOTE: The file may still be too old or not fresh
             enough.
             """
+            __pychecker__ = 'unusednames=result'
             stat_tuple = os.stat(self.local_file)
 
             self.local_mtime = stat_tuple[stat.ST_MTIME]
@@ -1123,6 +1135,7 @@ class Request(http.Request):
         The connection with the client was lost, remove this request from its
         Fetcher.
         """
+        __pychecker__ = 'unusednames=reason'
         #If it is waiting for a file verification it may not have an
         #apFetcher assigned
         if self.apFetcher:
@@ -1148,6 +1161,7 @@ class Request(http.Request):
             If not 'cached' the requested file was not there, didn't pass the
             integrity check or may be outdated.
             """
+            __pychecker__ = 'unusednames=result'
             if len(dummyFetcher.requests)==0:
                 #The request's are gone, the clients probably closed the
                 #conection
@@ -1206,6 +1220,7 @@ class Request(http.Request):
                            (dummyFetcher, 1, running,), None,
                            (dummyFetcher, 0, running,), None)
             d.arm()
+            return None
 
     def process(self):
         """
@@ -1267,11 +1282,14 @@ class LoopbackRequest(Request):
 
     Look at FetcherGzip for a sample.
     """
+    __pychecker__ = 'no-callinit'
     import cStringIO
     local_mtime = None
     headers = {}
     content = cStringIO.StringIO()
+    
     def __init__(self, other_req, finish=None):
+
         self.finish_cb = finish
         http.Request.__init__(self, None, 1)
         self.backend = other_req.backend
@@ -1318,6 +1336,7 @@ class Channel(http.HTTPChannel):
 
     def connectionLost(self, reason=None):
         "If the connection is lost, notify all my requets"
+        __pychecker__ = 'unusednames=reason'
         for req in self.requests:
             req.connectionLost()
         log.debug("Client connection closed")
@@ -1345,6 +1364,14 @@ class Factory(protocol.ServerFactory):
     self.packages: all versions of a certain package name.
     
     """
+    cleanup_freq = None
+    do_debug = None
+    cache_dir = None
+    cleanup_freq = None
+    max_versions = None
+    max_age = None
+    
+    
     def periodic(self):
         "Called periodically as configured mainly to do mirror maintanace."
         log.debug("Doing periodic cleaning up")
@@ -1462,6 +1489,7 @@ class Factory(protocol.ServerFactory):
         self.dumpdbs()
 
     def stopFactory(self):
+        import packages
         self.dumpdbs()
         self.update_times.close()
         self.access_times.close()
@@ -1498,6 +1526,7 @@ class Factory(protocol.ServerFactory):
 
 
     def buildProtocol(self, addr):
+        __pychecker__ = 'unusednames=addr'
         proto = Channel()
         proto.factory = self;
         return proto

@@ -1,0 +1,4 @@
+#!/bin/sh
+PYTHONPATH="`pwd`" pychecker \
+	--stdlib \
+	$(find apt_proxy -name "*.py")
