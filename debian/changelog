@@ -3,6 +3,7 @@ apt-proxy (1.9.12.pre13) experimental; urgency=low
   * Add support for http dynamic backends. If a file is requested for a
     backend not listed in the configuration file, it will be used as the
     hostname. It can be disabled by setting dynamic_backends=off (Otavio).
+  * Add me in uploaders (Otavio).
 
  -- Otavio Salvador <otavio@debian.org>  Tue,  1 Jun 2004 00:54:43 -0300
 
