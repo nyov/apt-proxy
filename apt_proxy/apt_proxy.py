@@ -55,7 +55,8 @@ class FileType:
     
     self.contype: mime string for the content-type http header.
     
-    mutable: is it a Packages/Sources/...
+    mutable: do the contents of this file ever change?  Files such as
+    .deb and .dsc are never changed once they are created.
     
     """
     def __init__ (self, regex, contype, mutable):
