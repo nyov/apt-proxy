@@ -33,7 +33,7 @@ import calendar
 import sys
 
 # sibling imports
-import basic, protocol
+from twisted.protocols import basic, protocol
 
 # twisted imports
 from twisted.internet import interfaces, reactor
