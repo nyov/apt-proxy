@@ -50,6 +50,7 @@ class MyConfigParser(ConfigParser):
 def factoryConfig(factory, shell = None):
     "Loads the configuration file into 'factory'"
     defaults = {
+        'address': '',
         'port': '9999',
         'min_refresh_delay': '30',
         'complete_clientless_downloads': '0',
@@ -76,6 +77,7 @@ def factoryConfig(factory, shell = None):
     else:
         conf.read('/etc/apt-proxy/apt-proxy.conf')
 
+    factory.proxy_address = conf.get(DEFAULTSECT, 'address')
     factory.proxy_port = conf.getint(DEFAULTSECT, 'port')
     factory.cache_dir = conf.get(DEFAULTSECT, 'cache_dir')
     factory.max_freq = conf.gettime(DEFAULTSECT, 'min_refresh_delay')
