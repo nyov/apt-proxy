@@ -447,7 +447,7 @@ class Fetcher:
         if reason:
             msg = '%s (%s)'%(msg, reason.getErrorMessage())
             log.debug("Connection Failed: "+str(reason))
-        log.error(msg)
+        log.err(msg)
 
             # Look for alternative fetchers
         if not self.request.activateNextBackend(self):
@@ -931,7 +931,7 @@ class FetcherRsync(Fetcher, protocol.ProcessProtocol):
             # No file created yet
             pass
         else:
-            log.error('found more than one tempfile, abort rsync')
+            log.err('found more than one tempfile, abort rsync')
             self.transport.loseConnection()
              
     def connectionMade(self):
