@@ -32,7 +32,12 @@ class AptDpkgInfo(UserDict.UserDict):
     data = {}
     def __init__(self, filename):
         try:
-            self.control = apt_inst.debExtractControl(open(filename))
+            filehandle = open(filename);
+            try:
+                self.control = apt_inst.debExtractControl(filehandle)
+            finally:
+                # Make sure that file is always closed.
+                filehandle.close()
         except SystemError:
             import traceback
             traceback.print_exc()
