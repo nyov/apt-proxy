@@ -9,6 +9,8 @@
 PROGNAME=apt-proxy-import
 VERSION=0.1
 CONFIG_FILE=/etc/apt-proxy/apt-proxy.conf
+EXACT_MOVING=on
+FUZZY_MATCHING="packages fuzzy_packages"
 
 usage()
 {
@@ -25,6 +27,68 @@ usage()
   echo
 }
 
+mirrorpaths_packages()
+{
+	local filename="$1"
+	grep -h "/$filename " $BACKENDS* | cut -f1 -d' ' | uniq
+}
+
+mirrorpaths_fuzzy_packages()
+{
+	local filename="$1"
+	local packagename=$(expr $filename : '\([^_]*\)_')
+	local rest=$(expr $filename : '[^_]*\(_.*\)$')
+
+	grep -h "/${packagename}_[^ ]*\.deb " $BACKENDS* | cut -f1 -d' ' \
+		| uniq | sed -e "s/_[^/]*\.deb/$rest/" 
+}
+
+mirrorpaths_deb()
+{
+	#This funcion is not finished
+	local $filename="$1"
+	unset SECTION VERSION SOURCE NAME ARCH
+	eval $( dpkg --info $filename | \
+		sed \
+			-e's/^ Section: */SECTION=/p' \
+			-e's/^ Version: *\(.*:\)\?/VERSION=/p' \
+			-e's/^ Source: *\([^ ]*\).*$/SOURCE=\1/p' \
+			-e's/^ Package: */NAME=/p' \
+			-e's/^ Architecture: */ARCH=/p' \
+			-n \
+		)
+
+	[ "$SOURCE" ] || SOURCE=$NAME
+	case $SOURCE in
+		lib*) HASH=`expr $SOURCE : '\(....\)'` ;;
+		*) HASH=`expr $SOURCE : '\(.\)'` ;;
+	esac
+	case $SECTION in
+		contrib*)	SECTION=contrib ;;
+		non-free*)	SECTION=non-free ;;
+		non-US*|non-us*)SECTION=non-US/main ;;
+		*) SECTION=main;;
+	esac
+	echo "pool/$SECTION/$HASH/$SOURCE/$filename"
+}
+mirrorpaths()
+{
+	local filename="$1"
+	if [ "$EXACT_MOVING" != "off" ] ;then
+		mirrorpaths_packages "$filename"
+		return
+	else
+		for method in $FUZZY_MATCHING
+		do
+			MIRRORPATHS=$(mirrorpaths_$method $filename)
+			if [ -n "$MIRRORPATHS" ] ;then
+				echo "$MIRRORPATHS"
+				return
+			fi
+		done
+	fi
+
+}
 
 add_backend()
 {
@@ -55,8 +119,8 @@ debug()
 unset VERBOSE
 
 # Parse command line
-ARGS=`getopt -o c:hvd --long \
-	config-file:,help,version,verbose \
+ARGS=`getopt -o e:c:hvd --long \
+	exact:,config-file:,help,version,verbose \
 	-n "$0" -- "$@"`
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 eval set -- "$ARGS"
@@ -73,6 +137,10 @@ while true ; do
 	  '-d'|'--verbose')
 		VERBOSE=1
 		shift
+		;;
+	  '-e'|'--exact')
+	  	EXACT_MOVING="$2"
+		shift 2
 		;;
 	  '--')
  		# end of options
@@ -108,7 +176,7 @@ for directory in $@; do
 	
 	case "$filename" in
 	*.deb)
-	    cachepaths=`grep -h "/$filename " $BACKENDS* | cut -f1 -d' ' | uniq`
+	    cachepaths=`mirrorpaths "$filename"`
 
 	    if [ -n "$cachepaths" ]; then
 
