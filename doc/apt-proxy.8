@@ -1,37 +1,37 @@
 .\" Man page copied from apt.conf man page.
 .TH "apt-proxy" "8" "05 Feb 2002" "apt-proxy" ""
 .SH "Name"
-apt-proxy \- A proxy for saving bandwidth to Debian servers
+apt\-proxy \- A proxy for saving bandwidth to Debian servers
 .SH SYNOPSIS
-.B apt-proxy
+.B apt\-proxy
 .I "[options] [logfile]"
 .br
 .PP
 .SH "DESCRIPTION"
-\fBapt-proxy\fP is a python program designed to be run as an stand alone
+\fBapt\-proxy\fP is a python program designed to be run as an stand alone
 server via twistd, and provides a clean, caching, intelligent proxy for
-\fBapt-get\fP, which speaks HTTP to apt-get clients, and http or ftp to
+\fBapt\-get\fP, which speaks HTTP to apt\-get clients, and http or ftp to
 the back-end server(s)\&.  Usually it is run on port 9999, mainly because
 that is the default configuration, and people are lazy\&.
 .PP
 .SH "CLIENT CONFIGURATION"
-Once \fBapt-proxy\fP is configured, users then edit their
+Once \fBapt\-proxy\fP is configured, users then edit their
 \fBsources\&.list\fP file to point to the proxy (which uses the http
 protocol to serve clients), like so:
 
 .nf
-deb http://SERVER:9999/main woody main contrib non-free
-deb http://SERVER:9999/non-US woody/non-US main contrib non-free
-deb-src http://SERVER:9999/main woody main contrib non-free
-deb-src http://SERVER:9999/non-US woody/non-US main contrib non-free
+deb http://SERVER:9999/main woody main contrib non\-free
+deb http://SERVER:9999/non\-US woody/non\-US main contrib non\-free
+deb\-src http://SERVER:9999/main woody main contrib non\-free
+deb\-src http://SERVER:9999/non\-US woody/non\-US main contrib non\-free
 
 deb http://SERVER:9999/helixcode/ woody main
 .fi
 
 What path should be specified after the server name and port number
-depends on the configuration of \fBapt-proxy\fP (which can restrict
+depends on the configuration of \fBapt\-proxy\fP (which can restrict
 paths and send different paths to different servers)\&.  In this
-example, non-US/ and helixcode/ actually retrieve files from different
+example, non\-US/ and helixcode/ actually retrieve files from different
 back-end servers\&.
 
 Note that you can also use the nicknames `unstable', `frozen' etc, but
@@ -40,28 +40,28 @@ symbolic or the code name and stick with it.
 .PP
 .SH "SERVER CONFIGURATION"
 See
-.BR apt-proxy.conf (8)
-for details of how to set up apt-proxy to use backends near to you.
+.BR apt\-proxy.conf (8)
+for details of how to set up apt\-proxy to use backends near to you.
 .PP
 .SH "CARE AND FEEDING OF MIRRORS"
 
-\fBapt-proxy\fP reduces the bandwidth requirements of Debian mirrors
+\fBapt\-proxy\fP reduces the bandwidth requirements of Debian mirrors
 by  restricting the frequency of Packages, Releases and Sources file updates
 from the back end and only doing a single fetch for any file, how ever many
 users request it from the proxy.
 .PP
 .SH "FILES"
-/etc/apt-proxy/apt-proxy\&.conf
+/etc/apt\-proxy/apt\-proxy\&.conf
 .PP
 .SH "SEE ALSO"
 .na
 .nh
-.BR apt-proxy.conf (5)
+.BR apt\-proxy.conf (5)
 .hy
 .ad
 .PP
 .SH "BUGS"
-Packages are not compressed using gzip --rsyncable, which gives a 30%
+Packages are not compressed using gzip \-\-rsyncable, which gives a 30%
 reduction in bytes transferred for binary packages, and much greater for
 source and other packages.
 
@@ -69,4 +69,5 @@ NOTE: v2 doesn't officially support rsync backends, so for now the above does
 not apply.
 .PP
 .SH "AUTHOR"
-apt-proxy v2 was written by Manuel Estrada Sainz <ranty@debian.org>.
+apt\-proxy v2 was written by Manuel Estrada Sainz and is maintained by Chris 
+Halls.
