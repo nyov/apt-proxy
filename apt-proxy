@@ -818,6 +818,18 @@ find_and_cat()
     done
 }
 
+# Find .deb size and echo.  Return true(0) if found
+# find_filesize(cache_directory URL_rest)
+find_filesize()
+{
+   debug find_filesize $1 $2
+   FILESZ="`grep $2 $1/.apt-proxy-filelists/*Packages |head -1|cut -d' ' -f2`"
+   [ -n "$FILESZ" ] || return 1
+
+   echo "$FILESZ"
+   return 0
+}
+
 ################################# MAIN START ##############################
 # Read our configuration
 #. /etc/apt-proxy/apt-proxy.conf
@@ -870,6 +882,8 @@ while true; do
 
     [ -n "$REQUEST" ] && log `date` Request "$REQUEST"
 
+    echo "$REQUEST" | grep -q "Packages\(.gz\)\?$" && DO_UPDATE_PACKAGES_LIST=1
+
     case $REQUEST in
     '')
 	# Otherwise we send RSTs to some clients.
@@ -884,7 +898,6 @@ while true; do
     *Packages.gz|*Release.gz|*Sources.gz)
 	# Rsync uncompressed files and derive.
 	debug Updating compressed file \`$REQUEST\'
-	DO_UPDATE_PACKAGES_LIST=1
 	FILE=`echo $REQUEST | sed 's/\.gz$//'`
 	resolve_url $FILE 1
 
@@ -924,7 +937,6 @@ while true; do
 
     *Packages|*Release|*Sources)
 	debug Updating file \`$REQUEST\'
-	DO_UPDATE_PACKAGES_LIST=1
 	resolve_url $REQUEST 1
 	STREAM="`fetch_file_maybe $URL_REST $FRONT_BASE $BACKS`"
 
@@ -1000,7 +1012,9 @@ while true; do
 	    BASEFILE_NAME=`basename $REQUEST`
 	    case $SIZE_FILE in
 	    Packages)
+	    	if ! SIZE=`find_filesize $FRONT_BASE $URL_REST`; then
 		SIZE=`find_and_cat Packages $FRONT_BASE $URL_SUBDIR | grep-dctrl -e -F Filename "/$BASEFILE_NAME$" -s Size | cut -d\  -f2 | head -1`
+		fi
 		;;
 	    Sources)
 		PACKAGE_NAME="`basename $REQUEST | cut -d_ -f1`"
@@ -1038,7 +1052,8 @@ while true; do
     # If we do not have a size, close the connection on completion
     [ -z "$SIZE" ] && KEEP_ALIVE=close
 
-    debug Header - 200 OK, keep-alive:$KEEP_ALIVE content:$contype size:$SIZE date:$DATE enc:$conenc request:$REQUEST
+    debug Header - 200 OK, keep-alive:$KEEP_ALIVE content:$contype size:$SIZE \
+    	  date:$DATE enc:$conenc request:$REQUEST
     write_header "200 OK" "$KEEP_ALIVE" "$contype" "$SIZE" "$DATE" "$conenc" "$REQUEST"
     stream_file "$STREAM" "$FRONT"
 
