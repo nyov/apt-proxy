@@ -1,5 +1,5 @@
 .\" Man page copied from apt.conf man page.
-.TH "apt-proxy\&.conf" "5" "26 Sep 2000" "apt-proxy" "" 
+.TH "apt-proxy\&.conf" "5" "09 Jan 2002" "apt-proxy" "" 
 .SH "NAME" 
 apt-proxy\&.conf \- configuration file for apt-proxy
 .PP 
@@ -75,6 +75,10 @@ minutes.
 the back-end server have their numbers printed to the log (total size
 and speedup factor).
 
+\fIRSYNC_TIMEOUT\fP, if set, sets a maximum I/O timeout in seconds for rsync
+transfers.  This prevents apt-proxy from hanging if a backend server is
+misbehaving.
+
 .PP 
 .SH "CLEANUP OPTIONS"
 \fICLEANUP_DAYS\fP, if set, indicates that if we serve a package or
@@ -95,7 +99,7 @@ sources.
 /etc/apt-proxy/apt-proxy\&.conf
 .PP 
 .SH "SEE ALSO" 
-apt-proxy (8)
+apt-proxy (8), /usr/share/doc/apt-proxy/README
 .PP 
 .SH "BUGS" 
 Plently sure.  Please report.
