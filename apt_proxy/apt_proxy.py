@@ -362,7 +362,7 @@ class AptProxyClient:
         When multi-server backends are implemented we could change server and
         try again.
         """
-        self.factory.debug("Connection Failed!")
+        self.factory.debug("Backend Connection Failed: " + self.request.uri)
         self.setResponseCode(http.SERVICE_UNAVAILABLE)
         self.aptDataReceived("")
         self.aptDataEnd(self.transfered)
