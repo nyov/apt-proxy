@@ -1,9 +1,11 @@
-apt-proxy-v2 (1.9.3+4pre1) experimental; urgency=low
+apt-proxy-v2 (1.9.3+4pre2) experimental; urgency=low
 
   * Add support for twisted up to 0.99.1rc4.  Pipelining disabled due to a bug
     in twisted. (Manuel)
   * Fix cache directory names in maintainer scripts to use
     /var/cache/apt-proxy.
+  * Some general bugfixing (Manuel)
+  * Fix problem with 2 char directories (Simon Hyde)
 
  -- Chris Halls <chris.halls@gmx.de>  Mon,  2 Sep 2002 10:21:20 +0200
 

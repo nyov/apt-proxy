@@ -1161,7 +1161,7 @@ class AptProxyRequest(http.Request):
             self.finishCode(http.NOT_IMPLEMENTED)
             return
 
-        if re.search('/../', self.uri):
+        if re.search('/\.\./', self.uri):
             log.debug("/../ in simplified uri ("+self.uri+")")
             self.finishCode(http.FORBIDDEN)
             return
