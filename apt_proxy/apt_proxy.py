@@ -506,6 +506,8 @@ class FetcherHttp(Fetcher, http.HTTPClient):
                 return self.instance
             def clientConnectionFailed(self, connector, reason):
                 self.instance.connectionFailed(reason)
+            def clientConnectionLost(self, connector, reason):
+                log.debug("XXX clientConnectionLost", "http-client")
 
         reactor.connectTCP(request.backend.host, request.backend.port,
                            ClientFactory(self), request.backend.timeout)
