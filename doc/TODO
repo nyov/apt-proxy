@@ -14,6 +14,13 @@ Revise debian packing:
 
 ---------------- "Not so urgent" mark ---------------------------
 
+Support /etc/init.d/apt-proxy reload as kill -HUP
+  - auto reload apt-proxy.conf support too?
+
+Report an error at /etc/init.d/apt-proxy start if something is already
+listening on the port (current behaviour is no error and message in logfile only)
+
+
 Add a configuration parameter which says 'never delete the final version of
 a package, even if older than max_age'
 	Maybe it should be "never delete files which still appear in current
@@ -126,16 +133,5 @@ TODO list for apt-proxy
 - Return a better error message if the backend servers do not exist, rather
   than 'directory does not exist'
 
-- Make it more clear that apt-proxy should not be configured as an http proxy,
-  but as an http server, or support using apt-proxy as a proxy...
-
 - Add debconf questions for default user and cache directory
 
-- Add more possible servers to default config file.  I would be grateful if
-  people who are using alternative servers would file a wishlist bug containing
-  their apt-proxy.conf, and I'll integrate it into the distribution.
-
-- Work through the remaining wishlist bugs in the BTS.  Keep those reports
-  coming in folks!
-
-Chris Halls, April 2002
