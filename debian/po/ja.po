@@ -1,0 +1,94 @@
+#
+#    Translators, if you are not familiar with the PO format, gettext
+#    documentation is worth reading, especially sections dedicated to
+#    this format, e.g. by running:
+#         info -n '(gettext)PO Files'
+#         info -n '(gettext)Header Entry'
+#
+#    Some information specific to po-debconf are available at
+#            /usr/share/doc/po-debconf/README-trans
+#         or http://www.debian.org/intl/l10n/po-debconf/README-trans
+#
+#    Developers do not need to manually edit POT or PO files.
+#
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: apt-proxy 1.9.17\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2004-07-16 10:00-0300\n"
+"PO-Revision-Date: 2004-09-01 20:08+0900\n"
+"Last-Translator: Hideki Yamane <henrich@samba.gr.jp>\n"
+"Language-Team: Japanese <debian-japanese@lists.debian.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=EUC-JP\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. Type: note
+#. Description
+#: ../templates:3
+msgid "Upgrading from pre-v1.9 packages."
+msgstr "バージョン 1.9 以前のパッケージからのアップグレードについて"
+
+#. Type: note
+#. Description
+#: ../templates:3
+msgid "You seem to be upgrading from a version of apt-proxy previous to v1.9."
+msgstr ""
+"apt-proxy のバージョン 1.9 以前からのアップグレードを行おうとしています。"
+
+#. Type: note
+#. Description
+#: ../templates:3
+msgid ""
+"apt-proxy has been rewritten in python and the new configuration file format "
+"is incompatible with previous version. Hopefully you will like the new "
+"format better :)"
+msgstr ""
+"apt-proxy は python で書き直され、新しい設定ファイル形式は以前のバージョンと"
+"は互換性がありません。新しい形式がお気に入れば幸いです :)"
+
+#. Type: note
+#. Description
+#: ../templates:3
+msgid ""
+"I will build /etc/apt-proxy/apt-proxy-v2.conf based on your old settings if "
+"you did't already have such file. In any case, a backup file will be written "
+"to /etc/apt-proxy/apt-proxy-v2.conf.backup"
+msgstr ""
+"まだファイルが存在しない場合、以前の設定を元に /etc/apt-proxy/apt-proxy-v2."
+"conf を作成します。どちらにしても、バックアップファイルは /etc/apt-proxy/apt-"
+"proxy-v2.conf.backup に書き出されます。"
+
+#. Type: note
+#. Description
+#: ../templates:3
+msgid ""
+"There are also other issues documented in /usr/share/doc/apt-proxy/UPGRADING"
+msgstr "/usr/share/doc/apt-proxy/UPGRADING に記載されている他の事柄について"
+
+#. Type: note
+#. Description
+#: ../templates:19
+msgid "Upgrading issues"
+msgstr "アップグレードについて"
+
+#. Type: note
+#. Description
+#: ../templates:19
+msgid ""
+"The upgrading script dumped some warnings and they have been mailed to "
+"root@localhost."
+msgstr ""
+"アップグレードのスクリプトは警告を幾つか出力し、root@localhost 宛に送信しまし"
+"た。"
+
+#. Type: note
+#. Description
+#: ../templates:19
+msgid ""
+"You should read those warnings and /usr/share/doc/apt-proxy/UPGRADING and "
+"revise your configuration (/etc/apt-proxy/apt-proxy-v2.conf)"
+msgstr ""
+"これらの警告と /usr/share/doc/apt-proxy/UPGRADING を読んで、設定 (/etc/apt-"
+"proxy/apt-proxy-v2.conf) を見直す必要があります。"

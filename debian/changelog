@@ -5,6 +5,8 @@ apt-proxy (1.9.17+CVS) unstable; urgency=low
   * Debconf Translations:
     - Czech (cs.po) by Jan Outrata <outrataj@upcase.inf.upol.cz>
       (closes: #266571)
+    - Japanese (ja.po) by Hideki Yamane <henrich@samba.gr.jp>
+      (closes: #270471)
 
  -- Otavio Salvador <otavio@debian.org>  Tue, 24 Aug 2004 10:57:30 -0300
 
