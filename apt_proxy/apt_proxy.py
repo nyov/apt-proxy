@@ -175,6 +175,7 @@ class TempFile (file):
     def __init__(self, mode='w+b', bufsize=-1):
         import tempfile
         (fd, name) = tempfile.mkstemp('.apt-proxy')
+        os.close(fd)
         file.__init__(self, name, mode, bufsize)
         os.unlink(name)
     def append(self, data):
