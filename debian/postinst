@@ -1,0 +1,7 @@
+#! /bin/sh
+
+#DEBHELPER#
+
+update-inetd --add "9999           stream  tcp     nowait.400      apt-user    /usr/sbin/tcpd /usr/sbin/apt-proxy /var/log/apt-proxy.log"
+update-inetd --disable 9999
+

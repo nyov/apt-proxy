@@ -1,0 +1,53 @@
+                 	apt-proxy README
+
+              Chris Halls <chris.halls@nikocity.de>
+
+This is part of the Debian GNU/Linux package for apt-proxy.
+
+To set up apt-proxy as a partial mirror, you need to do the following:
+
+1. Configure backends in /etc/apt-proxy/apt-proxy.conf.  The supplied
+   apt-proxy.conf will work out of the box, but I stronly suggest you look
+   for a mirror closer to you.  You can look at what an rsync server is
+   offering using rsync -n <mirror address>:: to find available modules,
+   and rsync -n <mirror address>::<module-name>/ to look in
+   subdirectories.  For example:
+
+   chris@shawn:~$ rsync -n ftp.debian.org::
+   debian          Debian FTP Archive (~40 GB)
+   debian-archive  Old Debian FTP Archive (~8 GB)
+   
+   chris@shawn:~$ rsync -n ftp.debian.org::debian/
+   [...]
+   drwxr-xr-x        4096 2001/11/04 19:12:56 dists
+   drwxr-xr-x        4096 2000/12/19 21:10:49 pool
+   drwxr-xr-x        4096 2001/06/11 19:51:48 project
+
+   Using this information, add backends to apt-proxy.conf.  For example:
+
+   add_backend /debian/                                \
+       $APT_PROXY_CACHE/debian/                        \
+       ftp.us.debian.org::debian/
+
+   /etc/apt/sources.list contains these lines:
+
+   deb http://localhost:9999/debian woody main non-free contrib
+   deb-src http://localhost:9999/debian woody main non-free contrib
+
+   You'll need to change the localhost: to the hostname of the cache.
+
+2. Create a user for apt-proxy, called apt-user.  If you want to choose
+   another name you need to change the username in /etc/inetd.conf.
+
+3. Create a logfile owned by the user:
+   
+   # touch /var/log/apt-proxy.log
+   # chown apt-user /var/log/apt-proxy.log
+
+4. Enable the service
+
+   # update-inetd --enable apt-proxy
+
+I hope to remove steps 2-4 in a future package release.
+
+December 2001

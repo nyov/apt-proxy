@@ -1,0 +1,84 @@
+apt-proxy (1.1.2-2) unstable; urgency=low
+
+  * Add updated README to .deb, thanks to Thorsten Gunkel for pointing
+    this out and other suggestions.
+  * Changed main archive name from debian to main in apt-proxy.conf to make it
+    less confusing.
+  * Documented RSYNC_TIMEOUT in apt-proxy.conf manpage.
+  * Minor changes to apt-proxy manpage.  The manpages will get a proper
+    overhaul once the installation has been modified to create the user and
+    cache directories.
+  * Add a couple more rsync servers to default apt-proxy.conf
+  * Add debian/TODO
+
+ -- Chris Halls <chris.halls@nikocity.de>  Wed, 09 Jan 2002 22:53:58 +0100
+
+apt-proxy (1.1.2-1) unstable; urgency=low
+
+  * New maintainter - thanks to Andrew McMillan for sponsoring.
+    (closes: #123499)
+  * New upstream release (closes: #112029)
+     - Some bug fixes, bashism cleanups
+     - Upstream has been inactive for 6 months now.  I have not had
+       any contact since September.
+  * Add Depends: grep-dctrl
+    (closes: #76113, #78256, #114855, #99976, #121456)
+  * Remove unneeded procmail dependency (closes: #76634, #116188)
+  * No longer depend on bash.
+  * Depend on netbase for update-inetd (closes: #75993)
+  * Remove Recommends:ftp-server
+  * Merged in Stephen Rothwell's changes
+     - Use tail and stat if available, which is faster
+  * Supply a working apt-proxy.conf (part of bug #96517).  Set the top level
+    cache directory to /var/cache/apt-proxy and supply it as part of the
+    package.  To get this package running now, you only need to create the
+    user and logfile and enable the service in inetd.  I'll fix these in a
+    future release.
+  * Made improvements to the script:
+     - Fix keep-alive handling: If apt-proxy knows the file size, the
+       connection is kept open, otherwise it is closed. Also, fix hangs in
+       certain situations by improving locking and only keep the connection
+       alive if asked by the client. (closes: #96517, #80839,
+       #99927, #99948)
+     - Add rsync timeout support in config file (RSYNC_TIMEOUT parameter)
+     - Create cache second level directory if it does not exist
+     - Rework file locking
+     - Improve debug logging to help investigate remaining problems.
+  * Fix typo in apt-proxy.8, thanks to Uwe Hermann (closes: #116234)
+  * Updated Standards-Version (no changes were necessary)
+  * README: Added instructions for creating apt-proxy.conf and outline the
+    steps needed to get apt-proxy working.
+
+ -- Chris Halls <chris.halls@nikocity.de>  Tue, 18 Dec 2001 08:34:57 +0100
+
+apt-proxy (1.1.1-2) unstable; urgency=high
+
+  * Dependency problem on netkit-inetd removed (thx goes to Lindsay Allen)
+
+ -- Raphael Bossek <bossekr@debian.org>  Wed,  1 Nov 2000 10:37:04 +0100
+
+apt-proxy (1.1.1-1) unstable; urgency=low
+
+  * New upstream version (closes: #74653)
+  * Pre-Depends on debconf removed. (closes: #65662)
+
+ -- Raphael Bossek <bossekr@debian.org>  Sun, 29 Oct 2000 10:26:06 +0100
+
+apt-proxy (0.4-3) unstable; urgency=low
+
+  * Added check for the existence of /etc/apt-proxy. (closes: #58180)
+
+ -- Raphael Bossek <bossekr@debian.org>  Tue,  7 Mar 2000 22:57:28 +0100
+
+apt-proxy (0.4-2) unstable; urgency=low
+
+  * Recomends ftp-server. (closes: #58117, #58148)
+
+ -- Raphael Bossek <bossekr@debian.org>  Wed, 16 Feb 2000 20:54:48 +0100
+
+apt-proxy (0.4-1) unstable; urgency=low
+
+  * New upstream version.
+
+ -- Raphael Bossek <bossekr@debian.org>  Fri,  4 Feb 2000 20:33:42 +0100
+

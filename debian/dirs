@@ -1,0 +1,3 @@
+etc/apt-proxy
+usr/sbin
+var/cache/apt-proxy
