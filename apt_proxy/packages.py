@@ -31,7 +31,13 @@ class AptDpkgInfo(UserDict.UserDict):
     """
     data = {}
     def __init__(self, filename):
-        self.control = apt_inst.debExtractControl(open(filename))
+        try:
+            self.control = apt_inst.debExtractControl(open(filename))
+        except SystemError:
+            import traceback
+            traceback.print_exc()
+            log.msg("Had problems reading: %s"%(filename), 'AptDpkgInfo')
+            return
         for line in self.control.split('\n'):
             if line.find(': ') != -1:
                 key, value = line.split(': ', 1)

@@ -125,6 +125,7 @@ class FileVerifier(protocol.ProcessProtocol):
 
     def failed(self):
         log.debug("verification failed: %s"%(self.path), 'verify', 1)
+        os.unlink(self.path)
         self.deferred.errback(None)
 
     def timedout(self):
@@ -1322,30 +1323,31 @@ class Factory(protocol.ServerFactory):
         Remove entries for package versions which are not in cache, and delete
         some files if needed to respect the max_versions configuration.
 
-        NOTE: This should probably be done per distribution and really
-        comparing the versions of files.
+        NOTE: This should probably be done per distribution.
         """
         cache_dir = self.cache_dir
-        
+        info = {}
         def compare(a, b):
-            """
-            This function is just for string.sort and it could somehow cache
-            the version of each file for better performance.
-            """
-            def version(filename):
-                from packages import AptDpkgInfo
-                info = AptDpkgInfo(cache_dir+filename)
-                return info['Version']
+            """ This function is just for string.sort """
+            def version(uri):
+                return info[uri]['Version']
             import apt_pkg
             return apt_pkg.VersionCompare(version(a), version(b))
 
         if len(packages) <= self.max_versions:
             return
 
-        for package in packages[:]:
-            if not os.path.exists(cache_dir +'/'+ package):
-                packages.remove(package)
-
+        from packages import AptDpkgInfo
+        for uri in packages[:]:
+            if not os.path.exists(cache_dir +'/'+ uri):
+                packages.remove(uri)
+            else:
+                info[uri] = AptDpkgInfo(cache_dir +'/'+ uri)
+                if not info[uri].has_key('Version'):
+                    log.msg("Found problems with %s, aborted cleaning"%(uri),
+                            'max_versions')
+                    return
+                
         packages.sort(compare)
         log.debug(str(packages), 'max_versions')
         while len(packages) > self.max_versions:
