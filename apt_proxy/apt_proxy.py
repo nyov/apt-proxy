@@ -81,9 +81,9 @@ filetypes = (
     FileType(re.compile(r"\.bin$"), "application/octet-stream", 0),
     FileType(re.compile(r"\.tgz$"), "application/x-gtar", 0),
 
-    FileType(
-    re.compile(r"/(Packages|Release|Sources|Contents-.*)(\.(gz|bz2))?$"),
-    "text/plain", 1),
+    FileType(re.compile(r"/(Packages|Release(\.gpg)?|Sources|Contents-.*)"
+                        r"(\.(gz|bz2))?$"), 
+             "text/plain", 1),
     )
 
 class FileVerifier(protocol.ProcessProtocol):

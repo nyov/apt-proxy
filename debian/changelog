@@ -1,3 +1,11 @@
+apt-proxy (1.9.11) experimental; urgency=low
+
+  * Support Release.gpg for new apt, thanks Chris Lawrence (closes: #245895)
+  * Fix FTBFS when apt-proxy is not already installed,
+    thanks Paul Brook (closes: #245675)
+
+ -- Chris Halls <halls@debian.org>  Mon,  3 May 2004 09:03:15 +0200
+
 apt-proxy (1.9.10) experimental; urgency=low
 
   * Rework rsync backend support to stream from rsync's temporary

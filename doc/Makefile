@@ -1,5 +1,6 @@
 apt-proxy-import.8: ../bin/apt-proxy-import apt-proxy-import.8.inc
-	help2man \
+	PYTHONPATH=../apt_proxy \
+	  help2man \
 		-N \
 		-i apt-proxy-import.8.inc \
 		--section="8" \
