@@ -219,7 +219,9 @@ class AptProxyClient:
     gzip_convert = re.compile(r"/Packages$")
     post_convert = re.compile(r"/Packages.gz$")
     proxy_client = None
-
+    status_code = http.OK
+    status_message = None
+	
     def insert_request(self, request):
         """
         Request should be served through this client because it asked for the
@@ -235,7 +237,7 @@ class AptProxyClient:
         request.local_mtime = self.request.local_mtime
         request.local_size = self.request.local_size
         if(self.status_code != None):
-            request.setResponseCode(self.status_code)
+            request.setResponseCode(self.status_code, self.status_message)
         for name, value in self.request.headers.items():
             request.setHeader(name, value)
         if self.transfered != '':
@@ -265,11 +267,12 @@ class AptProxyClient:
         else:
             self.request = self.requests[0]
 
-    def setResponseCode(self, code):
+    def setResponseCode(self, code, message=None):
         "Set response code for all clients"
         self.status_code = code
+	self.status_message = message
         for req in self.requests:
-            req.setResponseCode(code)
+            req.setResponseCode(code, message)
 
     def setResponseHeader(self, name, value):
         "set 'value' for header 'name' on all requests"
@@ -281,7 +284,6 @@ class AptProxyClient:
         self.local_file = request.local_file
         self.local_mtime = request.local_mtime
         self.requests = [request]
-        self.status_code = None
         self.length = None
         self.transfered = ''
         self.factory = request.factory
@@ -292,7 +294,6 @@ class AptProxyClient:
 
         log.debug("Request uri: " + request.uri,'client')
 
-        request.setResponseCode(self.status_code)
         request.proxy_client = self
         if self.factory.runningClients.has_key(request.uri):
             raise 'There already is a running client'
@@ -439,7 +440,7 @@ class AptProxyClientHttp(AptProxyClient, http.HTTPClient):
 
     def handleResponse(self, buffer):
         if self.length != 0:
-            self.status_code = http.NOT_FOUND
+            self.setResponseCode(http.NOT_FOUND)
         self.aptDataEnd(buffer)
 
     def lineReceived(self, line):
@@ -492,13 +493,12 @@ class AptProxyClientFtp(AptProxyClient, protocol.Protocol):
 
         self.remote_file = (self.request.backend.path + "/" 
                             + self.request.backend_uri)
-        self.status_code = http.NOT_FOUND
         #ftp.FTPClient doesn't handle control connection failed
         #We work around it.
         class MyFTPClient(ftp.FTPClient):
             def connectionFailed(self):
                 log.debug("MyFTPClient: Connection Failed",'ftp_client')
-                self.apt_owner.status_code = http.SERVICE_UNAVAILABLE
+                self.apt_owner.setResponseCode(http.SERVICE_UNAVAILABLE)
                 #self.apt_owner.ftpFinish(http.SERVICE_UNAVAILABLE)
                 class dummy:
                     def loseConnection(self):
@@ -516,10 +516,10 @@ class AptProxyClientFtp(AptProxyClient, protocol.Protocol):
                           self.ftpclient, request.backend.timeout)
         self.ftpFetchMtime()
 
-    def ftpFinish(self, code):
+    def ftpFinish(self, code, message=None):
         "Finish the transfer with code 'code'"
         self.ftpclient.quit()
-        self.setResponseCode(code)
+        self.setResponseCode(code, message)
         self.aptDataReceived("")
         self.aptDataEnd(self.transfered)
 
@@ -668,7 +668,8 @@ class AptProxyClientGzip(AptProxyClient, protocol.ProcessProtocol):
         the host file.
         """
         if self.loop_req.code != http.OK:
-            self.setResponseCode(self.loop_req.code)
+            self.setResponseCode(self.loop_req.code,
+	                         self.loop_req.code_message)
             self.aptDataReceived("")
             self.aptDataEnd("")
             return
@@ -857,9 +858,9 @@ class AptProxyRequest(http.Request):
             new_path = re.sub(r"/[^/]+/\.\./", "/", path)
         return path
 
-    def finishCode(self, responseCode):
+    def finishCode(self, responseCode, message=None):
         "Finish the request with an status code"
-        self.setResponseCode(responseCode)
+        self.setResponseCode(responseCode, message)
         self.write("")
         self.finish()
 
@@ -973,7 +974,7 @@ class AptProxyRequest(http.Request):
 
         if not self.backend:
             log.debug("non existent Backend")
-            self.finishCode(http.NOT_FOUND)
+            self.finishCode(http.NOT_FOUND, "NON-EXISTENT BACKEND")
             return
 
         self.filetype = findFileType(self.uri)
