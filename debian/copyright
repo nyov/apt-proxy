@@ -1,14 +1,13 @@
-This is the Debian GNU/Linux packaged version of apt-proxy version 1.1.1
+This is the Debian GNU/Linux packaged version of apt-proxy
 
-The developer of this software is Rusty Russell <rusty@linuxcare.com>.
+It was originally written by Rusty Russel.  See the top of the
+apt-proxy script for the current list of authors and contributors.
 
-It was put together by Raphael Bossek <bossekr@debian.org>
-from the following sources:
+Debian package originally put together by Raphael Bossek and
+now maintained by Chris Halls
 
-  http://download.sourceforge.net/apt-proxy/apt-proxy-1.1.1.tar.gz
-
-Changes:
-  * Added Debian GNU/Linux packaging files.
+The project homepage is at
+  http://sourceforge.net/projects/apt-proxy
 
 This software is released under the terms of the GNU General Public License.
 
