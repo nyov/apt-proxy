@@ -236,6 +236,9 @@ class AptProxyClient:
     """
     This is the base class for all proxy clients, it tryies to hold as much
     common code as posible.
+
+    Subclasses of this class are the ones responsable of contacting the backend
+    servers and fetching.
     """
     gzip_convert = re.compile(r"/Packages$")
     post_convert = re.compile(r"/Packages.gz$")
