@@ -19,6 +19,7 @@ case "$1" in
     start)
 	echo -n "Starting apt-proxy-v2"
 	[ ! -d $rundir ] && mkdir $rundir && chown $user:$group $rundir
+	[ ! -f $logfile ] && touch $logfile && chown $user:$group $logfile
 	start-stop-daemon --start --quiet --exec /usr/bin/twistd --chuid $user:$group -- \
             --pidfile=$pidfile 	--rundir=$rundir --python=$application \
 	    --logfile=$logfile 	--no_save
