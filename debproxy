@@ -199,7 +199,7 @@ def check_integrity(localdir, packagefile, files):
             found.append(file)
             if os.path.islink(file):
                 dir = os.path.dirname(file)
-                link = os.path.readlink(file)
+                link = os.readlink(file)
                 link = os.path.normpath(os.path.join(dir, link))
                 found.append(link)
 
