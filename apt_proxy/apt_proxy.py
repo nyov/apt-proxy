@@ -96,14 +96,14 @@ class FileVerifier(protocol.ProcessProtocol):
     def __init__(self, request):
         self.factory = request.factory
         self.deferred = defer.Deferred()
-        path = request.local_file
+        self.path = request.local_file
 
-        if re.search(r"\.deb$", path):
+        if re.search(r"\.deb$", self.path):
             exe = '/usr/bin/dpkg'
-            args = (exe, '--fsys-tarfile', path)
-        elif re.search(r"\.gz$", path):
+            args = (exe, '--fsys-tarfile', self.path)
+        elif re.search(r"\.gz$", self.path):
             exe = '/bin/gunzip'
-            args = (exe, '-t', '-v', path)
+            args = (exe, '-t', '-v', self.path)
         else:
             exe = '/bin/sh'
             args = (exe, '-c', "echo unknown file: not verified 1>&2")
@@ -120,6 +120,10 @@ class FileVerifier(protocol.ProcessProtocol):
     def errReceived(self, data):
         self.data = self.data + data
 
+    def failed(self):
+        log.debug("verification failed: %s"%(self.path), 'verify', 1)
+        self.deferred.errback(None)
+
     def timedout(self):
         """
         this should not happen, but if we timeout, we pretend that the
@@ -127,8 +131,7 @@ class FileVerifier(protocol.ProcessProtocol):
         """
         self.laterID=None
         log.debug("Process Timedout:",'verify')
-        log.debug("verication failed",'verify',1)
-        self.deferred.errback(None)
+        self.failed()
         
     def processEnded(self):
         """
@@ -142,8 +145,7 @@ class FileVerifier(protocol.ProcessProtocol):
             if self.process.status == 0:
                 self.deferred.callback(None)
             else:
-                log.debug("verication failed",'verify')
-                self.deferred.errback(None)
+                self.failed()
 
 def findFileType(name):
     "Look for the FileType of 'name'"
@@ -165,7 +167,7 @@ def aptProxyClientDownload(request, serve_cached=1):
     """
     def cached_cb(result, dummy_client):
         """ This is called if the file is properly cached. """
-        log.debug("CACHED")
+        log.debug("Using cached copy of %s"%(dummy_client.request.local_file))
         dummy_client.aptEnd()
         for req in dummy_client.requests[:]:
             dummy_client.remove_request(req)
@@ -176,12 +178,14 @@ def aptProxyClientDownload(request, serve_cached=1):
                 req.finish()
     def not_cached_cb(result, dummy_client, running):
         """
-        The requested file was not there or didn't pass the integrity check.
+        The requested file was not there, didn't pass the integrity check or
+        may be outdated.
         """
-        log.debug("NOT_CACHED")
+        log.debug("Consulting server about %s"
+                  %(dummy_client.request.local_file))
         if len(dummy_client.requests)==0:
             #The request's are gone, the clients probably closed the conection
-            log.debug("THE REQUESTS ARE GONE")
+            log.debug("THE REQUESTS ARE GONE (Clients closed conection)")
             return
         dummy_client.fix_ref_request()
         req = dummy_client.request
