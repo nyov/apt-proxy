@@ -1,6 +1,7 @@
-apt-proxy-v2 (1.9.0.1pre1) experimental; urgency=low
+apt-proxy-v2 (1.9.1) experimental; urgency=low
 
   * Create logfile in init script if it does not already exist
+  * Depend on python-apt (Thanks Mark Titorenko)
 
  -- Chris Halls <chris.halls@gmx.de>  Tue, 23 Jul 2002 16:27:12 +0200
 
