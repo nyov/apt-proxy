@@ -1,4 +1,4 @@
 """
-Compaibility with twisted 0.18.0
+Compaibility with twisted 0.19.0
 """
 

@@ -1,7 +1,7 @@
 from twisted import copyright
 
-#This is a gross hack to get post-0.18.0 features
-if copyright.version == "0.18.0":
+#This is a gross hack to get non-released features
+if copyright.version == "0.19.0":
     print "Updating twisted's process module."
     import process as new_process
     from twisted.internet import process
@@ -13,9 +13,6 @@ if copyright.version == "0.18.0":
         new_process.unregisterReapProccessHandler
     process.Process = new_process.Process
     process.reapProcess = new_process.reapProcess
-
-    print "Updating twisted's http module"
-    import http as new_http
-    from twisted.protocols import http
-
-    http.Request = new_http.Request
+else:
+    print "WARNING: apt-proxy has not been tested under this version of"\
+          " twisted."

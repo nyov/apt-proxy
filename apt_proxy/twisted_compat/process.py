@@ -1,7 +1,4 @@
-############################################################################
-# This is a modified twisted.internet.process to get around a limitation on
-# twisted 0.18.0 and should not be needed on later versions                 
-############################################################################
+# -*- test-case-name: twisted.test.test_process -*-
 
 # Twisted, the Framework of Your Internet
 # Copyright (C) 2001 Matthew W. Lefkowitz
@@ -23,24 +20,13 @@
 """
 
 # System Imports
-import os, sys, traceback
-if os.name != 'java':
-    import errno
-    import select
-
-if os.name == 'posix':
-    # Inter-process communication and FCNTL fun isn't available on windows.
-    import fcntl
-    if (sys.hexversion >> 16) >= 0x202:
-        FCNTL = fcntl
-    else:
-        import FCNTL
+import os, sys, traceback, select, errno
 
 from twisted.persisted import styles
 from twisted.python import log
 
 # Sibling Imports
-from twisted.internet import abstract, main
+from twisted.internet import abstract, main, fdesc
 from twisted.internet.main import CONNECTION_LOST, CONNECTION_DONE
 
 reapProcessHandlers = {}
@@ -95,6 +81,7 @@ class ProcessWriter(abstract.FileDescriptor, styles.Ephemeral):
     def __init__(self, proc):
         """Initialize, specifying a Process instance to connect to.
         """
+        abstract.FileDescriptor.__init__(self)
         self.proc = proc
 
     # Copy relevant parts of the protocol
@@ -148,6 +135,7 @@ class ProcessError(abstract.FileDescriptor):
     def __init__(self, proc):
         """Initialize, specifying a process to connect to.
         """
+        abstract.FileDescriptor.__init__(self)
         self.proc = proc
 
     def fileno(self):
@@ -181,14 +169,33 @@ class Process(abstract.FileDescriptor, styles.Ephemeral):
     on sockets...)
     """
 
-    def __init__(self, command, args, environment, path, proto):
+    def __init__(self, command, args, environment, path, proto,
+                 uid=None, gid=None):
         """Spawn an operating-system process.
 
         This is where the hard work of disconnecting all currently open
         files / forking / executing the new process happens.  (This is
         executed automatically when a Process is instantiated.)
-        """
 
+        This will also run the subprocess as a given user ID and group ID, if
+        specified.  (Implementation Note: this doesn't support all the arcane
+        nuances of setXXuid on UNIX: it will assume that either your effective
+        or real UID is 0.)
+        """
+        abstract.FileDescriptor.__init__(self)
+        settingUID = (uid is not None) or (gid is not None)
+        if settingUID:
+            curegid = os.getegid()
+            currgid = os.getgid()
+            cureuid = os.geteuid()
+            curruid = os.getuid()
+            if uid is None:
+                uid = cureuid
+            if gid is None:
+                gid = curegid
+            # prepare to change UID in subprocess
+            os.setuid(0)
+            os.setgid(0)
         stdout_read, stdout_write = os.pipe()
         stderr_read, stderr_write = os.pipe()
         stdin_read,  stdin_write  = os.pipe()
@@ -214,6 +221,10 @@ class Process(abstract.FileDescriptor, styles.Ephemeral):
                     except: pass
                 if path:
                     os.chdir(path)
+                # set the UID before I actually exec the process
+                if settingUID:
+                    os.setuid(uid)
+                    os.setgid(gid)
                 os.execvpe(command, args, environment)
             except:
                 # If there are errors, bail and try to write something
@@ -227,11 +238,14 @@ class Process(abstract.FileDescriptor, styles.Ephemeral):
                 for fd in range(3):
                     os.close(fd)
             os._exit(1)
+        if settingUID:
+            os.setregid(currgid, curegid)
+            os.setreuid(curruid, cureuid)
         self.status = -1
         for fd in stdout_write, stderr_write, stdin_read:
             os.close(fd)
         for fd in (stdout_read, stderr_read, stdin_write):
-            fcntl.fcntl(fd, FCNTL.F_SETFL, os.O_NONBLOCK)
+            fdesc.setNonBlocking(fd)
         self.stdout = stdout_read # os.fdopen(stdout_read, 'r')
         self.stderr = stderr_read # os.fdopen(stderr_read, 'r')
         self.stdin = stdin_write
@@ -257,30 +271,12 @@ class Process(abstract.FileDescriptor, styles.Ephemeral):
     def doError(self):
         """Called when my standard error stream is ready for reading.
         """
-        try:
-            output = os.read(self.stderr, 8192)
-        except IOError, ioe:
-            if ioe.args[0] == errno.EAGAIN:
-                return
-            return CONNECTION_LOST
-        if not output:
-            return CONNECTION_LOST
-        self.proto.errReceived(output)
+        return fdesc.readFromFD(self.stderr, self.proto.errReceived)
 
     def doRead(self):
         """Called when my standard output stream is ready for reading.
         """
-        fd = self.fileno()
-        try:
-            output = os.read(self.stdout, 8192) #.read()
-        except IOError, ioe:
-            if ioe.args[0] == errno.EAGAIN:
-                return
-            else:
-                return CONNECTION_LOST
-        if not output:
-            return CONNECTION_LOST
-        self.proto.dataReceived(output)
+        return fdesc.readFromFD(self.stdout, self.proto.dataReceived)
 
     def doWrite(self):
         """Called when my standard output stream is ready for writing.
@@ -345,13 +341,4 @@ class Process(abstract.FileDescriptor, styles.Ephemeral):
             log.deferr()
         self.maybeCallProcessEnded()
 
-from twisted.internet import process
 
-#Begin gross hack until process.Process gets "fixed" and a released version
-#goes far enough
-process.reapProcessHandlers = reapProcessHandlers
-process.registerReapProccessHandler = registerReapProccessHandler
-process.unregisterReapProccessHandler = unregisterReapProccessHandler
-process.Process = Process
-process.reapProcess = reapProcess
-#End gross hack
