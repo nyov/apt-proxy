@@ -1,7 +1,5 @@
 #!/usr/bin/make -f
 
-export DH_COMPAT=4
-
 PKGDIR=debian/apt-proxy
 
 build: build-stamp
@@ -34,6 +32,7 @@ install-stamp: build-stamp
 	dh_installchangelogs
 	dh_installlogrotate
 	dh_installinit
+	dh_python
 
 	#install -g root -o root -m 755 \
 	#	apt-proxy debian/apt-proxy/usr/sbin/apt-proxy

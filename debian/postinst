@@ -68,18 +68,6 @@ case "$1" in
         ;;
 esac
 
-# Compile python
-case "$1" in
-    configure|abort-upgrade|abort-remove|abort-deconfigure)
-        dpkg --listfiles $NAME | grep '\.py$' | \
-	     xargs -n 1 /usr/bin/python$PYVER \
-	     	-c 'import py_compile,sys;py_compile.compile(sys.argv[1])'
-	dpkg --listfiles $NAME | grep '\.py$' | \
-	     xargs -n 1 /usr/bin/python$PYVER -O \
-	     	-c 'import py_compile,sys;py_compile.compile(sys.argv[1])'
-    ;;
-esac
-
 db_stop
 
 #DEBHELPER#
