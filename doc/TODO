@@ -12,6 +12,8 @@ Revise debian packing:
 	   /etc/apt-proxy/apt-proxy-v2.conf, run apt-proxy-v1tov2 to
 	   create apt-proxy-v2.conf.
 
+It seams to get stuck some times on packages download.
+
 ---------------- "Not so urgent" mark ---------------------------
 
 Support /etc/init.d/apt-proxy reload as kill -HUP
