@@ -2,6 +2,10 @@
 .TH "apt-proxy" "8" "09 Jan 2002" "apt-proxy" "" 
 .SH "Name" 
 apt-proxy \- A proxy for saving bandwidth to Debian servers
+.SH SYNOPSIS
+.B apt-proxy
+.I "[options] [logfile]"
+.br
 .PP 
 .SH "DESCRIPTION" 
 \fBapt-proxy\fP is an advanced shell script designed to be run out of
@@ -10,6 +14,18 @@ inetd, and provides a clean, caching, intelligent proxy for
 back-end server(s)\&.  Usually it is run on port 9999, mainly because
 that is the default configuration, and people are lazy\&.
 .PP
+.SH OPTIONS
+apt-proxy's command options are as follows:
+.TP
+.B -l <logfile>
+Specify the file to log to, defaults to /var/log/apt-proxy.
+The logfile can also be specified as the first (non-option) parameter 
+on the command line.
+.TP
+.B -c <configfile>
+Specify what file the config is stored in, defaults to
+/etc/apt-proxy.conf .
+.br
 .SH "CLIENT CONFIGURATION"
 Once \fBapt-proxy\fP is configured, users then edit their
 \fBsources\&.list\fP file to point to the proxy (which uses the http

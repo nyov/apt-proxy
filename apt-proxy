@@ -12,12 +12,35 @@
 #	`Perl!!!  Please?' -- Martin Schwenke
 APT_PROXY_VERSION=1.1.4
 
-# Before anything, save output in fd 3, and redirect others to arg1 if avail
-APT_PROXY_LOGFILE=${1:-/dev/null}
-exec 3>&1 1>>$APT_PROXY_LOGFILE 2>&1
-
+# Default values
+APT_PROXY_LOGFILE=/dev/null
 CONFIG_FILE=/etc/apt-proxy/apt-proxy.conf
 RSYNC=rsync
+
+# Parse commandline
+while [ $# -gt 0 ]; do
+	case "$1" in
+	  '-c')
+ 		shift
+		CONFIG_FILE="$1"
+		shift
+		;;
+	  '-l')
+		shift
+		APT_PROXY_LOGFILE="$1"
+		shift
+		;;
+	  *)
+		APT_PROXY_LOGFILE="$1"
+		shift
+		break
+		;;
+	esac
+done
+
+# Before anything, save output in fd 3, and redirect others to arg1 if avail
+exec 3>&1 1>>$APT_PROXY_LOGFILE 2>&1
+
 
 # Write a debug message to the log if debug is enabled
 #	debug([string ...])
