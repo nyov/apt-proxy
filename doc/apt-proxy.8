@@ -8,27 +8,12 @@ apt-proxy \- A proxy for saving bandwidth to Debian servers
 .br
 .PP
 .SH "DESCRIPTION"
-\fBapt-proxy\fP is an advanced shell script designed to be run out of
-inetd, and provides a clean, caching, intelligent proxy for
-\fBapt-get\fP, which speaks HTTP to apt-get clients, and http, rsync or ftp to
+\fBapt-proxy\fP is a python program designed to be run as an stand alone
+server via twistd, and provides a clean, caching, intelligent proxy for
+\fBapt-get\fP, which speaks HTTP to apt-get clients, and http or ftp to
 the back-end server(s)\&.  Usually it is run on port 9999, mainly because
 that is the default configuration, and people are lazy\&.
 .PP
-.SH OPTIONS
-apt-proxy's command options are as follows:
-.TP
-.B -c <configfile>
-Specify what file the config is stored in, defaults to
-/etc/apt-proxy.conf .
-.TP
-.B -l <logfile>
-Specify the file to log to, defaults to /var/log/apt-proxy.
-The logfile can also be specified as the first (non-option) parameter
-on the command line.
-.TP
-.B -v, --version
-Show the program verison.
-.br
 .SH "CLIENT CONFIGURATION"
 Once \fBapt-proxy\fP is configured, users then edit their
 \fBsources\&.list\fP file to point to the proxy (which uses the http
@@ -50,7 +35,8 @@ example, non-US/ and helixcode/ actually retrieve files from different
 back-end servers\&.
 
 Note that you can also use the nicknames `unstable', `frozen' etc, but
-they may be slightly slower for `apt-get update'.
+Packages/Sources files may get duplicated, so it is advised use either the
+symbolic or the code name and stick with it.
 .PP
 .SH "SERVER CONFIGURATION"
 See
@@ -60,11 +46,9 @@ for details of how to set up apt-proxy to use backends near to you.
 .SH "CARE AND FEEDING OF MIRRORS"
 
 \fBapt-proxy\fP reduces the bandwidth requirements of Debian mirrors
-by synchronizing uncompressed Packages files where possible (much
-cheaper than downloading the entire compressed file), by restricting
-the frequency of Packages, Releases and Sources file updates from the
-back end, by keeping partial transfers, and only doing a single fetch
-for any file, how ever many users request it from the proxy.
+by  restricting the frequency of Packages, Releases and Sources file updates
+from the back end and only doing a single fetch for any file, how ever many
+users request it from the proxy.
 .PP
 .SH "FILES"
 /etc/apt-proxy/apt-proxy\&.conf
@@ -80,6 +64,9 @@ for any file, how ever many users request it from the proxy.
 Packages are not compressed using gzip --rsyncable, which gives a 30%
 reduction in bytes transferred for binary packages, and much greater for
 source and other packages.
+
+NOTE: v2 doesn't officially support rsync backends, so for now the above does
+not apply.
 .PP
 .SH "AUTHOR"
-apt-proxy was written by the Apt-Proxy World Domination Project.
+apt-proxy v2 was written by Manuel Estrada Sainz <ranty@debian.org>.
