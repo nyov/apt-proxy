@@ -205,7 +205,7 @@ resolve_url()
 	    FRONT_BASE="`echo $try | cut -d, -f2`"
 	    BACKS="`echo $try|cut -d, -f3-|tr , \\\n`"
 	    if [ -n "$2" ] && echo "$BACKS" | grep -q '^+'; then
-		BACKS="`echo \"$BACKS\" | grep '^+'``echo \"$BACKS\" | grep -v '^+'`"
+		BACKS="`echo \"$BACKS\" | grep '^+'` `echo \"$BACKS\" | grep -v '^+'`"
 	    fi
 	    # Remove bogus +'s.
 	    BACKS="`echo \"$BACKS\" | sed s/^+//`"
