@@ -1,4 +1,4 @@
-apt-proxy-import.8: apt-proxy-import apt-proxy-import.8.inc
+apt-proxy-import.8: ../bin/apt-proxy-import apt-proxy-import.8.inc
 	help2man \
 		-N \
 		-i apt-proxy-import.8.inc \
@@ -6,7 +6,7 @@ apt-proxy-import.8: apt-proxy-import apt-proxy-import.8.inc
 		--source="Debian GNU/Linux" \
 		--manual=" " \
 		-o $@ \
-		./apt-proxy-import
+		../bin/apt-proxy-import
 
 clean:
 	rm -f apt-proxy-import.8
