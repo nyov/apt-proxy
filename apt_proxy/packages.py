@@ -282,7 +282,11 @@ def import_debs(factory, dir):
                 print "IMPORTING:"+spath
                 if not os.path.exists(dirname(dpath)):
                     os.makedirs(dirname(dpath))
+                f = open(dpath, 'w')
+                fcntl.lockf(f.fileno(), fcntl.LOCK_EX)
+                f.truncate(0)
                 shutil.copy2(spath, dpath)
+                f.close()
                 if hasattr(factory, 'access_times'):
                     atime = os.stat(spath)[stat.ST_ATIME]
                     factory.access_times[path] = atime

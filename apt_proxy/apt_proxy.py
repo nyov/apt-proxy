@@ -18,7 +18,7 @@
 from twisted.internet import reactor, defer
 from twisted.protocols import http, protocol, ftp
 from twisted.web import static
-import os, stat, signal
+import os, stat, signal, fcntl
 from os.path import dirname, basename
 import re
 import urlparse
@@ -328,6 +328,8 @@ class AptProxyClient:
             if(not os.path.exists(dir)):
                 os.makedirs(dir)
             f = open(self.local_file, "w")
+            fcntl.lockf(f.fileno(), fcntl.LOCK_EX)
+            f.truncate(0)
             f.write(buffer)
             f.close()
             if self.local_mtime != None:
@@ -899,6 +901,8 @@ class AptProxyRequest(http.Request):
         self.setHeader("Last-modified",
                        http.datetimeToString(self.local_mtime))
         self.factory.file_served(self.uri)
+        fcntl.lockf(f.fileno(), fcntl.LOCK_SH)
+        #static.FileTransfer will close the file efectively removing the lock
         return static.FileTransfer(f, self.local_size, self)
 
     def __init__(self, channel, queued):
