@@ -1,3 +1,14 @@
+apt-proxy (1.2.9.7) sourceforge; urgency=low
+
+  * Fix file ownership changing bug in apt-proxy-import.  If you've used
+    earlier versions, you may find files with owner root in
+    /var/cache/apt-proxy - do "chown -R aptproxy /var/cache/apt-proxy" to
+    restore normality.  This was the cause of "touch: permission denied"
+    errors in the logfile.
+  * Remove some debugging statements in apt-proxy
+
+ -- Chris Halls <chris.halls@gmx.de>  Wed, 27 Mar 2002 18:21:42 +0100
+
 apt-proxy (1.2.9.6) sourceforge; urgency=low
 
   * Fix race if two clients request the same file, with help from Sacha to

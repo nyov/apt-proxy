@@ -234,7 +234,7 @@ for directory in $@; do
 		    else
 			echo "importing $filename"
 			cp -p "$file" "$f" &&
-			  chown --reference "$dirname" "$file" ||
+			  chown --reference "$dirname" "$f" ||
 			      echo "cp+chown $file $f FAILED"
 		    fi
 		done

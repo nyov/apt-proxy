@@ -243,7 +243,6 @@ download_url()
 		# Try to rsync uncompressed version?
 		case $DL_URL in
 		*Packages.gz)
-		    debug "Rsyncing uncompressed version ****************************************"
 		    # Extract filename for uncompressed file from URL
 		    TMP_DESTFILE=`echo $DL_URL | sed 's|^.*/\(.*\)\.gz$|\1|'`
 		    TMP_FILE=$DL_DESTDIR/$TMP_DESTFILE
@@ -263,7 +262,6 @@ download_url()
 			fi
 	    		[ -n "$KEEP_STATS" ] && log rsync $TMP_DESTFILE: `tail -2 $DL_LOG`
 		    fi
-		    debug "*** END Rsyncing uncompressed version ****************************************"
 		    ;;
 		esac
 
@@ -739,8 +737,6 @@ copy_best_match()
 	deb_compare_versions $CBM_BEST lt $1 && break
     done
 
-# There's a problem in here - trace the code for logging
-set -o xtrace
     debug Found best basis for ${1}: $CBM_BEST
     if [ -n "$CBM_BEST" ] ;then
         # Save the access time of file because we use it during cache cleaning
@@ -749,7 +745,6 @@ set -o xtrace
 	touch --reference $CBM_BEST.timestamp $CBM_BEST
 	rm $CBM_BEST.timestamp
     fi
-set +o xtrace
 }
 
 # Do rsync, drop lock.
