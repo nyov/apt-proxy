@@ -19,6 +19,7 @@ from twisted.protocols import http, ftp, basic
 from twisted.web import static
 import os, stat, signal, fcntl, exceptions
 from os.path import dirname, basename
+import tempfile
 import glob
 import re
 import urlparse
@@ -186,7 +187,6 @@ def findFileType(name):
 
 class TempFile (file):
     def __init__(self, mode='w+b', bufsize=-1):
-        import tempfile
         (fd, name) = tempfile.mkstemp('.apt-proxy')
         os.close(fd)
         file.__init__(self, name, mode, bufsize)
