@@ -44,8 +44,10 @@ except usage.UsageError, ue:
     print '%s: %s' % (sys.argv[0], ue)
 
 class DummyFactory:
+    "This is just to get the configuration data somewhere."
     def debug(self, msg):
         print msg
+        
 factory = DummyFactory()
 aptProxyFactoryConfig(factory)
 

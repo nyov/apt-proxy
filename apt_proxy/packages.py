@@ -22,6 +22,13 @@ from twisted.internet import process
 import apt_proxy, copy
 
 class AptDpkgInfo:
+    """
+    Gets package name and version from a .deb file.
+
+    self.version
+    self.package
+    self.failed: evaluates to true if the action failed.
+    """
     version_re = re.compile(r'^ Version: *([^ ]*)$', re.M)
     package_re = re.compile(r'^ Package: *([^ ]*)$', re.M)
 
@@ -47,6 +54,13 @@ class AptDpkgInfo:
             self.failed=1
 
 class AptPackagesServer:
+    """
+    Handles communication with the packages server.
+
+    This is just a hack because python-apt has a known huge memory leak, this
+    way we can just kill the process to free the memory. Then that is fixed
+    this hack should probably be removed.
+    """
     finish=0
     answer_pending=0
     ready = re.compile("READY\n$")
@@ -59,9 +73,20 @@ class AptPackagesServer:
     def __init__(self):
         self.stdin, self.stdout = os.popen2(self.command)
     def kill(self):
+        """
+        This is probably not the right name for it, but since we don't know the
+        pid of the process is as much as we can do to kill it.
+        """
         self.stdin.close()
         self.stdout.close()
     def writeCode(self, code):
+        """
+        Write the code as a single line, Quoting newline chars, the server will
+        dequote it.
+
+        We force it to print 'READY' as a marker to know then we got the whole
+        answer.
+        """
         self.data='' #discard all unread data
         self.answer_pending=1
         code += "\nprint 'READY'\n"
@@ -69,6 +94,9 @@ class AptPackagesServer:
         self.stdin.write(code+'\n')
         self.stdin.flush()
     def readAnswer(self):
+        """
+        Read all output from the server until the 'READY' marker.
+        """
         data = ''
         while 1:
             new_data = self.stdout.readline()
@@ -82,6 +110,14 @@ class AptPackagesServer:
                 return data[:-1] #remove the last newline
     
 class AptPackages:
+    """
+    Uses AptPackagesServer to answer queries about packages.
+
+    Makes a fake configuration for python-apt for each backend.
+
+    self.packages: a list of files which should go in the fake source.list
+    along with their mtime.
+    """
     local_config = {
         #'APT' : '',
         'APT::Architecture' : apt_pkg.CPU,
@@ -145,6 +181,10 @@ class AptPackages:
         self.loaded = 0
         
     def packages_file(self, uri):
+        """
+        Called from apt_proxy.py when files get updated so we can update our
+        fake lists/ directory and sources.list.
+        """
         if basename(uri)=="Packages" or basename(uri)=="Release":
             self.factory.debug("REGISTERING PACKAGE:"+uri)
             mtime = os.stat(self.factory.cache_dir+'/'+uri)
@@ -152,6 +192,9 @@ class AptPackages:
             self.unload()
         
     def load(self):
+        """
+        Regenerates the fake configuration and load the packages server.
+        """
         if not self.loaded:
             shutil.rmtree(self.status_dir+'/apt/lists/')
             os.makedirs(self.status_dir+'/apt/lists/partial')
@@ -178,6 +221,7 @@ class AptPackages:
             self.loaded = 1
             
     def unload(self):
+        "Tryes to make the packages server quit."
         if self.loaded:
             self.server_process.writeCode('sys.exit(0)')
             self.server_process.kill()
@@ -189,6 +233,7 @@ class AptPackages:
         self.packages.close()
 
     def get_mirror_path(self, info):
+        "Find the path for the package descrived by 'info'"
         self.load()
         server = self.server_process
         server.writeCode('print get_mirror_path("%s", "%s")'
@@ -201,6 +246,9 @@ def cleanup(factory):
         backend.packages.cleanup()
 
 def get_mirror_path(factory, file):
+    """
+    Look for the path of 'file' in all backends.
+    """
     info = AptDpkgInfo(file)
     paths = []
     for backend in factory.backends:
@@ -242,6 +290,7 @@ def import_debs(factory, dir):
         backend.packages.unload()
                 
 def test(factory):
+    "Just for testing purposes, this should probably go to hell soon."
     for backend in factory.backends:
         backend.packages.load()
 

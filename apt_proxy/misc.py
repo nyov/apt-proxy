@@ -18,6 +18,18 @@ import os
 from twisted.internet import reactor
 
 class MirrorRecycler:
+    """
+    Reads the mirror tree looking for 'forgotten' files and adds them to
+    factory.access_times so they can age and be removed like the others.
+
+    It processes one directory entry per 'timer' seconds, which unless
+    set to 0 is very slow, but it is also very light weight. And files
+    which get recuested are recycled automatically anyway, so it is
+    not urgent to find forgotten files. If also uses the files oun
+    atime, so if the files has been there for a long time it will soon
+    be removed anyway.
+    
+    """
     working = 0
     
     def __init__(self, factory, timer):
@@ -26,6 +38,11 @@ class MirrorRecycler:
         self.backends = factory.backends
         self.cache_dir = factory.cache_dir
     def start(self):
+        """
+        Starts the Recycler if it is not working, it will use
+        callLater to keep working until it finishes with the whole
+        tree.
+        """
         if not self.working:
             if self.backends == []:
                 self.factory.debug("NO BACKENDS FOUND")
@@ -48,6 +65,9 @@ class MirrorRecycler:
             self.stack.append((self.cur_dir, self.cur_uri, self.pending))
         
     def process(self):
+        """
+        Process the next entry, is called automatically via callLater.
+        """
         entry = self.pending.pop()
         uri  = os.path.join(self.cur_uri, entry)
         path = os.path.join(self.cur_dir, entry)
@@ -77,6 +97,7 @@ class MirrorRecycler:
             reactor.callLater(self.timer, self.process)
 
 if __name__ == '__main__':
+    #Just for testing purposes.
     from apt_proxy_conf import aptProxyFactoryConfig
     import shelve
     

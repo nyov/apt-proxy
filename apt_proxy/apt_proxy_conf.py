@@ -20,13 +20,14 @@ import ConfigParser, os
 from ConfigParser import DEFAULTSECT
     
 class MyConfigParser(ConfigParser.ConfigParser):
+    "Just adds 'gettime' to ConfigParser to interpret the suffixes."
     time_multipliers={
         's': 1,    #seconds
         'm': 60,   #minutes
         'h': 3600, #hours
         'd': 86400,#days
         }
-    def _gettime(self, section, option):
+    def gettime(self, section, option):
         mult = 1
         value = self.get(section, option)
         suffix = value[-1].lower()
@@ -34,11 +35,9 @@ class MyConfigParser(ConfigParser.ConfigParser):
             mult = self.time_multipliers[suffix]
             value = value[:-1]
         return int(value)*mult
-    def gettime(self, section, option):
-        value = self._gettime(section, option)
-        return value
     
 def aptProxyFactoryConfig(factory):
+    "Loads the configuration file into 'factory'"
     defaults = {
         'port': '8000',
         'min_refresh_delay': '30',
@@ -90,6 +89,7 @@ def aptProxyFactoryConfig(factory):
             backend.timeout = conf.gettime(name, 'timeout')
         else:
             backend.timeout = factory.timeout
+        #Create a packages parser object for the backend
         packages.AptPackages(backend, factory)
         factory.backends.append(backend)
         if len(servers) > 1:

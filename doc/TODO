@@ -8,6 +8,8 @@
 Generate Packages from Packages.gz and viceversa (DONE)
 
 Mirror house-keeping:support apt-proxy-import operations again (DONE?)
+	apt-proxy-import should not be used which apt-proxy is running, we
+		need to do some file locking to permit that.
 	Consider using apt-listchanges' python modules to parse the .deb files
 	Or the old dpkg-python (This I would have to adopt and fix first)
 		Or even get the usefull stuff of apt-listchanges into
