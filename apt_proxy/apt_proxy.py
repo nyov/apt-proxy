@@ -191,15 +191,9 @@ class TempFile (file):
         os.close(fd)
         file.__init__(self, name, mode, bufsize)
         os.unlink(name)
-        self.seek(0, SEEK_END)
     def append(self, data):
-        self.write(data)
-    def read(self, size=-1, start=None):
-        if start != None:
-            self.seek(start, SEEK_SET)
-	data = file.read(self, size)
         self.seek(0, SEEK_END)
-        return data
+        self.write(data)
     def size(self):
         return self.tell()
 
@@ -344,11 +338,12 @@ class Fetcher:
         Called by subclasses when the data transfer is over.
 
            -caches the received data if everyting went well (if saveData=True)
-           -takes care or mtime and atime
+           -takes care of mtime and atime
            -finishes connection with server and the requests
            
         """
         import shutil
+        log.debug("Finished receiving data, status:%d saveData:%d" %(self.status_code, saveData));
         if (self.status_code == http.OK):
             if saveData:
                 dir = dirname(self.local_file)
@@ -389,7 +384,7 @@ class Fetcher:
 
     def apEnd(self):
         """
-        Called by subclasses when apDataEnd does too much things.
+        Called by subclasses when apDataEnd does too many things.
 
         Let's everyone know that we are not the active Fetcher for our uri.
         """
@@ -450,9 +445,6 @@ class Fetcher:
     def connectionFailed(self, reason=None):
         """
         Tell our requests that the connection with the server failed.
-
-        When multi-server backends are implemented we could change server and
-        try again.
         """
         msg = '[%s] Connection Failed: %s/%s'%(
             self.request.backend.base,
@@ -463,7 +455,7 @@ class Fetcher:
             log.debug("Connection Failed: "+str(reason))
         log.err(msg)
 
-            # Look for alternative fetchers
+        # Look for alternative fetchers
         if not self.request.activateNextBackend(self):
             # No more backends, send error response back to client
             if reason.check(error.ConnectError):
@@ -585,6 +577,7 @@ class FetcherHttp(Fetcher, http.HTTPClient):
         
     def handleHeader(self, key, value):
 
+        log.debug("Received: " + key + " " + str(value))
         key = string.lower(key)
 
         if key == 'last-modified':
@@ -602,9 +595,9 @@ class FetcherHttp(Fetcher, http.HTTPClient):
         self.apDataReceived(data)
 
     def handleResponse(self, buffer):
-        if self.length != 0:
+        if self.length == 0:
             self.setResponseCode(http.NOT_FOUND)
-        self.apDataEnd(buffer)
+        self.apDataEnd(self.transfered)
 
     def lineReceived(self, line):
         """
@@ -809,6 +802,7 @@ class FetcherGzip(Fetcher, protocol.ProcessProtocol):
 
     exe = '/bin/gzip'
     def activate(self, request, postconverting=0):
+        log.debug("FetcherGzip request:" + str(request.uri) + " postconvert:" + str(postconverting), 'gzip')
         Fetcher.activate(self, request)
         if not request.apFetcher:
             return
@@ -826,7 +820,7 @@ class FetcherGzip(Fetcher, protocol.ProcessProtocol):
         self.args += (self.host_file,)
 
         running = self.factory.runningFetchers
-        if not postconverting or running.has_key(self.host_file):
+        if not postconverting or running.has_key(host_uri):
             #Make sure that the file is there
             loop = LoopbackRequest(request, self.host_transfer_done)
             loop.uri = host_uri
@@ -834,9 +828,9 @@ class FetcherGzip(Fetcher, protocol.ProcessProtocol):
             loop.process()
             self.loop_req = loop
             loop.serve_if_cached=0
-            if running.has_key(self.host_file):
+            if running.has_key(host_uri):
                 #the file is on it's way, wait for it.
-                running[self.host_file].insert_request(loop)
+                running[host_uri].insert_request(loop)
             else:
                 #we are not postconverting, so we need to fetch the host file.
                 loop.fetch(serve_cached=0)
@@ -855,6 +849,7 @@ class FetcherGzip(Fetcher, protocol.ProcessProtocol):
         If posible arrange things so the target file gets the same mtime as
         the host file.
         """
+        log.debug('transfer done', 'gzip')
         if self.loop_req and self.loop_req.code != http.OK:
             self.setResponseCode(self.loop_req.code,
                                  self.loop_req.code_message)
@@ -870,6 +865,7 @@ class FetcherGzip(Fetcher, protocol.ProcessProtocol):
         if self.local_mtime == old_mtime:
             self.apEndCached()
         else:
+            log.debug("Starting process: " + self.exe + " " + str(self.args), 'gzip')
             self.process = reactor.spawnProcess(self, self.exe, self.args)
 
     def outReceived(self, data):
@@ -877,7 +873,7 @@ class FetcherGzip(Fetcher, protocol.ProcessProtocol):
         self.apDataReceived(data)
 
     def errReceived(self, data):
-        log.debug(data,'gzip')
+        log.debug('gzip: ' + data,'gzip')
 
     def loseConnection(self):
         """
@@ -1092,33 +1088,45 @@ class FetcherFile(Fetcher):
             request.finish()
             return
         Fetcher.insert_request(self, request)
-        self.if_modified(request)
-        file = open(self.local_file,'rb')
-        fcntl.lockf(file.fileno(), fcntl.LOCK_SH)
-        basic.FileSender().beginFileTransfer(file, request).addCallback(self.apEnd).addCallback(lambda r: file.close()).addCallback(lambda r: request.transport.loseConnection())
+        
+        log.debug("Serving from cache for additional client: " + self.local_file + " size:" + str(self.size))
+        self.start_transfer(request)
         
     def activate(self, request):
         Fetcher.activate(self, request)
         if not request.apFetcher:
             return
         self.factory.file_served(request.uri)
-
+        self.size = request.local_size
+        
+        self.start_transfer(request)
+        
+    def start_transfer(self, request):
         self.if_modified(request)
+        
         if len(self.requests) == 0:
             #we had a single request and didn't have to send it
             self.apEnd()
             return
 
-        self.size = request.local_size
+        log.debug("Serving from cache: " + self.local_file + " size:" + str(self.size))
         file = open(self.local_file,'rb')
         fcntl.lockf(file.fileno(), fcntl.LOCK_SH)
         
         request.setHeader("Content-Length", request.local_size)
         request.setHeader("Last-modified",
                           http.datetimeToString(request.local_mtime))
-        basic.FileSender().beginFileTransfer(file, self.request).addCallback(self.apEnd).addCallback(lambda r: file.close()).addCallback(lambda r: request.transport.loseConnection())
+        basic.FileSender().beginFileTransfer(file, request) \
+                          .addBoth(self.file_transfer_complete, request) \
+                          .addBoth(lambda r: file.close()) \
+                          .addBoth(lambda r: request.transport.loseConnection())
+        
 
-    def apEnd(self, ignored=None):
+    # A file transfer has completed
+    def file_transfer_complete(self, result, request):
+        #log.debug("transfer complete")
+        # Remove this client from request list
+        self.remove_request(request)
         if len(self.requests) == 0:
             Fetcher.apEnd(self)
                                          
@@ -1191,7 +1199,6 @@ class Backend:
         doesn't match this backend.
         """
         if re.search("^/"+self.base+"/", path):
-            #log.debug("check_path " + path + " = " + path[len(self.base)+2:] )
             return  path[len(self.base)+2:]
         else:
             return None
@@ -1607,11 +1614,11 @@ class Factory(protocol.ServerFactory):
             if os.path.exists(filename):
                 try:
                     shelve.verify(filename)
-                    shelve = dbshelve.open(filename)
                 except:
                     os.rename(filename, filename+'.error')
-                    shelve = dbshelve.open(filename)
-                    log.msg(filename+' was corrupt: recreated','db', 1)
+                    log.msg(filename+' could not be opened, moved to '+filename+'.error','db', 1)
+                    log.msg('recreating '+ filename,'db', 1)
+            shelve = dbshelve.open(filename)
                     
             return shelve
             
