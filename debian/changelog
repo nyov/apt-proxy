@@ -4,8 +4,12 @@ apt-proxy (1.9.5.6pre3) experimental; urgency=low
   * Build-depend on python2.3-twisted - needed for invocation of
     apt-proxy-import during documentation build (Chris).
   * Better logs and a small fix (Chris).
+  * Make lintian happy:
+  	+ Build-Depend on python2.3
+  	+ Standards-Version: 3.6.0
+  	+ debhelper (>= 4.0.0)
 
- -- Manuel Estrada Sainz <ranty@debian.org>  Wed, 20 Aug 2003 16:43:43 +0200
+ -- Manuel Estrada Sainz <ranty@debian.org>  Tue, 11 Nov 2003 18:40:26 +0100
 
 apt-proxy (1.9.5.6pre2) experimental; urgency=low
 
