@@ -65,7 +65,8 @@ def factoryConfig(factory, shell = None):
         'import_dir': '/var/cache/apt-proxy/import',
         'disable_pipelining': '0',
         'passive_ftp': 'on',
-        'dynamic_backends': 'on'
+        'dynamic_backends': 'on',
+        'http_proxy': ''
         }
     conf = MyConfigParser(defaults)
     if os.path.exists('/etc/apt-proxy/apt-proxy-v2.conf'):
@@ -85,6 +86,7 @@ def factoryConfig(factory, shell = None):
     factory.do_debug = conf.get(DEFAULTSECT, 'debug')
     factory.passive_ftp = conf.getboolean(DEFAULTSECT, 'passive_ftp')
     factory.dynamic_backends = conf.getboolean(DEFAULTSECT, 'dynamic_backends')
+    factory.http_proxy = conf.get(DEFAULTSECT, 'http_proxy')
     if factory.debug != '0':
         factory.debug = {'debug':'9'}
         for domain in factory.do_debug.split():

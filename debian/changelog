@@ -1,3 +1,9 @@
+apt-proxy (1.9.14+CVS20040715) unstable; urgency=low
+
+  * Add support for upstream proxy servers (Otavio). (closes: #258904)
+
+ -- Otavio Salvador <otavio@debian.org>  Thu, 15 Jul 2004 21:46:14 -0300
+
 apt-proxy (1.9.14) unstable; urgency=low
 
   * Add some missing files in clean target (Otavio).

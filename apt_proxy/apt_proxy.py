@@ -519,8 +519,15 @@ class FetcherHttp(Fetcher, http.HTTPClient):
         ]
     log_headers = None
 
+    proxy_host = None
+    proxy_port = None
+
     def activate(self, request):
         Fetcher.activate(self, request)
+
+        if not self.factory.http_proxy is '':
+            (self.proxy_host, self.proxy_port) = request.factory.http_proxy.split(':')
+
         if not request.apFetcher:
             return
 
@@ -537,13 +544,22 @@ class FetcherHttp(Fetcher, http.HTTPClient):
             def clientConnectionLost(self, connector, reason):
                 log.debug("XXX clientConnectionLost", "http-client")
 
-        reactor.connectTCP(request.backend.host, request.backend.port,
-                           ClientFactory(self), request.backend.timeout)
-
+        if not self.proxy_host:
+            reactor.connectTCP(request.backend.host, request.backend.port,
+                               ClientFactory(self), request.backend.timeout)
+        else:
+            reactor.connectTCP(self.proxy_host, int(self.proxy_port),
+                               ClientFactory(self), request.backend.timeout)
     def connectionMade(self):
-        self.sendCommand(self.request.method, self.request.backend.path
-                         + "/" + self.request.backend_uri)
-
+        if not self.proxy_host:
+            self.sendCommand(self.request.method, self.request.backend.path
+                             + "/" + self.request.backend_uri)
+        else:
+            self.sendCommand(self.request.method, "http://"
+                             + self.request.backend.host + ":" + str(self.request.backend.port)
+                             + "/" + self.request.backend.path
+                             + "/" + self.request.backend_uri)
+            
         self.sendHeader('host', self.request.backend.host)
 
         if self.local_mtime != None:
