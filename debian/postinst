@@ -49,8 +49,10 @@ case "$1" in
 					/etc/apt-proxy/apt-proxy-v2.conf.backup\
 					2>&1 \
 					> /etc/apt-proxy/apt-proxy-v2.conf )
-	    echo "$OUTPUT"
-	    echo "$OUTPUT" | mail -s "apt-proxy v1->v2 upgrade" root@localhost
+	    echo "$OUTPUT" > /var/log/apt-proxy-v1tov2.log
+	    chown aptproxy:adm /var/log/apt-proxy-v1tov2.log
+	    chmod 640 /var/log/apt-proxy-v1tov2.log
+	    echo "The log of conversion was save in /var/log/apt-proxy-v1tov2.log."
 	    if [ -n "$OUTPUT" ]; then
 		db_fset $NAME/upgrading-v2-result seen false
 		db_input high $NAME/upgrading-v2-result || true

@@ -1,5 +1,7 @@
 apt-proxy (1.9.17+CVS) unstable; urgency=low
-
+  
+  * Save the conversion log in /var/log/apt-proxy-v1tov2.log and stopped
+    to send mails to root. (closes: #268421)
   * Change the umask of process to 022 so the cache will be readable by
     others. (closes: #264638)
   * Applied patch provided by Julien Louis <arthur51@ifrance.com> to fix a
