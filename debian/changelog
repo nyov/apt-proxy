@@ -1,5 +1,6 @@
 apt-proxy (1.9.17+CVS) unstable; urgency=low
-  
+
+  * Add dependencie of logrotate. (closes: #267822)
   * Save the conversion log in /var/log/apt-proxy-v1tov2.log and stopped
     to send mails to root. (closes: #268421)
   * Change the umask of process to 022 so the cache will be readable by
