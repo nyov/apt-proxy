@@ -162,19 +162,25 @@ add_backend()
 #  download_url([-d] url, destinationDirectory, destinationFile)
 download_url()
 {
+    unset RET DL_DIR
+
     if [ $1 = "-d" ]; then
       DL_DIR=y
       shift
-    else
-      unset DL_DIR
     fi
 
+    # DL_URL: URL to download				(http://ftp.debian.org/pool/a/aaa-a.deb)
+    # DL_DESTDIR: Destination directory for file	(/var/cache/apt-proxy/debian/pool/a)
+    # DL_DESTFILE: Destination filename			(aaa-a.deb)
+    # DL_FILE: Complete pathname for destination file	(/var/cache/apt-proxy/debian/pool/a/aaa-a.deb)
     DL_URL=$1
     DL_DESTDIR=$2
     DL_DESTFILE=$3
-    debug download_url:$DL_URL dest:$DL_DESTDIR file:$DL_DESTFILE dir:$DL_DIR
+    DL_FILE=$DL_DESTDIR/$DL_DESTFILE
 
-    DL_LOG=$2.log
+    debug "download_url:$DL_URL dest:$DL_DESTDIR file:$DL_DESTFILE IsDir:[$DL_DIR]"
+
+    DL_LOG=$DL_FILE.log
 
     case "$DL_URL" in
         http://*|ftp://*)
@@ -188,7 +194,7 @@ download_url()
 	        RET=$?
 		if [ $RET = 0 ];then
 		    # Success - move file to final location
-		    mv $DL_TEMPFILE $DL_DESTDIR/$DL_DESTFILE
+		    mv $DL_TEMPFILE $DL_FILE
 		else
 		    # Remove empty file created by wget
 		    rm -f $DL_TEMPFILE
@@ -202,7 +208,7 @@ download_url()
 	        RET=$?
 		if [ $RET = 0 ];then
 		    # Success - create directory
-		    mkdir $DL_DESTDIR$DL_DESTFILE && rm $DL_LOG
+		    mkdir $DL_FILE && rm $DL_LOG
 		else
 		    # Remove empty file created by wget
 		    rm -f $DL_TEMPFILE
@@ -211,17 +217,51 @@ download_url()
 	    debug "wget: `cat $DL_LOG`"
 	    ;;
 	*::*)
+	    RSYNC_CMD="$RSYNC -v --perms --links --times --partial"
+
 	    if [ -z "$DL_DIR" ];then
 	        # File
-	        debug $RSYNC -v --perms --links --times --partial $DL_URL $DL_DESTDIR 
-	        $RSYNC -v --perms --links --times --partial $DL_URL $DL_DESTDIR/$DL_DESTFILE > $DL_LOG 2>&1
-	        RET=$?
+
+		# Try to rsync uncompressed version?
+		case $DL_URL in
+		*Packages.gz)
+		    debug "Rsyncing uncompressed version ****************************************"
+		    # Extract filename for uncompressed file from URL
+		    TMP_DESTFILE=`echo $DL_URL | sed 's|^.*/\(.*\)\.gz$|\1|'`
+		    TMP_FILE=$DL_DESTDIR/$TMP_DESTFILE
+		    TMP_URL=`echo $DL_URL | sed 's/\.gz$//'`
+		    
+		    [ $TMP_FILE -ot $DL_FILE ] && gunzip -c < $DL_FILE > $TMP_FILE 
+
+		    if [ -f $FILE ]; then
+		        # We have an uncompressed file to rsync against
+			debug $RSYNC_CMD -z $TMP_URL $TMP_FILE
+			if $RSYNC_CMD -z $TMP_URL $TMP_FILE > $DL_LOG 2>&1 ;then
+			    # Success.  Now compress file.
+			    debug Succeeded - compressing $TMP_FILE
+			    gzip -9n < $TMP_FILE > $DL_FILE
+			    touch -r $TMP_FILE $DL_FILE
+			    RET=0
+			fi
+	    		[ -n "$KEEP_STATS" ] && log rsync $TMP_DESTFILE: `tail -2 $DL_LOG`
+		    fi
+		    debug "*** END Rsyncing uncompressed version ****************************************"
+		    ;;
+		esac
+
+		if [ -z "$RET" ]; then
+		    # Retrieve normally
+		    debug $RSYNC_CMD $DL_URL $DL_FILE 
+		    $RSYNC_CMD $DL_URL $DL_FILE > $DL_LOG 2>&1
+		    RET=$?
+		fi
+
             else
 	        # Directory
-	        debug $RSYNC -v --perms --links --times --partial $DL_URL > $DL_LOG 2>&1
-	        $RSYNC -v --perms --links --times --partial $DL_URL > $DL_LOG 2>&1
+	        debug $RSYNC_CMD $DL_URL
+	        $RSYNC_CMD $DL_URL > $DL_LOG 2>&1
 	        RET=$?
-		[ $RET = 0 ] && mkdir $DL_DESTDIR$DL_DESTFILE
+		[ $RET = 0 ] && mkdir $DL_FILE
 
 	    fi
 	    
@@ -456,20 +496,19 @@ test_lockfile()
     [ -f $LOCKFILE ] || return 1
 
     # Stale lock detection.
-    if kill -0 "`cat $LOCKFILE`"; then
+    if kill -0 "`cat $LOCKFILE`" 2>/dev/null; then
         # Lockfile is current
 	return 0
     else
 	debug Lock $LOCKFILE is stale
-	ret=1
 	if ! ln $LOCKFILE $LOCKFILE.stale 2>/dev/null; then
 	    # Someone may have cleaned this up between above lines.
-	    if ! kill -0 "`cat $LOCKFILE`"; then
+	    if kill -0 "`cat $LOCKFILE`"; then
 		# Someone else cleaned up the lockfile and created a new one
 		return 0
 	    fi
 	fi
-	rm -f $LOCKFILE.stale
+	rm -f $LOCKFILE $LOCKFILE.stale
 	return 1
     fi
 }
@@ -1082,40 +1121,8 @@ while true; do
 	;;
     # We always keep the Packages and Release files uptodate: derive the .gz.
     *Packages.gz|*Release.gz|*Sources.gz|*Contents-*.gz)
-	# Rsync uncompressed files and derive.
-	debug Updating compressed file \`$REQUEST\'
-	FILE=`echo $REQUEST | sed 's/\.gz$//'`
-	resolve_url $FILE 1
-
-	# If we already have an uncompressed file, rsync it.
-	if [ -f $FRONT ]; then
-	    fetch_file_maybe $URL_REST $FRONT_BASE $BACKS > /dev/null
-	    STREAM=""
-	    # Can't stream, we need to compress.
-	    if wait_for_stream $FRONT; then
-		if [ ! -f $FRONT.gz -o $FRONT -nt $FRONT.gz ]; then
-		    gzip -9n < $FRONT > $FRONT.gz
-		    touch -r $FRONT $FRONT.gz
-		fi
-	    fi
-	else
-	    # Some unofficial backends don't do uncompressed Packages files
-	    # and there's not usually an uncompressed Sources file.
-
-	    # If this is first time around, derive uncompressed if it
-	    # exists on a back end.
-	    if [ ! -f $FRONT.gz ]; then
-		for back in $BACKS; do
-		    if $RSYNC $back$URL_REST 2>/dev/null >/dev/null; then
-			UNCOMPRESS=$FRONT
-		    else
-			log $back does not have `basename $FRONT`.
-		    fi
-		done
-	    fi
-	    STREAM="`fetch_file_maybe $URL_REST.gz $FRONT_BASE $BACKS`"
-	fi
-	FRONT=$FRONT.gz
+	resolve_url $REQUEST 1
+	STREAM="`fetch_file_maybe $URL_REST $FRONT_BASE $BACKS`"
 
 	contype=text/plain
 	conenc=x-gzip
@@ -1250,14 +1257,14 @@ while true; do
     stream_file "$STREAM" "$FRONT"
 
     # Now, derive the uncompressed file.
-    if [ -n "$UNCOMPRESS" ]; then
-	(
+#    if [ -n "$UNCOMPRESS" ]; then
+#	(
 	    # close the sockets as this may take some time
-	    exec 0>&- 3>&-
-	    gunzip < $FRONT > $UNCOMPRESS
-	    touch -r $FRONT $UNCOMPRESS
-	) &
-    fi
+#	    exec 0>&- 3>&-
+#	    gunzip < $FRONT > $UNCOMPRESS
+#	    touch -r $FRONT $UNCOMPRESS
+#	) &
+#    fi
 
     if [ -n "$DO_UPDATE_PACKAGES_LIST" ] ; then
 	(
