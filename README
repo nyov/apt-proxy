@@ -24,19 +24,12 @@ NOTE: Forget that for now, there is no support for installing on non-Debian
 machines currently, and that may take a while. It also depends on apt being
 installed, which may not be the case on a non-Debian machines.
 
-Using apt-proxy with Debian Potato/Woody
-----------------------------------------
+Using apt-proxy with Debian Potato/Woody?
+-----------------------------------------
 
 apt-proxy will not easily work on this version of Debian, it requires versions
-of twisted, python and python-apt not present in them.
-
-Using apt-proxy with Debian Sarge(testing)
-------------------------------------------
-
-apt-proxy requires twisted 1.0.0 or higher, until it hits Sarge, you can
-install it from http://twistedmatrix.com/users/moshez/apt, and it will
-probably work, but keep in mind that apt-proxy v2 is quite young, and it is
-being developed in sid.
+of twisted, python and python-apt not present in them.  Upgrade to Sarge or
+stick with version 1.
 
 Upgrading from apt-proxy v1
 ---------------------------
