@@ -1,6 +1,7 @@
 #!/bin/ash
 # (You may safely change the above to /bin/sh if you do not have ash available)
 #
+# $Id: apt-proxy,v 1.40 2002/04/04 10:49:39 haggai Exp $
 # Copyright Paul Russell <rusty@samba.org>
 # Released under the GPL version 2 or later
 #	Fixed by Stephen Rothwell <sfr@canb.auug.org.au>

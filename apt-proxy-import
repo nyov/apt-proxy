@@ -1,4 +1,5 @@
 #!/bin/sh
+# $Id: apt-proxy-import,v 1.10 2002/04/04 10:49:39 haggai Exp $
 # Import package files from incoming directories
 #
 # Copyright 2002 Chris Halls <chris.halls@gmx.de>
