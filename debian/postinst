@@ -15,8 +15,7 @@ case "$1" in
 	    if [ -x /usr/sbin/adduser ]; then
 	        id $APTPROXY_USER > /dev/null 2>&1 ||
 		    adduser --system --ingroup nogroup --home /var/cache/apt-proxy \
-		    --no-create-home \
-		    --shell /bin/sh --disabled-login $APTPROXY_USER
+		    --no-create-home $APTPROXY_USER
 	    fi
 
 
