@@ -8,7 +8,7 @@ Build-Depends-Indep: debhelper (>> 3.0.0), help2man, python2.1
 
 Package: apt-proxy-v2
 Architecture: all
-Depends: python2.1-twisted, python (>=2.1), python (<<2.2), python-apt
+Depends: python2.1-twisted, python2.1, python-apt
 Suggests: rsync
 Description: Debian archive proxy and partial mirror builder development
  ** This package is still under development **
