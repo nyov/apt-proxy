@@ -43,62 +43,6 @@ class AptDpkgInfo(UserDict.UserDict):
                 key, value = line.split(': ', 1)
                 self.data[key] = value
 
-class AptPackagesServer:
-    """
-    Handles communication with the packages server.
-
-    This is just a hack because python-apt has a known huge memory leak, this
-    way we can just kill the process to free the memory. Then that is fixed
-    this hack should probably be removed.
-    """
-    finish=0
-    answer_pending=0
-    ready = re.compile("READY\n$")
-    command=os.environ.get('APT_PROXY_PACKAGES')
-    if not command:
-        command=os.getcwd() + "/bin/apt_proxy_packages.py"
-        if not os.path.exists(command):
-            command='/usr/share/apt-proxy/apt_proxy_packages.py'
-
-    def __init__(self):
-        self.stdin, self.stdout = os.popen2(self.command)
-    def kill(self):
-        """
-        This is probably not the right name for it, but since we don't know the
-        pid of the process is as much as we can do to kill it.
-        """
-        self.stdin.close()
-        self.stdout.close()
-    def writeCode(self, code):
-        """
-        Write the code as a single line, Quoting newline chars, the server will
-        dequote it.
-
-        We force it to print 'READY' as a marker to know then we got the whole
-        answer.
-        """
-        self.data='' #discard all unread data
-        self.answer_pending=1
-        code += "\nprint 'READY'\n"
-        code = apt_pkg.QuoteString(code,'\n')
-        self.stdin.write(code+'\n')
-        self.stdin.flush()
-    def readAnswer(self):
-        """
-        Read all output from the server until the 'READY' marker.
-        """
-        data = ''
-        while 1:
-            new_data = self.stdout.readline()
-            if new_data == '':
-                raise 'no data'
-            if new_data != 'READY\n':
-                data += new_data
-            else:
-                if data == 'None\n':
-                    return None
-                return data[:-1] #remove the last newline
-    
 class AptPackages:
     """
     Uses AptPackagesServer to answer queries about packages.
@@ -181,6 +125,16 @@ class AptPackages:
             self.packages[uri] = mtime
             self.unload()
         
+    def __fake_stdout(self):
+        import tempfile
+        null = tempfile.TemporaryFile()
+        self.real_stdout_fd = os.dup(sys.stdout.fileno())
+        os.dup2(null.fileno(), sys.stdout.fileno())
+    def __restore_stdout(self):
+        os.dup2(self.real_stdout_fd, sys.stdout.fileno())
+        os.close(self.real_stdout_fd)
+        del self.real_stdout_fd
+
     def load(self):
         """
         Regenerates the fake configuration and load the packages server.
@@ -205,31 +159,43 @@ class AptPackages:
                     pass
                 os.symlink('../../../../../'+file, listpath)
             sources.close()
-            server = self.server_process = AptPackagesServer()
-            server.writeCode("init(%s)"%(self.local_config))
-            server.readAnswer()
+            for key, value in self.local_config.items():
+                apt_pkg.Config[key] = value
+            apt_pkg.InitSystem()
+
+            if log.isEnabled('apt'):
+                self.cache = apt_pkg.GetCache()
+            else:
+                self.__fake_stdout()
+                self.cache = apt_pkg.GetCache()
+                self.__restore_stdout()
+
+            self.records = apt_pkg.GetPkgRecords(self.cache)
             self.loaded = 1
-            
     def unload(self):
         "Tryes to make the packages server quit."
         if self.loaded:
-            self.server_process.writeCode('sys.exit(0)')
-            self.server_process.kill()
-            del self.server_process
+            del self.cache
+            del self.records
             self.loaded = 0
             
     def cleanup(self):
         self.unload()
         self.packages.close()
 
-    def get_mirror_path(self, info):
-        "Find the path for the package descrived by 'info'"
+    def get_mirror_path(self, name, version):
+        "Find the path for version 'version' of package 'name'"
         self.load()
-        server = self.server_process
-        server.writeCode('print get_mirror_path("%s", "%s")'
-                             %(info['Package'],info['Version']))
-        ans = server.readAnswer()
-        return ans
+        try:
+            for pack_vers in self.cache[name].VersionList:
+                if(pack_vers.VerStr == version):
+                    file, index = pack_vers.FileList[0]
+                    self.records.Lookup((file,index))
+                    return self.records.FileName
+        except KeyError:
+            pass
+        return None
+      
 
 def cleanup(factory):
     for backend in factory.backends:
@@ -242,13 +208,11 @@ def get_mirror_path(factory, file):
     info = AptDpkgInfo(file)
     paths = []
     for backend in factory.backends:
-        path = backend.packages.get_mirror_path(info)
+        path = backend.packages.get_mirror_path(info['Package'],
+                                                info['Version'])
         if path:
             paths.append('/'+backend.base+'/'+path)
-    if len(paths):
-        return paths
-    else:
-        return None
+    return paths
 
 def import_debs(factory, dir):
     if not os.path.exists(dir):
@@ -293,12 +257,14 @@ def test(factory):
     print "FileName: '%s'"%(path)
 
 if __name__ == '__main__':
-    from apt_proxy_conf import aptProxyFactoryConfig
+    from apt_proxy_conf import factoryConfig
     class DummyFactory:
         def debug(self, msg):
             pass
     factory = DummyFactory()
-    aptProxyFactoryConfig(factory)
+    factoryConfig(factory)
+    if factory.do_debug:
+        log.addDomains(factory.debug)
     test(factory)
     cleanup(factory)
 
