@@ -95,6 +95,12 @@ deleted, and the result logged.  This is very useful for avoiding the
 buildup of obsolete and very infrequently accessed files, such as
 sources.
 
+\fIMAX_VERSIONS\fP, if set, limits the number of versions of each package 
+to keep in the cache directory to keep.  Version purging is carried out
+immediately after a new version is downloaded.  If, for example, you have
+MAX_VERSIONS=3 and are tracking both potato and woody, the maximum number
+of files in the cache for one package will be 6.
+
 .SH "FILES" 
 /etc/apt-proxy/apt-proxy\&.conf
 .PP 
