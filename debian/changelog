@@ -1,6 +1,6 @@
-apt-proxy (1.9.15+SVN20040728) unstable; urgency=low
+apt-proxy (1.9.16) unstable; urgency=low
 
-  * Workaround when found a wrong server (Otavio).  (closes: #260788)
+  * Workaround when found a wrong server (Otavio). (closes: #260788)
   * Applied patch from Jason Thomas <jason@debian.org> to add RPM support
     (Otavio). (closes: #261943)
   * Handle username and password in URI (Otavio). (closes: #263112)
