@@ -472,6 +472,8 @@ class FetcherHttp(Fetcher, http.HTTPClient):
         'last-modified',
         'content-length'
         ]
+    headers = None
+
     def activate(self, request):
         Fetcher.activate(self, request)
         if not request.apFetcher:
@@ -540,7 +542,11 @@ class FetcherHttp(Fetcher, http.HTTPClient):
         Note: when running a class method directly and not from an object you
         have to give the 'self' parameter manualy.
         """
-        log.debug(line,'http_client')
+        #log.debug(line,'http_client')
+        if self.headers == None:
+            self.headers = line
+        else:
+            self.headers += ", " + line;
         if not re.search('^Location:', line):
             http.HTTPClient.lineReceived(self, line)
 
@@ -551,7 +557,9 @@ class FetcherHttp(Fetcher, http.HTTPClient):
 
     def endHeaders(self):
         "log and handle to the base class."
-        log.debug("",'http_client')
+        if self.headers != None:
+            log.debug(" Headers: " + self.headers, 'http_client')
+            self.headers = None;
         http.HTTPClient.endHeaders(self)
 
     def sendHeader(self, name, value):
@@ -1289,14 +1297,21 @@ class Channel(http.HTTPChannel):
     Each incomming request is passed to a new Request instance.
     """
     requestFactory = Request
+    headers = None
 
     def headerReceived(self, line):
         "log and pass over to the base class"
-        log.debug("Header: " + line)
+        #log.debug("Header: " + line)
+        if self.headers == None:
+            self.headers = line
+        else:
+            self.headers += ", " + line
         http.HTTPChannel.headerReceived(self, line)
 
     def allContentReceived(self):
-        log.debug("End of request.")
+        if self.headers != None:
+            log.debug("Headers: " + self.headers)
+            self.headers = None
         http.HTTPChannel.allContentReceived(self)
 
     def connectionLost(self, reason=None):
