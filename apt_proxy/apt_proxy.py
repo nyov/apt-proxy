@@ -481,6 +481,8 @@ class FetcherHttp(Fetcher, http.HTTPClient):
 
         class ClientFactory(protocol.ClientFactory):
             "Dummy ClientFactory to comply with current twisted API"
+	    #FIXME: Double check this, haggai thinks it is to blame for the
+	    #hangs.
             def __init__(self, instance):
                 self.instance = instance
             def buildProtocol(self, addr):
