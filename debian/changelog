@@ -1,6 +1,6 @@
-apt-proxy (1.9.24.svn) UNRELEASED; urgency=low
+apt-proxy (1.9.25) unstable; urgency=low
 
-  * Postpone database creating to first request. Closes: #288829.
+  * Postpone database creating to first request. Closes: #288829. (Otavio)
   * Reorganise Backends. Now the packages databse is not opened multiple
     times for each alternative URL given.
   * Each [backend] section in apt-proxy.conf creates a new class Backend
@@ -11,7 +11,7 @@ apt-proxy (1.9.24.svn) UNRELEASED; urgency=low
   * init script: Change twistd2.3->twistd to help python transitions
   * apt-proxy.conf: Add ubuntu and ubuntu-security archives
 
- -- Chris Halls <halls@debian.org>  Fri, 28 Jan 2005 10:20:36 +0000
+ -- Chris Halls <halls@debian.org>  Fri, 28 Jan 2005 10:26:49 +0000
 
 apt-proxy (1.9.24) unstable; urgency=low
 
