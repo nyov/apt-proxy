@@ -1,3 +1,15 @@
+apt-proxy (1.3.0) unstable; urgency=low
+
+  * Release new version into Debian archive.
+    - Add HTTP/FTP backend support using wget
+    - Add apt-proxy-import, a script to import .debs into the cache
+    - Improve reliability when several clients are active
+    - Add FAQ section to README
+    See the changelogs for 1.2.9.x (below) for details. 
+    (closes: #83199, #94226, #140348, #140826)
+
+ -- Chris Halls <chris.halls@gmx.de>  Thu,  4 Apr 2002 14:06:05 +0200
+
 apt-proxy (1.2.9.11) sourceforge; urgency=low
 
   * Fix log messages when a directory is created for a http/ftp backend.
