@@ -16,12 +16,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from twisted.python import usage
-from apt_proxy.apt_proxy_conf import factoryConfig
-from apt_proxy import packages
 import sys
 
 class MyOptions(usage.Options):
     optFlags = [
+        ['version', 'V', 'print version and quit'],
         ['verbose', 'v', 'give verbose output'],
         ['debug', 'd', "debug mode (don't delete link dir, implies -v)"],
         ['help', 'h'],
@@ -43,11 +42,18 @@ try:
 except usage.UsageError, ue:
     print '%s: %s' % (sys.argv[0], ue)
 
+if config.opts['version']:
+    print "apt-proxy-import 1.9.x"
+    sys.exit(0)
+
 class DummyFactory:
     "This is just to get the configuration data somewhere."
     def debug(self, msg):
         print msg
         
+from apt_proxy.apt_proxy_conf import factoryConfig
+from apt_proxy import packages
+
 factory = DummyFactory()
 factoryConfig(factory)
 if factory.do_debug:
