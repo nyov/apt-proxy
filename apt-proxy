@@ -1,7 +1,7 @@
 #!/bin/ash
 # (You may safely change the above to /bin/sh if you do not have ash available)
 #
-# $Id: apt-proxy,v 1.43 2002/05/28 07:48:31 haggai Exp $
+# $Id: apt-proxy,v 1.44 2002/06/14 11:35:58 ranty Exp $
 # Copyright Paul Russell <rusty@samba.org>
 # Released under the GPL version 2 or later
 #	Fixed by Stephen Rothwell <sfr@canb.auug.org.au>
@@ -1148,6 +1148,14 @@ while true; do
 	case "$LC_PREFIX" in
 	get|head)
 	    REQUEST="`echo $LINE | cut -d\  -f1 | sed -e 's/%5[Ff]/_/g'`"
+
+	    #Simplify ocurrences of '/dirname/../' into '/'
+	    #this won't work if ocurrences are too near.
+	    #e.g:
+	    #	http://foo/ddD/../blah/../	-> http://foo/blah/../
+	    #	http://foo/ddD/..//blah/../	-> http://foo//
+	    #	http://foo/dd/../pp/blah/../	-> http://foo/pp/
+	    REQUEST="`echo $REQUEST | sed -e 's|/[^/]\+/\+\.\./|/|g'`"
 	    ;;
 	if-modified-since:)
 	    IMS_DATE=$LINE
