@@ -32,13 +32,9 @@ from twisted.python.failure import Failure
 import packages, misc
 from misc import log
 
-status_dir = '.apt-proxy'
+from twisted_compat import compat
 
-from twisted import copyright
-if copyright.version == "0.18.0":
-    #This is a gross hack to get post 0.18.0 features in woody systems
-    print "Updating twisted's process module."
-    import apt_process
+status_dir = '.apt-proxy'
 
 class FileType:
     """
