@@ -10,7 +10,7 @@
 #	`I was joking!' -- Paul Mackerras
 #	`Note that Rusty's name is at the top' -- Stephen Rothwell.
 #	`Perl!!!  Please?' -- Martin Schwenke
-APT_PROXY_VERSION=1.2.9.1
+APT_PROXY_VERSION=1.2.9.2
 
 # Default values
 APT_PROXY_LOGFILE=/dev/null
