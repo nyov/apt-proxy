@@ -1,6 +1,5 @@
 doc/apt-proxy.conf etc/apt-proxy
 bin/apt-proxy usr/sbin
 bin/apt-proxy-import usr/sbin
-bin/apt_proxy_packages.py usr/lib/apt-proxy-v2
 apt_proxy/*.py usr/lib/python2.2/site-packages/apt_proxy
 apt_proxy/twisted_compat/*.py usr/lib/python2.2/site-packages/apt_proxy/twisted_compat
