@@ -8,7 +8,7 @@ Build-Depends-Indep: debhelper (>> 3.0.0), help2man
 
 Package: apt-proxy
 Architecture: all
-Depends: wget | rsync, grep-dctrl, tcpd, netbase, ash
+Depends: wget | rsync, grep-dctrl, tcpd, netbase, ash, binutils
 Recommends: apt
 Suggests: wget, rsync, dpkg-dev, stat
 Description: Debian archive proxy and partial mirror builder

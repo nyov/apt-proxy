@@ -46,9 +46,11 @@ This runs apt-proxy-import in each directory in the apt-file cache.
 .ad
 
 [BUGS]
+apt-proxy-import does not use MAX_VERSIONS to clean the cache directory on import.
+.PP
 It does not yet import source.tar.gz or Packages files.
 .PP
 You must run it as the apt-proxy user or as root.
 
-[AUTHOR]
-Chris Halls <chris.halls@gmx.de>
+[AUTHORS]
+Chris Halls <chris.halls@gmx.de>, Manuel Estrada Sainz <ranty@debian.org>
