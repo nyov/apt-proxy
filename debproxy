@@ -197,6 +197,11 @@ def check_integrity(localdir, packagefile, files):
             del md5ob
         else:
             found.append(file)
+            if os.path.islink(file):
+                dir = os.path.dirname(file)
+                link = os.path.readlink(file)
+                link = os.path.normpath(os.path.join(dir, link))
+                found.append(link)
 
     print 'Archive report for %s' % packagefile
     if missing:
