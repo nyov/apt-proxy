@@ -7,7 +7,7 @@
 #	`perl!' -- Anton Blanchard
 #	`I was joking!' -- Paul Mackerras
 #	`Note that Rusty's name is at the top' -- Stephen Rothwell.
-APT_PROXY_VERSION=1.1.0
+APT_PROXY_VERSION=1.1.1
 
 # Before anything, save output in fd 3, and redirect others to arg1 if avail
 APT_PROXY_LOGFILE=${1:-/dev/null}
