@@ -3,13 +3,15 @@
 #DEBHELPER#
 
 NAME=apt-proxy-v2
+CACHEDIR=/var/cache/apt-proxy
 
 if test "$1" = "purge"; then
   rm -rf /var/log/$NAME.log
-  echo Purging apt-proxy cache directory
-  rm -rf /var/cache/$NAME
 
   # Don't do this until ap1 is no longer used
+  #echo Purging apt-proxy cache directory
+  #rm -rf $CACHEDIR
+
   #if id aptproxy >/dev/null; then
   #  deluser aptproxy
   #fi

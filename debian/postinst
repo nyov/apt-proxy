@@ -6,7 +6,7 @@ PYVER=2.1
 NAME=apt-proxy-v2
 APTPROXY_USER=aptproxy
 APTPROXY_LOGFILE=/var/log/$NAME.log
-CACHEDIR=/var/cache/$NAME
+CACHEDIR=/var/cache/apt-proxy
 
 set -e
 case "$1" in
@@ -19,7 +19,7 @@ case "$1" in
 	        echo creating $APTPROXY_USER user...
 	        id $APTPROXY_USER > /dev/null 2>&1 ||
 		    adduser --quiet --system --ingroup nogroup \
-		    --home /var/cache/apt-proxy --no-create-home $APTPROXY_USER
+		    --home $CACHEDIR --no-create-home $APTPROXY_USER
 	    fi
 
 	    # Make apt-proxy user own cache directory
