@@ -536,7 +536,6 @@ class AptProxyClientHttp(AptProxyClient, http.HTTPClient):
     def handleEndHeaders(self):
         if self.status_code == http.NOT_MODIFIED:
             log.debug("NOT_MODIFIED",'http_client')
-            self.transport.loseConnection()
             self.aptEndCached()
 
     def rawDataReceived(self, data):
