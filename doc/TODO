@@ -84,6 +84,8 @@ consider acting as a real proxy instead of as a "fake" server, this way
 sources.list wouldn't need to be modified and apt could be forced to ignore
 http_proxy environment variable.
 
+Add support to make apt-proxy request to a another proxy like squid.
+
 consider doing file integrity checks after downloading instead of before
 serving to improve performance.
 
