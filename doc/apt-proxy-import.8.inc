@@ -1,6 +1,6 @@
 .\" Man page was originaly copied from apt-proxy man page.
 [NAME]
-apt-proxy-import - A script for importing packages into the apt-proxy cache.
+apt-proxy-import - Import packages into the apt-proxy cache.
 
 /apt-proxy-import imports /
 It uses the package lists to determine where each file should be
@@ -26,10 +26,10 @@ these files into apt-proxy as follows:
 You can import the apt-move generated cache into apt-proxy using the following command:
 .PP
 .nf
-    find /var/cache/apt-move -type d | xargs apt-proxy-import -i  
+    apt-proxy-import -r /var/cache/apt-move
 .fi
 .PP
-This runs apt-proxy-import in each directory in the apt-file cache.
+This tells apt-proxy-import to recuse over each directory in the apt-move cache.
 
 [FILES]
 \ /etc/apt-proxy/apt-proxy\&.conf
@@ -51,4 +51,4 @@ It does not yet import source.tar.gz or Packages files.
 You must run it as the apt-proxy user or as root.
 
 [AUTHORS]
-Chris Halls <chris.halls@gmx.de>, Manuel Estrada Sainz <ranty@debian.org>
+Chris Halls <halls@debian.org>, Manuel Estrada Sainz <ranty@debian.org>
