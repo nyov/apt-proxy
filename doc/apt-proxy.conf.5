@@ -30,7 +30,9 @@ seconds\&.
 
 .TP
 .B timeout
-Maximum I/O timeout in seconds for backend transfers.
+Maximum I/O timeout in seconds for backend transfers. Default: 30 seconds.
+If no response is received from a backend server in this time, apt-proxy will try
+the next server in the list.  Y
 
 .TP
 .B cache_dir
