@@ -10,7 +10,11 @@ Package: apt-proxy-v2
 Architecture: all
 Depends: twisted
 Suggests: rsync
-Description: Debian archive proxy and partial mirror builder
+Description: Debian archive proxy and partial mirror builder development
+ ** This package is still under developement **
+ .
+ This is version 2 of apt-proxy which will, when ready, replace apt-proxy v1.
+ .
  apt-proxy automatically builds a Debian HTTP mirror based
  on requests which pass through the proxy.  It's great for
  multiple Debian machines on the same network with a slower

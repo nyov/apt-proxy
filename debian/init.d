@@ -4,8 +4,8 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin
 
 pidfile=/var/run/apt-proxy-v2.pid 
 rundir=/var/lib/apt-proxy-v2/ 
-file=/etc/apt-proxy/apt-proxy.tap 
 logfile=/var/log/apt-proxy-v2.log
+application=/usr/lib/apt-proxy/apt_proxy.py
 
 [ -r /etc/default/apt-proxy-v2 ] && . /etc/default/apt-proxy-v2
 
@@ -17,7 +17,8 @@ case "$1" in
     start)
 	echo -n "Starting apt-proxy-v2"
 	start-stop-daemon --start --quiet --exec /usr/bin/twistd -- \
-            --pidfile=$pidfile 	--rundir=$rundir --file=$file --logfile=$logfile 	                  --quiet
+            --pidfile=$pidfile 	--rundir=$rundir --python=$file \
+	    --logfile=$logfile 	--no_save
 	echo "."	
     ;;
 

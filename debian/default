@@ -1,1 +1,3 @@
-pidfile=/var/run/twisted-apt-proxy.pid rundir=/var/lib/twisted-apt-proxy/ file=/etc/apt-proxy.tap logfile=/var/log/twisted-apt-proxy.log
+pidfile=/var/run/apt-proxy-v2.pid 
+rundir=/var/lib/apt-proxy-v2/ 
+logfile=/var/log/apt-proxy-v2.log
