@@ -15,4 +15,11 @@ do the following:
 If you are installing from scratch, for example on a non-Debian machine, have
 a look at INSTALL for manual installation instructions.
 
+Using apt-proxy with Debian Potato
+----------------------------------
+Since I modified the build scripts to use debhelper 3, it is no longer to build
+this package on Potato.  However, you can still install and use a package that
+has been built on a Woody system, or downloaded from the Woody archives.
+(Thanks to Thorsten Gunkel for testing this and other aspects of the package.)
+
 February 2002
