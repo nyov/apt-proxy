@@ -102,9 +102,6 @@ It does not support http front ends, so apt-proxies cannot be chained.
 apt-get(8) does not like HTTP headers without a Content-Length:,
 making streaming cumbersome.
 
-Current versions of rsync (2.4.6) do not support --fuzzy, which would
-use similar files as the basis for synchronizing new files.
-
 Current versions of gzip (1.2.4) do not support --rsyncable, which
 gives a 30% reduction in bytes transferred for binary packages, and
 much greater for source and other packages.

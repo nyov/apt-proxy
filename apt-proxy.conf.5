@@ -31,7 +31,9 @@ cache file\&.
 The rest are the rsync-compatible server names: the client URI will
 have the prefix chopped off and replaced by this name to form the
 location of the back-end file\&.  If the rsync fails to the first
-server for any reason, it will fall back to successive servers.
+server for any reason, it will fall back to successive servers.  If
+one of the server names is prepended by a `+', then it will always be
+preferred for fetching Packages, Sources and other control files.
 .PP
 This example shows how to give clients access to the Helixcode Debian
 files (the backslashes at the end of the lines are important):
@@ -41,7 +43,7 @@ files (the backslashes at the end of the lines are important):
 add_backend /helixcode/						\\
 	/home/ftp/pub/debian/helixcode/				\\
 	somelocalmirror::helixcode/debian/			\\
-	spidermonkey.helixcode.com::http/distributions/debian/
+	+spidermonkey.helixcode.com::http/distributions/debian/
 
 .fi
 
@@ -65,8 +67,9 @@ and the file would be placed in
 
 .PP 
 .SH "OTHER OPTIONS"
-\fIBACKEND_FREQ\fP, if set, means that packages files will not be
-synchronized more frequently than this number of minutes.
+\fIBACKEND_FREQ\fP, if set, means that Packages and other control
+files will not be synchronized more frequently than this number of
+minutes.
 
 \fIKEEP_STATS\fP, if set, means that successful rsync transfers from
 the back-end server have their numbers printed to the log (total size
