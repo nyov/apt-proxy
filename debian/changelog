@@ -3,6 +3,8 @@ apt-proxy (1.9.13pre14) unstable; urgency=low
   * Add some missing files in clean target (Otavio).
   * Add Build-dependencie of python-apt (Otavio). (closes: #258147)
   * Add support to import .udebs (Otavio). (closes: #174380)
+  * Update to use the new twisted way to handle internet applications
+    (Otavio). (closes: #240294)
 
  -- Otavio Salvador <otavio@debian.org>  Thu,  8 Jul 2004 12:01:32 -0300
 

@@ -1,7 +1,7 @@
 #!/usr/bin/python2.3
 
-from twisted.internet.app import Application
-import apt_proxy.apt_proxy
+from twisted.application import service, internet
+
 from apt_proxy.apt_proxy_conf import factoryConfig
 from apt_proxy.apt_proxy import Factory
 from twisted.manhole.telnet import ShellFactory
@@ -11,11 +11,11 @@ shell = ShellFactory()
 
 factoryConfig(factory, shell)
 
-application = Application("AptProxy")
-application.listenTCP(factory.proxy_port, factory)
-if shell.port:
-    application.listenTCP(shell.port, shell)
+application = service.Application("AptProxy")
 
+if shell.port:
+    internet.TCPServer(shell.proxy_port, shell).setServiceParent(application)
+internet.TCPServer(factory.proxy_port, factory).setServiceParent(application)
 
 if __name__ == '__main__':
     #Sorry moshez, but I don't jet feel confortable with twistd
