@@ -144,7 +144,7 @@ class FileVerifier(protocol.ProcessProtocol):
         log.debug("Process Status: %d" %(self.process.status),'verify')
         log.debug(self.data, 'verify')
         if self.laterID:
-            reactor.cancelCallLater(self.laterID)
+            self.laterID.cancel()
             if self.process.status == 0:
                 self.deferred.callback(None)
             else:
@@ -881,7 +881,7 @@ class FetcherFile(Fetcher):
 
     def apEnd(self):
         if self.laterID:
-            reactor.cancelCallLater(self.laterID)
+            self.laterID.cancel()
         if self.file:
             self.file.close()
         Fetcher.apEnd(self)
