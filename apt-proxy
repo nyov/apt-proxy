@@ -738,10 +738,13 @@ copy_best_match()
     debug Found best basis for ${1}: $CBM_BEST
     if [ -n "$CBM_BEST" ] ;then
         # Save the access time of file because we use it during cache cleaning
+# There's a problem in here - trace the code for logging
+set -o xtrace
     	touch --reference $CBM_BEST $CBM_BEST.timestamp
         cp $CBM_BEST $2
 	touch --reference $CBM_BEST.timestamp $CBM_BEST
 	rm $CBM_BEST.timestamp
+set +o xtrace
     fi
 }
 

@@ -1,8 +1,10 @@
 apt-proxy (1.2.9.4) sourceforge; urgency=low
 
   * Merge in changes from stable 1.2.2
+  * Add dpkg-name support to apt-proxy-import so it renames files too
+  * Log copy_best_match to help Sascha to fix the problem he found :)
 
- -- Chris Halls <chris.halls@gmx.de>  Fri, 22 Mar 2002 13:23:07 +0100
+ -- Chris Halls <chris.halls@gmx.de>  Fri, 22 Mar 2002 17:07:57 +0100
 
 apt-proxy (1.2.9.3) sourceforge; urgency=low
 
