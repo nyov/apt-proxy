@@ -73,6 +73,7 @@ class FileType:
 # return an error.
 filetypes = (
     FileType(re.compile(r"\.deb$"), "application/dpkg", 0),
+    FileType(re.compile(r"\.udeb$"), "application/dpkg", 0),
     FileType(re.compile(r"\.tar\.gz$"), "application/x-gtar", 0),
     FileType(re.compile(r"\.dsc$"),"text/plain", 0),
     FileType(re.compile(r"\.diff\.gz$"), "application/x-gzip", 0),
