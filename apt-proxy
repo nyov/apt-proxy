@@ -3,11 +3,13 @@
 # Copyright Paul Russell <rusty@samba.org>
 # Released under the GPL version 2 or later
 #	Fixed by Stephen Rothwell <sfr@canb.auug.org.au>
+#       Stuff by Martin Schwenke <martin@meltin.net>
 #
 #	`perl!' -- Anton Blanchard
 #	`I was joking!' -- Paul Mackerras
 #	`Note that Rusty's name is at the top' -- Stephen Rothwell.
-APT_PROXY_VERSION=1.1.3
+#	`Perl!!!  Please?' -- Martin Schwenke
+APT_PROXY_VERSION=1.1.4
 
 # Before anything, save output in fd 3, and redirect others to arg1 if avail
 APT_PROXY_LOGFILE=${1:-/dev/null}
@@ -267,6 +269,23 @@ resolve_url()
     bad_url "$1" "is not serviced by this server"
 }
 
+# Prints file-prefix that corresponds to the module containing the
+# given file.
+#	resolve_file(file)
+resolve_file()
+{
+    for try in $APT_PROXY_BACKENDS; do
+	PREFIX=`echo $try | cut -d, -f2`
+	case "$1" in
+	$PREFIX*)
+	    echo $PREFIX
+	    return
+	;;
+	esac
+    done
+    log "$1" "is bogus file in resolve_file"
+}
+
 # Let's not use procmail's lockfile; avoid dependency.
 #	my_lockfile(lockfile)
 my_lockfile()
@@ -297,15 +316,173 @@ my_lockfile()
     return $ret
 }
 
+# General a list of files from the given Packages file.
+# This should be called every time a Packages file is downloaded.
+# create_packages_filelist (file)
+create_packages_filelist ()
+{
+    PREFIX=`resolve_file $1`
+    [ -n "$PREFIX"  ] || return
+
+    # +1 for \n.
+    PREFIXLEN=`echo $PREFIX | wc -c`
+    FILE_REST="`echo $1 | cut -c${PREFIXLEN}- | sed 's/\.gz$//'`"
+
+    OUTFILE="${PREFIX}.apt-proxy-filelists/`echo $FILE_REST | tr -s / _`"
+
+    [ $OUTFILE -ot $1 ] || return
+
+    OUTDIR=`dirname $OUTFILE`
+    [ -d $OUTDIR ] || mkdir -p $OUTDIR
+
+    CPF_LOCKFILE=${OUTDIR}/.lock
+    if my_lockfile $CPF_LOCKFILE ; then
+	# Get package filenames and sizes, adding a trailing blank line.
+	case $1 in
+	    *.gz)
+		gzip -cd $1
+		;;
+	    *)
+		cat $1
+	esac | \
+	(/usr/bin/grep-dctrl -s Filename,Size -n . - ; echo) | \
+	while read filename ; do
+	    read size
+	    echo "${PREFIX}${filename}" $size
+	    # Drop interspersed blank lines and the trailing one.
+	    read xxx
+	done >$OUTFILE
+	touch -r $1 $OUTFILE
+	debug "Created filelist for $1"
+	rm -f $CPF_LOCKFILE
+    fi
+}
+
+# Generate filelists for all of the Packages files.
+# This should only be called if no filelists exist in the desired directory.
+# create_all_packages_filelists ()
+create_all_packages_filelists ()
+{
+    for try in $APT_PROXY_BACKENDS; do
+	PREFIX=`echo $try | cut -d, -f2`
+	find $PREFIX -name Packages
+    done | \
+    sort -u | \
+    while read f ; do
+	create_packages_filelist $f
+    done
+}
+
+# Echo the version compenent of a deb filename.
+# deb_version(file)
+deb_version ()
+{
+    b=`basename $1`
+    ver=`expr $b : '[^_]*_\([^_]*\)_[^_]*\.deb'`
+    [ -n "$ver" ] || ver=`expr $b : '[^_]*_\([^_]*\)\.deb'`
+    echo $ver
+}
+
+# Like dpkg --compare-versions,but works on full filenames.
+# deb_compare_versions (file op file)
+deb_compare_versions ()
+{
+    dpkg --compare-versions `deb_version $1` $2 `deb_version $3`
+}
+
+# Insertion sort given files by version in descending order, removing dupes.
+# FIXME!  This could be fixed to do 1 filename per line internally,
+# but then extra checks will need to be added to avoid an initial
+# blank line.
+# debs_sort_uniq () - file list is on stdin.
+debs_sort_uniq ()
+{
+    ofiles=""
+    while read i ; do
+	this=$i
+	new_ofiles=""
+	for j in $ofiles ; do
+	    if [ "$this" = "$j" ] ; then
+	    	# Remove duplicate.
+		new_ofiles="${new_ofiles} $j"
+		this=""
+	    elif [ -n "$this" ] && deb_compare_versions "$this" gt "$j" ; then
+		new_ofiles="${new_ofiles} $this $j"
+		this=""
+	    else
+		new_ofiles="${new_ofiles} $j"
+	    fi
+	done
+	if [ -n "$this" ] ; then
+	    new_ofiles="${new_ofiles} $this"
+        fi
+	ofiles="$new_ofiles"
+    done
+
+    for o in $ofiles ; do
+	echo $o
+    done
+}
+
+# Echo the architecture compenent of an absolute deb filename.
+# deb_arch(file)
+deb_arch ()
+{
+    b=`basename $1`
+    arch=`expr $b : '[^_]*_[^_]*_\([^_]*\)\.deb'`
+    [ -n "$arch" ] || arch=`expr $1 : '.*/binary-\([^/]*\)/.*'`
+    echo $arch
+}
+
+# Echo the filenames givenon stdin if they have the given arch.
+# debs_filter_arch(arch)
+debs_filter_arch ()
+{
+    arch=$1
+    while read i ; do
+	if [ $arch = `deb_arch $i` ] ; then
+	    echo $i
+	fi
+    done
+}
+
+# Echo the base part of an absolute deb filename.
+# The trailing _ is important, since it acts as an anchor.
+# deb_base(file)
+deb_base ()
+{
+    echo `dirname $1`/`basename $1 | cut -d_ -f1`_
+}
+
+# Echo a list of all version of given file that are located in the
+# same directory.
+# deb_all_versions(file)
+deb_all_versions ()
+{
+    case $1 in
+    *.deb)     DAV_EXT=.deb ;;
+    *.tar.gz)  DAV_EXT=.tar.gz ;;
+    *.dsc)     DAV_EXT=.dsc ;;
+    *.diff.gz) DAV_EXT=.diff.gz ;;
+    esac
+
+    DAV_BASEDEB=`deb_base $1`
+    DAV_ARCH=`deb_arch $1`
+
+    if [ "`echo ${DAV_BASEDEB}*$DAV_EXT`" != "${DAV_BASEDEB}*$DAV_EXT" ] ; then
+	ls ${DAV_BASEDEB}*$DAV_EXT | debs_filter_arch $DAV_ARCH | debs_sort_uniq
+    fi
+}
+
 # Find a decent match to base rsync on. 
 #	copy_best_match(front partial)
 copy_best_match()
 {
-    # Try to find a previous version of the same package.
-    CBM_START=`echo $1 | cut -d_ -f1`
-    CBM_EXT=`echo $1 | sed 's/^.*\.//'`
+    # Get 1st version that's less than or get the last.
+    for CBM_BEST in `deb_all_versions $1` ; do
+	deb_compare_versions $CBM_BEST lt $1 && break
+    done
 
-    CBM_BEST=`ls "$CBM_START"*."$CBM_EXT" 2> /dev/null | tail -1`
     debug Found best basis for ${1}: $CBM_BEST
     [ -n "$CBM_BEST" ] && cp $CBM_BEST $2
 }
@@ -461,6 +638,82 @@ stream_file()
     }
 }
 
+# Remove extra versions of given package file.  Filename must be absolute.
+# Only works for .deb files for now.
+# remove_extra_versions(file)
+remove_extra_versions ()
+{
+    [ -n "$MAX_VERSIONS" ] || return
+
+    debug "Planning to remove extra versions of $1"
+
+    PREFIX=`resolve_file $1`
+
+    # We're after dirname/foo_*.$CL_EXT
+    REC_BASEDEB=`deb_base $1`
+    REC_ARCH=`deb_arch $1`
+    REC_FILES=`deb_all_versions $1`
+
+    # Is this our first time?
+    [ -d ${PREFIX}.apt-proxy-filelists ] || create_all_packages_filelists
+
+    REC_LOCKFILE=${PREFIX}.apt-proxy-filelists/.lock
+    my_lockfile ${REC_LOCKFILE} || return
+    REC_CURRENT=`grep -r -F -h "${REC_BASEDEB}" ${PREFIX}.apt-proxy-filelists | awk '{print $1}' | debs_filter_arch $REC_ARCH | debs_sort_uniq`
+    rm -f ${REC_LOCKFILE}
+    [ -n "$REC_CURRENT" ] || return  # Or should this remove all of them?  :-)
+
+    # Pop off 1st item
+    set -- $REC_CURRENT
+    CURR=$1
+    shift
+    REC_CURRENT="$@"
+
+    # Now try to match them.
+    COUNT=""
+    for i in $REC_FILES; do
+	if [ -n "$CURR" ] ; then
+	    # Have current file to compare to.
+	    if [ "$i" = "$CURR" ] ; then
+		# This is the next current file, so keep it.
+		COUNT=1
+		# Pop off next item
+		set -- $REC_CURRENT
+		CURR=$1
+		shift
+		REC_CURRENT="$@"
+	    elif deb_compare_versions $i lt "$CURR" ; then
+		# Older than next current file: current is missing so pop it.
+		COUNT=1
+		# Pop off next item
+		set -- $REC_CURRENT
+		CURR=$1
+		shift
+		REC_CURRENT="$@"
+	    elif [ -n "$COUNT" ] ; then
+		# Newer than next current file and previous current
+		# file exists, so this is an intermediate version that
+		# we might want to delete.
+		COUNT=`expr $COUNT + 1`
+		if [ $COUNT -gt $MAX_VERSIONS ] ; then
+		    log "Removing surplus version: $i"
+		    rm -f $i
+		fi
+	    else
+		# Newer than first next current file.  Should not happen!
+		log "remove_extra_copies: Ignoring dodgy file \"$i\""
+	    fi
+	else
+	    # Files left over after last current one, so maybe delete.
+	    COUNT=`expr $COUNT + 1`
+	    if [ $COUNT -gt $MAX_VERSIONS ] ; then
+		log "Removing surplus version: $i"
+		rm -f $i
+	    fi
+	fi
+    done
+}
+
 # Delete any expired files older than that just served.
 #	cleanup_old(newfile,days)
 cleanup_old()
@@ -473,7 +726,7 @@ cleanup_old()
     esac
 
     # We're after dirname/foo_*.$CL_EXT
-    CO_BASEDEB=`dirname $1`/`basename $1 | cut -d_ -f1`
+    CO_BASEDEB=`deb_base $1`
     for CO_F in $CO_BASEDEB*$CL_EXT; do
 	if dpkg --compare-versions $CO_F lt $1 && 
 	    [ x"`find $CO_F -atime +$2 2>/dev/null`" != x"" ]
@@ -531,7 +784,8 @@ find_and_cat()
 
 # For all the requests in a particular session
 while true; do
-    unset DO_CLEANUP SIZE SIZE_FILE IMS_DATE UNCOMPRESS REQUEST KEEP_ALIVE
+    unset DO_CLEANUP DO_REMOVE_EXTRA_VERSIONS DO_UPDATE_PACKAGES_LIST \
+	SIZE SIZE_FILE IMS_DATE UNCOMPRESS REQUEST KEEP_ALIVE
 
     while read PREFIX LINE
     do
@@ -555,7 +809,7 @@ while true; do
 	    break
 	    ;;
 	*)
-	    debug Got line "$PREFIX $LINE"
+#	    debug Got line "$PREFIX $LINE"
 	    ;;
 	esac
     done
@@ -580,6 +834,7 @@ while true; do
     *Packages.gz|*Release.gz|*Sources.gz)
 	# Rsync uncompressed files and derive.
 	debug Updating compressed file \`$REQUEST\'
+	DO_UPDATE_PACKAGES_LIST=1
 	FILE=`echo $REQUEST | sed 's/\.gz$//'`
 	resolve_url $FILE 1
 
@@ -619,6 +874,7 @@ while true; do
 
     *Packages|*Release|*Sources)
 	debug Updating file \`$REQUEST\'
+	DO_UPDATE_PACKAGES_LIST=1
 	resolve_url $REQUEST 1
 	STREAM="`fetch_file_maybe $URL_REST $FRONT_BASE $BACKS`"
 
@@ -633,6 +889,7 @@ while true; do
 	    STREAM="`fetch_file_start $URL_REST $FRONT_BASE $BACKS`"
 	debug STREAM: $STREAM
 	[ -n "$CLEANUP_DAYS" ] && DO_CLEANUP=1
+	[ -n "$MAX_VERSIONS" ] && DO_REMOVE_EXTRA_VERSIONS=1
 
 	SIZE_FILE=Packages
 	contype=application/dpkg
@@ -743,7 +1000,24 @@ while true; do
 	) &
     fi
 
+    if [ -n "$DO_UPDATE_PACKAGES_LIST" ] ; then
+	(
+	    # close the sockets as this may take some time
+	    exec 0>&- 3>&-
+	    create_packages_filelist $FRONT
+	) &
+    fi
+
     [ -n "$DO_CLEANUP" ] && cleanup_old $FRONT $CLEANUP_DAYS
+
+    if [ -n "$DO_REMOVE_EXTRA_VERSIONS" ] ; then
+	(
+	    # close the sockets as this may take some time
+	    exec 0>&- 3>&-
+	    remove_extra_versions $FRONT
+	) &
+    fi
+    
 
     # Do async once in a very long while.
     if [ -n "$CLEAN_SWEEP" ]; then
@@ -761,4 +1035,5 @@ while true; do
     fi
     if [ -z "$SIZE" ]; then log Aborting: Unknown size for $REQUEST; break; fi
     if [ "$KEEP_ALIVE" '!=' keep-alive ]; then break; fi
+#break
 done
