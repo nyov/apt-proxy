@@ -80,8 +80,11 @@ filetypes = (
     FileType(re.compile(r"\.tar\.gz$"), "application/x-gtar", 0),
     FileType(re.compile(r"\.dsc$"),"text/plain", 0),
     FileType(re.compile(r"\.diff\.gz$"), "application/x-gzip", 0),
+    FileType(re.compile(r"\.gz$"), "application/x-gzip", 1),
     FileType(re.compile(r"\.bin$"), "application/octet-stream", 0),
     FileType(re.compile(r"\.tgz$"), "application/x-gtar", 0),
+    FileType(re.compile(r"\.txt$"), "application/plain-text", 1),
+    FileType(re.compile(r"\.html$"), "application/text-html", 1),
 
     FileType(re.compile(r"/(Packages|Release(\.gpg)?|Sources|Contents-.*)"
                         r"(\.(gz|bz2))?$"), 
