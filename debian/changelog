@@ -1,3 +1,10 @@
+apt-proxy (1.2.9.9) sourceforge; urgency=low
+
+  * Add --quiet option to adduser until #141016 is fixed (closes: #140826)
+  * Update README
+
+ -- Chris Halls <chris.halls@gmx.de>  Wed,  3 Apr 2002 11:19:51 +0200
+
 apt-proxy (1.2.9.8) sourceforge; urgency=low
 
   * Add a FAQ section to README with some problems that users have
