@@ -6,9 +6,6 @@ it looks like it is leaking FileVerifiers
 It doesn't deal well with servers that don't respond at all e.g.  turned off,
 unreachable
 
-I guess that for now I could trap the "database corrupted" exception and
-rebuild it automatically.
-
 Verification times out with big files and considers them corrupted even if
 they are OK.
 	- We could have three levels of checking.
@@ -24,6 +21,8 @@ To get streaming from rsync without the LD_PRELOAD hack:
 	  streaming from there ala 'tail -f'
 
 ---------------- "Not so urgent" mark ---------------------------
+
+Handle database corruption in a more conservative way.
 
 Support /etc/init.d/apt-proxy reload as kill -HUP
   - auto reload apt-proxy.conf support too?

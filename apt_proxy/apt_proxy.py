@@ -23,7 +23,6 @@ import re
 import urlparse
 import time
 import string
-import shelve
 from twisted.python.failure import Failure
 import memleak
 #from posixfile import SEEK_SET, SEEK_CUR, SEEK_END
@@ -1397,9 +1396,25 @@ class Factory(protocol.ServerFactory):
         db_dir = self.cache_dir+'/'+status_dir+'/db'
         if not os.path.exists(db_dir):
             os.makedirs(db_dir)
-        self.update_times = shelve.open(db_dir+'/update.db')
-        self.access_times = shelve.open(db_dir+'/access.db')
-        self.packages = shelve.open(db_dir+'/packages.db')
+
+        def open_shelve(filename):
+            from bsddb import db,dbshelve
+
+            shelve = dbshelve.DBShelf()
+            if os.path.exists(filename):
+                try:
+                    shelve.verify(filename)
+                except:
+                    os.rename(filename, filename+'.error')
+                    log.msg(filename+' was corrupt: recreated','db', 1)
+
+            shelve = dbshelve.open(filename)
+            return shelve
+            
+        self.update_times = open_shelve(db_dir+'/update.db')
+        self.access_times = open_shelve(db_dir+'/access.db')
+        self.packages = open_shelve(db_dir+'/packages.db')
+
         #start periodic updates
         self.recycler = misc.MirrorRecycler(self, 1)
         self.recycler.start()
