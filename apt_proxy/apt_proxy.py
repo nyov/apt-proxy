@@ -155,86 +155,87 @@ def findFileType(name):
             return type
     return None
 
-def aptProxyClientDownload(request, serve_cached=1):
+def setupFetcher(request, serve_cached=1):
     """
-    Serve 'request' from cache or through the appropriate proxy_client
+    Serve 'request' from cache or through the appropriate Fetcher
     depending on the asociated backend.
 
-    Use post_convert and gzip_convert regular expresions of the client to
+    Use post_convert and gzip_convert regular expresions of the Fetcher to
     gzip/gunzip file before and after download.
 
     'serve_cached': this is somewhat of a hack only usefull for
-    AptLoopbackRequests (See AptLoopbackRequest class for more information).
+    LoopbackRequests (See LoopbackRequest class for more information).
     """
-    def cached_cb(result, dummy_client):
+    def cached_cb(result, dummyFetcher):
         """ This is called if the file is properly cached. """
-        log.debug("Using cached copy of %s"%(dummy_client.request.local_file))
-        requests = dummy_client.requests[:]
-        dummy_client.aptEnd()
+        log.debug("Using cached copy of %s"%(
+            dummyFetcher.request.local_file))
+        requests = dummyFetcher.requests[:]
+        dummyFetcher.apEnd()
         for req in requests:
             if req.loop_serve_if_cached:
                 req.send_cached()
             else:
-                #warning, this may only be right for AptLoopbackRequest
+                #warning, this may only be right for LoopbackRequest
                 req.finish()
-    def not_cached_cb(result, dummy_client, running):
+    def not_cached_cb(result, dummyFetcher, running):
         """
         The requested file was not there, didn't pass the integrity check or
         may be outdated.
         """
         log.debug("Consulting server about %s"
-                  %(dummy_client.request.local_file))
-        if len(dummy_client.requests)==0:
+                  %(dummyFetcher.request.local_file))
+        if len(dummyFetcher.requests)==0:
             #The request's are gone, the clients probably closed the conection
             log.debug("THE REQUESTS ARE GONE (Clients closed conection)")
-            dummy_client.aptEnd()
+            dummyFetcher.apEnd()
             return
-        req = dummy_client.fix_ref_request()
-        client_class = req.backend.client
-        if client_class.gzip_convert.search(req.uri):
-            client = AptProxyClientGzip()
+        req = dummyFetcher.fix_ref_request()
+        fetcher_class = req.backend.fetcher
+        if fetcher_class.gzip_convert.search(req.uri):
+            fetcher = FetcherGzip()
         else:
-            client = client_class()
+            fetcher = fetcher_class()
 
-        dummy_client.transfer_requests(client)
-        dummy_client.aptEnd()
-        client.activate(req)
+        dummyFetcher.transfer_requests(fetcher)
+        dummyFetcher.apEnd()
+        fetcher.activate(req)
         
-        if (client.post_convert.search(req.uri)
+        if (fetcher.post_convert.search(req.uri)
             and not running.has_key(req.uri[:-3])):
             log.debug("post converting: "+req.uri,'convert')
-            loop = AptLoopbackRequest(req)
+            loop = LoopbackRequest(req)
             loop.uri = req.uri[:-3]
             loop.local_file = req.local_file[:-3]
             loop.process()
-            #AptProxyClientGzip will attach as a request of the
-            #original proxy client, efectively waiting for the
+            #FetcherGzip will attach as a request of the
+            #original Fetcher, efectively waiting for the
             #original file
-            AptProxyClientGzip(loop)
+            FetcherGzip(loop)
 
     request.loop_serve_if_cached = serve_cached
-    running = request.factory.runningClients
+    running = request.factory.runningFetchers
     if (running.has_key(request.uri)):
-        #If we have an active client just use that
-        log.debug("have active client",'client')
+        #If we have an active fetcher just use that
+        log.debug("have active fetcher",'client')
         running[request.uri].insert_request(request)
         return running[request.uri]
 
     else:
-        #we make a generic client instance to hold other requests for the
+        #we make a FetcherDummy instance to hold other requests for the
         #same file while the check is in process. We will transfer all the
-        #requests to a real client when the check is done.
-        dummy_client = AptProxyClientDummy(request)
+        #requests to a real fetcher when the check is done.
+        dummyFetcher = FetcherDummy(request)
         #Standard Deferred practice
         d = request.check_cached()
         d.addCallbacks(cached_cb, not_cached_cb,
-                       (dummy_client,), None,
-                       (dummy_client, running,), None)
+                       (dummyFetcher,), None,
+                       (dummyFetcher, running,), None)
         d.arm()
 
-class AptProxyClient:
+class Fetcher:
     """
-    This is the base class for all proxy clients, it tryies to hold as much
+    This is the base class for all Fetcher*, it tryies to hold as much
     common code as posible.
 
     Subclasses of this class are the ones responsable of contacting the backend
@@ -252,16 +253,16 @@ class AptProxyClient:
         
     def insert_request(self, request):
         """
-        Request should be served through this client because it asked for the
-        same uri that we are waiting for.
+        Request should be served through this Fetcher because it asked for
+        the same uri that we are waiting for.
         
         We also have to get it up to date, give it all received data, send it
         the appropriate headers and set the response code.
         """
         if request in self.requests:
-            raise 'this request is already assigned to this client'
+            raise 'this request is already assigned to this Fetcher'
         self.requests.append(request)
-        request.proxy_client = self
+        request.apFetcher = self
         if (self.request):
             self.update_request(request)
 
@@ -280,8 +281,8 @@ class AptProxyClient:
 
     def remove_request(self, request):
         """
-        Request should NOT be served through this client, the client probably
-        closed the connection.
+        Request should NOT be served through this Fetcher, the client
+        probably closed the connection.
         
         If this is our last request, we may also close the connection with the
         server depending on the configuration.
@@ -301,16 +302,16 @@ class AptProxyClient:
                     self.loseConnection()
         else:
             self.request = self.requests[0]
-        request.proxy_client = None
+        request.apFetcher = None
 
-    def transfer_requests(self, client):
-        "Transfer all requests from self to client"
+    def transfer_requests(self, fetcher):
+        "Transfer all requests from self to fetcher"
         for req in self.requests:
             self.remove_request(req)
-            client.insert_request(req)
+            fetcher.insert_request(req)
 
     def setResponseCode(self, code, message=None):
-        "Set response code for all clients"
+        "Set response code for all requests"
         self.status_code = code
         self.status_message = message
         for req in self.requests:
@@ -341,17 +342,17 @@ class AptProxyClient:
 
         log.debug("Request uri: " + request.uri,'client')
 
-        request.proxy_client = self
-        if self.factory.runningClients.has_key(request.uri):
-            raise 'There already is a running client'
-        self.factory.runningClients[request.uri]=self
+        request.apFetcher = self
+        if self.factory.runningFetchers.has_key(request.uri):
+            raise 'There already is a running fetcher'
+        self.factory.runningFetchers[request.uri]=self
 
-    def aptDataReceived(self, data):
+    def apDataReceived(self, data):
         """
         Should be called from the subclasses when data is available for
         streaming.
 
-        Keeps all transfered data in 'self.transfered' for clients which arrive
+        Keeps all transfered data in 'self.transfered' for requests which arrive
         later and to write it in the cache at the end.
 
         Note: self.length if != None is the amount of data pending to be
@@ -366,7 +367,7 @@ class AptProxyClient:
             for req in self.requests:
                 req.write(data)
 
-    def aptDataEnd(self, buffer):
+    def apDataEnd(self, buffer):
         """
         Called by subclasses when the data transfer is over.
 
@@ -396,27 +397,27 @@ class AptProxyClient:
             self.transport.loseConnection()
         for req in self.requests:
             req.finish()
-        self.aptEnd()
+        self.apEnd()
 
-    def aptEnd(self):
+    def apEnd(self):
         """
-        Called by subclasses when aptDataEnd does too much things.
+        Called by subclasses when apDataEnd does too much things.
 
-        Let's everyone know that we are not the active client for our uri.
+        Let's everyone know that we are not the active Fetcher for our uri.
         """
         try:
-            del self.factory.runningClients[self.request.uri]
+            del self.factory.runningFetchers[self.request.uri]
         except exceptions.KeyError:
-            log.debug("We are not on runningClients!!!",'client')
-            log.debug(str(self.factory.runningClients),'client')
+            log.debug("We are not on runningFetchers!!!",'client')
+            log.debug(str(self.factory.runningFetchers),'client')
             raise exceptions.KeyError
         for req in self.requests[:]:
             self.remove_request(req)
 
-    def aptEndCached(self):
+    def apEndCached(self):
         self.setResponseCode(http.OK)
         requests = self.requests[:]
-        self.aptEnd()    
+        self.apEnd()    
         for req in requests:
             req.send_cached()
 
@@ -430,14 +431,14 @@ class AptProxyClient:
         log.msg('['+self.request.backend.base+']' + " Connection Failed: "
                 + self.request.backend.path + "/" + self.request.backend_uri)
         self.setResponseCode(http.SERVICE_UNAVAILABLE)
-        self.aptDataReceived("")
-        self.aptDataEnd(self.transfered)
+        self.apDataReceived("")
+        self.apDataEnd(self.transfered)
         #Because of a bug in tcp.Client we may be called twice,
         #Make sure that next time nothing will happen
         self.connectionFailed = lambda : log.debug('connectionFailed(2)',
                                                    'client','9')
 
-class AptProxyClientDummy(AptProxyClient):
+class FetcherDummy(Fetcher):
     """
     """
     gzip_convert = re.compile(r"^Nothing should match this$")
@@ -450,9 +451,9 @@ class AptProxyClientDummy(AptProxyClient):
         """
         """
         if request in self.requests:
-            raise 'this request is already assigned to this client'
+            raise 'this request is already assigned to this Fetcher'
         self.requests.append(request)
-        request.proxy_client = self
+        request.apFetcher = self
 
     def remove_request(self, request):
         """
@@ -463,7 +464,7 @@ class AptProxyClientDummy(AptProxyClient):
         request.local_size = self.request.local_size
 
         self.requests.remove(request)
-        request.proxy_client = None
+        request.apFetcher = None
 
     def fix_ref_request(self):
         if self.requests != []:
@@ -485,21 +486,21 @@ class AptProxyClientDummy(AptProxyClient):
         self.request = request
         self.running_client = None
 
-        request.proxy_client = self
-        if self.factory.runningClients.has_key(request.uri):
-            raise 'There already is a running client'
-        self.factory.runningClients[request.uri]=self
+        request.apFetcher = self
+        if self.factory.runningFetchers.has_key(request.uri):
+            raise 'There already is a running Fetcher'
+        self.factory.runningFetchers[request.uri]=self
 
         
-class AptProxyClientHttp(AptProxyClient, http.HTTPClient):
+class FetcherHttp(Fetcher, http.HTTPClient):
 
     forward_headers = [
         'last-modified',
         'content-length'
         ]
     def activate(self, request):
-        AptProxyClient.activate(self, request)
-        if not request.proxy_client:
+        Fetcher.activate(self, request)
+        if not request.apFetcher:
             return
 
         tcpclient = reactor.clientTCP(request.backend.host,
@@ -536,16 +537,16 @@ class AptProxyClientHttp(AptProxyClient, http.HTTPClient):
     def handleEndHeaders(self):
         if self.status_code == http.NOT_MODIFIED:
             log.debug("NOT_MODIFIED",'http_client')
-            self.aptEndCached()
+            self.apEndCached()
 
     def rawDataReceived(self, data):
-        self.aptDataReceived(data)
+        self.apDataReceived(data)
         http.HTTPClient.rawDataReceived(self, data)
 
     def handleResponse(self, buffer):
         if self.length != 0:
             self.setResponseCode(http.NOT_FOUND)
-        self.aptDataEnd(buffer)
+        self.apDataEnd(buffer)
 
     def lineReceived(self, line):
         """
@@ -576,23 +577,23 @@ class AptProxyClientHttp(AptProxyClient, http.HTTPClient):
         log.debug(name + ":" + value,'http_client')
         http.HTTPClient.sendHeader(self, name, value)
 
-class AptProxyClientFtp(AptProxyClient, protocol.Protocol):
+class FetcherFtp(Fetcher, protocol.Protocol):
     """
     This is the secuence here:
 
-        -Start and connect the client
+        -Start and connect the FTPClient
         -Ask for mtime
         -Ask for size
         -if couldn't get the size
             -try to get it by listing
         -get all that juicy data
         
-    NOTE: Twisted's ftp client code uses it's own timeouts here and there,
+    NOTE: Twisted's FTPClient code uses it's own timeouts here and there,
     so the timeout specified for the backend may not always be used
     """
     def activate (self, request):
-        AptProxyClient.activate(self, request)
-        if not request.proxy_client:
+        Fetcher.activate(self, request)
+        if not request.apFetcher:
             return
 
         self.remote_file = (self.request.backend.path + "/" 
@@ -602,18 +603,18 @@ class AptProxyClientFtp(AptProxyClient, protocol.Protocol):
         class MyFTPClient(ftp.FTPClient):
             def connectionFailed(self):
                 log.debug("MyFTPClient: Connection Failed",'ftp_client')
-                self.apt_owner.setResponseCode(http.SERVICE_UNAVAILABLE)
-                #self.apt_owner.ftpFinish(http.SERVICE_UNAVAILABLE)
+                self.ap_owner.setResponseCode(http.SERVICE_UNAVAILABLE)
+                #self.ap_owner.ftpFinish(http.SERVICE_UNAVAILABLE)
                 class dummy:
                     def loseConnection(self):
                         pass
                 self.transport = dummy()
                 self.nextDeferred.errback(
                   Failure(ftp.CommandFailed('Connection Failed')))
-                self.apt_owner.connectionFailed()
+                self.ap_owner.connectionFailed()
             
         self.ftpclient = MyFTPClient(passive=0)
-        self.ftpclient.apt_owner=self
+        self.ftpclient.ap_owner=self
         if log.isEnabled('ftp_client'):
             self.ftpclient.debug = 1
 
@@ -625,23 +626,23 @@ class AptProxyClientFtp(AptProxyClient, protocol.Protocol):
         "Finish the transfer with code 'code'"
         self.ftpclient.quit()
         self.setResponseCode(code, message)
-        self.aptDataReceived("")
-        self.aptDataEnd(self.transfered)
+        self.apDataReceived("")
+        self.apDataEnd(self.transfered)
 
     def ftpFinishCached(self):
         "Finish the transfer giving the requests the cached file."
         self.ftpclient.quit()
-        self.aptEndCached()
+        self.apEndCached()
 
     def ftpFetchMtime(self):
         "Get the modification time from the server."
-        def aptFtpMtimeFinish(msgs, client, fail):
+        def apFtpMtimeFinish(msgs, fetcher, fail):
             """
             Got an answer to the mtime request.
             
             Someone should check that this is timezone independent.
             """
-            if client.status_code == http.SERVICE_UNAVAILABLE:
+            if fetcher.status_code == http.SERVICE_UNAVAILABLE:
                 #The control connetion failed
                 return
             code = None
@@ -654,66 +655,66 @@ class AptProxyClientFtp(AptProxyClient, protocol.Protocol):
                 time_tuple = time_tuple[:8] + (-1,)
                 #correct the result to GMT
                 mtime = time.mktime(time_tuple) - time.altzone
-            if (client.local_mtime and mtime
-                and client.local_mtime >= mtime):
-                client.ftpFinishCached()
+            if (fetcher.local_mtime and mtime
+                and fetcher.local_mtime >= mtime):
+                fetcher.ftpFinishCached()
             else:
-                client.local_mtime = mtime
-                client.ftpFetchSize()
+                fetcher.local_mtime = mtime
+                fetcher.ftpFetchSize()
 
         d = self.ftpclient.queueStringCommand('MDTM ' + self.remote_file)
-        d.addCallbacks(aptFtpMtimeFinish, aptFtpMtimeFinish,
+        d.addCallbacks(apFtpMtimeFinish, apFtpMtimeFinish,
                        (self, 0), None, (self, 1), None)
         d.arm()
 
     def ftpFetchSize(self):
         "Get the size of the file from the server"
-        def aptFtpSizeFinish(msgs, client, fail):
+        def apFtpSizeFinish(msgs, fetcher, fail):
             code, msg = msgs[0].split()
             if fail or code != '213':
                 log.debug("SIZE FAILED",'ftp_client')
-                client.ftpFetchList()
+                fetcher.ftpFetchList()
             else:
-                client.setResponseHeader('content-length', msg)
-                client.ftpFetchFile()
+                fetcher.setResponseHeader('content-length', msg)
+                fetcher.ftpFetchFile()
 
         d = self.ftpclient.queueStringCommand('SIZE ' + self.remote_file)
-        d.addCallbacks(aptFtpSizeFinish, aptFtpSizeFinish,
+        d.addCallbacks(apFtpSizeFinish, apFtpSizeFinish,
                        (self, 0), None, (self, 1), None)
         d.arm()
 
     def ftpFetchList(self):
         "If ftpFetchSize didn't work try to get the size with a list command."
-        def aptFtpListFinish(msg, filelist, client, fail):
+        def apFtpListFinish(msg, filelist, fetcher, fail):
             if fail:
-                client.ftpFinish(http.INTERNAL_SERVER_ERROR)
+                fetcher.ftpFinish(http.INTERNAL_SERVER_ERROR)
                 return
             if len(filelist.files)== 0:
-                client.ftpFinish(http.NOT_FOUND)
+                fetcher.ftpFinish(http.NOT_FOUND)
                 return
             file = filelist.files[0]
-            client.setResponseHeader('content-length', file['size'])
-            client.ftpFetchFile()
+            fetcher.setResponseHeader('content-length', file['size'])
+            fetcher.ftpFetchFile()
         filelist = ftp.FTPFileListProtocol()
         d = self.ftpclient.list(self.remote_file, filelist)
-        d.addCallbacks(aptFtpListFinish, aptFtpListFinish,
+        d.addCallbacks(apFtpListFinish, apFtpListFinish,
                        (filelist, self, 0), None,
                        (filelist, self, 1), None)
         d.arm()
 
     def ftpFetchFile(self):
         "And finally, we ask for the file."
-        def aptFtpFetchFinish(msg, code, status, client):
-            client.ftpFinish(code)
+        def apFtpFetchFinish(msg, code, status, fetcher):
+            fetcher.ftpFinish(code)
         d = self.ftpclient.retrieveFile(self.remote_file, self)
-        d.addCallbacks(aptFtpFetchFinish, aptFtpFetchFinish,
+        d.addCallbacks(apFtpFetchFinish, apFtpFetchFinish,
                        (http.OK, "good", self), None,
                        (http.NOT_FOUND, "fail", self), None)
         d.arm()
 
     def dataReceived(self, data):
         self.setResponseCode(http.OK)
-        self.aptDataReceived(data)
+        self.apDataReceived(data)
 
     def connectionLost(self, reason=None):
         """
@@ -722,13 +723,13 @@ class AptProxyClientFtp(AptProxyClient, protocol.Protocol):
         """
         log.debug("lost connection",'ftp_client')
 
-class AptProxyClientGzip(AptProxyClient, protocol.ProcessProtocol):
+class FetcherGzip(Fetcher, protocol.ProcessProtocol):
     """
-    This is a fake proxy client, it uses the real client from the request's
-    backend via AptLoopbackRequest to get the data and gzip's or gunzip's as
+    This is a fake Fetcher, it uses the real Fetcher from the request's
+    backend via LoopbackRequest to get the data and gzip's or gunzip's as
     needed.
 
-    NOTE: We use the serve_cached=0 parameter to aptProxyClientDownload so if
+    NOTE: We use the serve_cached=0 parameter to setupFetcher so if
     it is cached it doesn't get uselessly read, we just get it from the cache.
     """
     post_convert = re.compile(r"^Should not match anithing$")
@@ -736,8 +737,8 @@ class AptProxyClientGzip(AptProxyClient, protocol.ProcessProtocol):
 
     exe = '/bin/gzip'
     def activate(self, request):
-        AptProxyClient.activate(self, request)
-        if not request.proxy_client:
+        Fetcher.activate(self, request)
+        if not request.apFetcher:
             return
 
         self.args = (self.exe, '-c', '-9', '-n')
@@ -752,16 +753,16 @@ class AptProxyClientGzip(AptProxyClient, protocol.ProcessProtocol):
         self.host_file = self.factory.cache_dir + host_uri
         self.args += (self.host_file,)
 
-        loop = AptLoopbackRequest(request, self.host_transfer_done)
+        loop = LoopbackRequest(request, self.host_transfer_done)
         loop.uri = host_uri
         loop.local_file = self.host_file
         loop.process()
         self.loop_req = loop
-        aptProxyClientDownload(loop, serve_cached=0)
+        setupFetcher(loop, serve_cached=0)
 
     def host_transfer_done(self):
         """
-        Called by our AptLoopbackRequest when the real client calls
+        Called by our LoopbackRequest when the real Fetcher calls
         finish() on it.
 
         If everything went well, check mtimes and only do the work if needed.
@@ -772,8 +773,8 @@ class AptProxyClientGzip(AptProxyClient, protocol.ProcessProtocol):
         if self.loop_req.code != http.OK:
             self.setResponseCode(self.loop_req.code,
                                  self.loop_req.code_message)
-            self.aptDataReceived("")
-            self.aptDataEnd("")
+            self.apDataReceived("")
+            self.apDataEnd("")
             return
 
         self.local_mtime = os.stat(self.host_file)[stat.ST_MTIME]
@@ -781,13 +782,13 @@ class AptProxyClientGzip(AptProxyClient, protocol.ProcessProtocol):
         if os.path.exists(self.local_file):
             old_mtime = os.stat(self.local_file)[stat.ST_MTIME]
         if self.local_mtime == old_mtime:
-            self.aptEndCached()
+            self.apEndCached()
         else:
             self.process = reactor.spawnProcess(self, self.exe, self.args)
 
     def dataReceived(self, data):
         self.setResponseCode(http.OK)
-        self.aptDataReceived(data)
+        self.apDataReceived(data)
 
     def errReceived(self, data):
         log.debug(data,'gzip')
@@ -817,13 +818,13 @@ class AptProxyClientGzip(AptProxyClient, protocol.ProcessProtocol):
         if self.process.status != 0:
             self.setResponseCode(http.NOT_FOUND)
 
-        self.aptDataReceived("")
-        self.aptDataEnd(self.transfered)
+        self.apDataReceived("")
+        self.apDataEnd(self.transfered)
 
-class AptProxyClientRsync(AptProxyClient, protocol.ProcessProtocol):
+class FetcherRsync(Fetcher, protocol.ProcessProtocol):
     """
-    I frequently am not called directly, aptProxyClientDownload makes the
-    arrangement for AptProxyClientGzip to use us and gzip the result if needed.
+    I frequently am not called directly, setupFetcher makes the
+    arrangement for FetcherGzip to use us and gzip the result if needed.
     
     NOTE: Here we LD_PRELOAD a rsync_hack.so to make rsync more friendly for
     streaming.
@@ -838,8 +839,8 @@ class AptProxyClientRsync(AptProxyClient, protocol.ProcessProtocol):
             LD_PRELOAD='/usr/lib/apt-proxy/rsync_hack.so'
 
     def activate (self, request):
-        AptProxyClient.activate(self, request)
-        if not request.proxy_client:
+        Fetcher.activate(self, request)
+        if not request.apFetcher:
             return
 
         uri = 'rsync://'+request.backend.host\
@@ -867,7 +868,7 @@ class AptProxyClientRsync(AptProxyClient, protocol.ProcessProtocol):
 
     def dataReceived(self, data):
         self.setResponseCode(http.OK)
-        self.aptDataReceived(data)
+        self.apDataReceived(data)
 
     def errReceived(self, data):
         log.debug(data,'rsync_client')
@@ -884,15 +885,15 @@ class AptProxyClientRsync(AptProxyClient, protocol.ProcessProtocol):
 
         elif self.transfered == '':
             log.debug("NOT_MODIFIED",'rsync_client')
-            self.aptEndCached()
+            self.apEndCached()
             return
         if os.path.exists(self.local_file):
             self.local_mtime = os.stat(self.local_file)[stat.ST_MTIME]
-        self.aptDataReceived("")
-        self.aptDataEnd(self.transfered)
+        self.apDataReceived("")
+        self.apDataEnd(self.transfered)
 
 
-class AptProxyClientFile(AptProxyClient):
+class FetcherFile(Fetcher):
     """
     Sends the cached file or tells the client that the file was not
     'modified-since' if appropriate.
@@ -921,19 +922,19 @@ class AptProxyClientFile(AptProxyClient):
             self.remove_request(request)
         
     def insert_request(self, request):
-        AptProxyClient.insert_request(self, request)
+        Fetcher.insert_request(self, request)
         self.if_modified(request)
         
     def activate(self, request):
-        AptProxyClient.activate(self, request)
-        if not request.proxy_client:
+        Fetcher.activate(self, request)
+        if not request.apFetcher:
             return
         self.factory.file_served(request.uri)
 
         self.if_modified(request)
         if len(self.requests) == 0:
             #we had a single request and didn't have to send it
-            self.aptEnd()
+            self.apEnd()
             return
 
         self.size = request.local_size
@@ -948,32 +949,32 @@ class AptProxyClientFile(AptProxyClient):
     def readBuffer(self):
         self.laterID = None
         data = self.file.read(abstract.FileDescriptor.bufferSize)
-        self.aptDataReceived(data)
+        self.apDataReceived(data)
 
         if self.file.tell() == self.size:
-            self.aptDataReceived("")
+            self.apDataReceived("")
             for req in self.requests:
                 req.finish()
-            self.aptEnd()
+            self.apEnd()
         else:
             self.laterID = reactor.callLater(0, self.readBuffer)
 
-    def aptEnd(self):
+    def apEnd(self):
         if self.laterID:
             reactor.cancelCallLater(self.laterID)
         if self.file:
             self.file.close()
-        AptProxyClient.aptEnd(self)
+        Fetcher.apEnd(self)
                                          
-class AptProxyBackend:
+class Backend:
     """
-    Holds the backend caracteristics, including the proxy client class to be
+    Holds the backend caracteristics, including the Fetcher class to be
     used to fetch files.
     """
-    clients = {
-        'http' : AptProxyClientHttp,
-        'ftp'  : AptProxyClientFtp,
-        'rsync': AptProxyClientRsync,
+    fetchers = {
+        'http' : FetcherHttp,
+        'ftp'  : FetcherFtp,
+        'rsync': FetcherRsync,
         }
     ports = {
         'http' : 80,
@@ -1001,7 +1002,7 @@ class AptProxyBackend:
             self.port = self.ports[self.scheme]
         if is_rsync:
             self.scheme = 'rsync'
-        self.client = self.clients[self.scheme]
+        self.fetcher = self.fetchers[self.scheme]
 
     def check_path(self, path):
         """
@@ -1016,7 +1017,7 @@ class AptProxyBackend:
         else:
             return None
 
-class AptProxyRequest(http.Request):
+class Request(http.Request):
     """
     Each new request from connected clients generates a new instance of this
     class, and process() is called.
@@ -1116,14 +1117,14 @@ class AptProxyRequest(http.Request):
         """
         Serves the cached file.
         """
-        running = self.factory.runningClients
+        running = self.factory.runningFetchers
         if (running.has_key(self.uri)):
-            #If we have an active client just use that
-            log.debug("have active client",'file_client')
+            #If we have an active Fetcher just use that
+            log.debug("have active Fetcher",'file_client')
             running[self.uri].insert_request(self)
             return running[self.uri]
 
-        return AptProxyClientFile(self)
+        return FetcherFile(self)
 
     def __init__(self, channel, queued):
         self.factory=channel.factory
@@ -1132,12 +1133,12 @@ class AptProxyRequest(http.Request):
     def connectionLost(self, reason=None):
         """
         The connection with the client was lost, remove this request from its
-        proxy client.
+        Fetcher.
         """
-        #If it is waiting for a file verification it may not have a
-        #proxy_client assigned
-        if self.proxy_client:
-            self.proxy_client.remove_request(self)
+        #If it is waiting for a file verification it may not have an
+        #apFetcher assigned
+        if self.apFetcher:
+            self.apFetcher.remove_request(self)
         self.finish()
 
     def process(self):
@@ -1191,14 +1192,14 @@ class AptProxyRequest(http.Request):
             self.finishCode(http.FORBIDDEN)
             return
 
-        aptProxyClientDownload(self)
+        setupFetcher(self)
 
-class AptLoopbackRequest(AptProxyRequest):
+class LoopbackRequest(Request):
     """
-    This is just a fake Request so a proxy client can attach to another proxy
-    client and be notified when then transaction is completed.
+    This is just a fake Request so a Fetcher can attach to another
+    Fetcher and be notified when then transaction is completed.
 
-    Look at AptProxyClientGzip for a sample.
+    Look at FetcherGzip for a sample.
     """
     local_mtime = None
     headers = {}
@@ -1232,14 +1233,14 @@ class AptLoopbackRequest(AptProxyRequest):
         self.transport = None
         pass
 
-class AptProxy(http.HTTPChannel):
+class Channel(http.HTTPChannel):
     """
     This class encapsulates a channel (an HTTP socket connection with a single
-    apt client).
+    client).
 
-    Each incomming request is passed to a new AptProxyRequest instance.
+    Each incomming request is passed to a new Request instance.
     """
-    requestFactory = AptProxyRequest
+    requestFactory = Request
 
     def headerReceived(self, line):
         "log and pass over to the base class"
@@ -1258,20 +1259,20 @@ class AptProxy(http.HTTPChannel):
         if log.isEnabled('memleak'):
             memleak.print_top_10()
 
-class AptProxyFactory(protocol.ServerFactory):
+class Factory(protocol.ServerFactory):
     """
     This is the center of apt-proxy, it holds all configuration and global data
     and gets attached everywhere.
 
-    AptProxyFactory receives incommng client connections and creates an
-    AptProxy for each client request.
+    Factory receives incommng client connections and creates a Channel for
+    each client request.
 
     interesting attributes:
 
-    self.runningClients: a dictionary, uri/proxy_client pairs, that holds the
-    active proxy client for that uri if any. If there is an active client for a
-    certain uri at a certain time the request is inserted into the client found
-    here instead of instanciating a new proxy client.
+    self.runningFetchers: a dictionary, uri/Fetcher pairs, that holds the
+    active Fetcher for that uri if any. If there is an active Fetcher for
+    a certain uri at a certain time the request is inserted into the Fetcher
+    found here instead of instanciating a new one.
 
     Persisten dictionaries:
     self.update_times: last time we checked the freashness of a certain file.
@@ -1288,7 +1289,7 @@ class AptProxyFactory(protocol.ServerFactory):
         reactor.callLater(self.cleanup_freq, self.periodic)
 
     def __init__ (self):
-        self.runningClients = {}
+        self.runningFetchers = {}
         pass
 
     def startFactory(self):
@@ -1406,7 +1407,7 @@ class AptProxyFactory(protocol.ServerFactory):
 
 
     def buildProtocol(self, addr):
-        proto = AptProxy()
+        proto = Channel()
         proto.factory = self;
         return proto
 

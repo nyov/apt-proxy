@@ -14,7 +14,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from apt_proxy import AptProxyBackend
+from apt_proxy import Backend
 from misc import log
 import packages
 import ConfigParser, os
@@ -37,7 +37,7 @@ class MyConfigParser(ConfigParser.ConfigParser):
             value = value[:-1]
         return int(value)*mult
     
-def aptProxyFactoryConfig(factory):
+def factoryConfig(factory):
     "Loads the configuration file into 'factory'"
     defaults = {
         'port': '8000',
@@ -96,7 +96,7 @@ def aptProxyFactoryConfig(factory):
         if server[-1] == '/':
             log.msg ("WARNING: removing slash at the end of %s"%(server))
             server = server[0:-1]
-        backend = AptProxyBackend(name, server)
+        backend = Backend(name, server)
         if conf.has_option(name, 'timeout'):
             backend.timeout = conf.gettime(name, 'timeout')
         else:

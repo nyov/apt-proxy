@@ -2,11 +2,11 @@
 
 from twisted.internet.app import Application
 import apt_proxy.apt_proxy
-from apt_proxy.apt_proxy_conf import aptProxyFactoryConfig
-from apt_proxy.apt_proxy import AptProxyFactory
+from apt_proxy.apt_proxy_conf import factoryConfig
+from apt_proxy.apt_proxy import Factory
 
-factory = AptProxyFactory()
-aptProxyFactoryConfig(factory)
+factory = Factory()
+factoryConfig(factory)
 application = Application("AptProxy")
 application.listenTCP(factory.proxy_port, factory)
 if __name__ == '__main__':
