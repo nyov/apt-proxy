@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: apt-proxy-import,v 1.14 2002/05/28 17:43:32 haggai Exp $
+# $Id: apt-proxy-import,v 1.15 2002/06/14 13:58:27 haggai Exp $
 # Import package files from incoming directories
 #
 # Copyright 2002 Chris Halls <chris.halls@gmx.de>
@@ -39,6 +39,7 @@ usage()
 	   "                                (default: $CONFIG_FILE)" 
   echo
   $echo -e "  -d, --verbose\t\t\t give verbose output"
+  $echo -e "  -D, --debug\t\t\t debug mode (don't delete link dir, implies -v)"
   $echo -e "  -h, --help\t\t\t show this help, then exit"
   $echo -e "  -v, --version\t\t\t print version number, then exit"
   echo
@@ -133,7 +134,7 @@ add_backend()
     if [ -n "`ls $2.apt-proxy-filelists/* 2>/dev/null`" ] ;then
         BACKENDS="$BACKENDS $2.apt-proxy-filelists/*"
     else
-        debug "Backend $2 does not have filelists - skipped"
+        info "Backend $2 does not have filelists - skipped"
     fi
 }
 
@@ -149,7 +150,7 @@ directories()
     done
 }
 
-debug()
+info()
 {
     [ -n "$VERBOSE" ] && echo "$@"
 }
@@ -157,8 +158,8 @@ debug()
 unset VERBOSE
 
 # Parse command line
-ARGS=`getopt -o e:c:hvd --long \
-	exact:,config-file:,help,version,verbose \
+ARGS=`getopt -o e:c:hvdD --long \
+	exact:,config-file:,help,version,verbose,debug \
 	-n "$0" -- "$@"`
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 eval set -- "$ARGS"
@@ -178,6 +179,11 @@ while true ; do
                 ;;
 	  '-d'|'--verbose')
 		VERBOSE=1
+		shift
+		;;
+	  '-D'|'--debug')
+	        VERBOSE=1
+	  	DEBUG=1
 		shift
 		;;
 	  '-e'|'--exact')
@@ -217,11 +223,11 @@ for directory in $@; do
 	continue
     elif [ "`echo $directory/*.deb`" = "$directory/*.deb" ]; then
 	# no .debs in directory
-	debug $directory: no files 
+	info $directory: no files 
 	continue
     fi
 
-    debug Clearing temporary directory "$APT_PROXY_CACHE/dpkg-name.links"
+    info Clearing temporary directory "$APT_PROXY_CACHE/dpkg-name.links"
     rm -rf "$APT_PROXY_CACHE/dpkg-name.links/"
     mkdir "$APT_PROXY_CACHE/dpkg-name.links/"
     echo -n "$directory: "
@@ -235,14 +241,19 @@ for directory in $@; do
     #   we have to copy the files instead before renaming
     if ($DPKG_NAME -k 2>&1) | grep -q "can't find \`-k'"; then
         # dpkg-name from potato does not support -k
-	debug Copying debs to temporary directory
+	info Copying debs to temporary directory
 	cp "$directory"/*.deb "$APT_PROXY_CACHE/dpkg-name.links"
         $DPKG_NAME "$APT_PROXY_CACHE/dpkg-name.links"/*.deb | line_feedback
     else
         # Use dpkg-name to create links
-	debug Creating links with correct names with dpkg-name
+	info Creating links with correct names with dpkg-name
         $DPKG_NAME -k -s "$APT_PROXY_CACHE/dpkg-name.links" "$directory"/*.deb \
 	    | line_feedback
+    fi
+
+    if [ -n "$DEBUG" ]; then
+        echo Contents of $APT_PROXY_CACHE/dpkg-name.links:
+	ls -l "$APT_PROXY_CACHE"/dpkg-name.links
     fi
 
     for file in "$APT_PROXY_CACHE"/dpkg-name.links/*; do
@@ -259,7 +270,7 @@ for directory in $@; do
 
 		    dirname=`dirname $f`
 		    if [ ! -d "$dirname" ]; then
-			debug "Making directory $dirname"
+			info "Making directory $dirname"
 			unset DR_LAST
 			for DR in `directories $dirname`; do
 			  if [ -d "$DR_LAST" -a ! -d "$DR" ]; then
@@ -272,7 +283,7 @@ for directory in $@; do
 		    fi
 
 		    if [ -f $f ]; then
-			debug "Skipping $filename - already in directory $dirname"
+			info "Skipping $filename - already in directory $dirname"
 		    else
 			echo "importing $filename"
 			cp -p "$file" "$f" &&
@@ -285,10 +296,11 @@ for directory in $@; do
 	    fi
 	    ;;
 	 *)
-	    debug "Skipping $filename - unsupported type"
+	    info "Skipping $filename - unsupported type"
 	 esac
     done
-    rm -rf "$APT_PROXY_CACHE/dpkg-name.links/"
+    # remove directory if not debugging
+    [ -z "$DEBUG" ] && rm -rf "$APT_PROXY_CACHE/dpkg-name.links/"
 done
 
 exit 0
