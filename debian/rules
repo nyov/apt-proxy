@@ -15,8 +15,9 @@ clean:
 	dh_testdir
 	dh_testroot
 	$(MAKE) -C doc clean
-	rm -f build-stamp install-stamp AptProxy-shutdown.tap
+	rm -f build-stamp install-stamp AptProxy-shutdown-2.tap
 	find . -name "*.pyc" |xargs -r rm
+	find . -name "*.tmlc" |xargs -r rm
 	dh_clean
 
 install: install-stamp
