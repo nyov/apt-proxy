@@ -235,8 +235,9 @@ def import_debs(factory, dir):
                 if not os.path.exists(dirname(dpath)):
                     os.makedirs(dirname(dpath))
                 shutil.copy2(spath, dpath)
-                atime = os.stat(spath)[stat.ST_ATIME]
-                factory.access_times[path] = atime
+                if hasattr(factory, 'access_times'):
+                    atime = os.stat(spath)[stat.ST_ATIME]
+                    factory.access_times[path] = atime
     for backend in factory.backends:
         backend.packages.unload()
                 

@@ -797,9 +797,8 @@ class AptProxyFactory(protocol.ServerFactory):
     def periodic(self):
         self.debug("Doing periodic cleaning up")
         self.clean_old_files()
-        packages.import_debs(self, self.import_dir)
-        self.debug("Periodic cleaning done")
         self.recycler.start()
+        self.debug("Periodic cleaning done")
         reactor.callLater(self.cleanup_freq, self.periodic)
 
     def __init__ (self):
@@ -815,7 +814,6 @@ class AptProxyFactory(protocol.ServerFactory):
         self.packages = shelve.open(db_dir+'/packages.db')
         #start periodic updates
         reactor.callLater(self.cleanup_freq, self.periodic)
-        packages.import_debs(self, self.import_dir)
         self.recycler = misc.MirrorRecycler(self, 1)
         self.recycler.start()
     def clean_versions(self, packages):
