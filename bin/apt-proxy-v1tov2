@@ -1,0 +1,167 @@
+#!/bin/sh
+
+usage () {
+	echo >&2
+	echo "usage:" >&2
+	echo "	$0 v1_config_file v2_template_file > v2_config_file" >&2
+	echo >&2
+}
+
+# Default values
+V1_CONFIG_FILE=/etc/apt-proxy/apt-proxy.conf
+V2_CONFIG_FILE=/etc/apt-proxy/apt-proxy-v2.conf
+
+if [ -n "$1" ]; then
+	V1_CONFIG_FILE="$1"
+fi
+if [ -n "$2" ]; then
+	V2_CONFIG_FILE="$2"
+fi
+
+if [ ! -f "$V1_CONFIG_FILE" ] || [ ! -f "$V2_CONFIG_FILE" ]
+then
+	usage
+	exit 1
+fi
+
+
+# Called from config script to add back ends.
+# APT_PROXY_BACKENDS is a list of backends seperated by spaces.
+#  Whitespace from the add_backend command is replaced by commas
+#	add_backend(url-prefix, file-prefix, backend-prefix...)
+add_backend()
+{
+    [ $# -ge 3 ] || warn Bad add_backend "$@".
+    APT_PROXY_BACKENDS="$APT_PROXY_BACKENDS`echo $@ | tr -s ' \t' ,` "
+}
+
+warn()
+{
+    echo "WARNING: $*" >&2
+}
+
+
+################################# MAIN START ##############################
+# Read V1 configuration
+source $V1_CONFIG_FILE
+
+# Set KEEP_STATS if debug is on
+[ -n "$DEBUG" ] && KEEP_STATS=1
+
+
+min_refresh_delay="min_refresh_delay = $BACKEND_FREQ"
+
+if [ -n "${CLEAN_SWEEP}" ];then
+	cleanup_freq="cleanup_freq = ${CLEAN_SWEEP}d"
+else
+	warn
+	warn "'cleanup_freq' and 'CLEAN_SWEEP' don't quite mean the same,"
+	warn "v2 does more than just erase old files on cleanup."
+	warn
+	cleanup_freq="cleanup_freq = off"
+fi
+
+if [ -n "${CLEANUP_DAYS}" ];then
+	max_age="max_age = ${CLEANUP_DAYS}d" 
+	warn
+	warn "'max_age' and 'CLEANUP_DAYS' don't quite mean the same, 'max_age'"
+	warn "doesn't take into acount if there is a newer version of the"\
+		"package"
+	warn
+else
+	max_age="max_age = off"
+fi
+
+if [ -n "${MAX_VERSIONS}" ];then
+	max_versions="max_versions = ${MAX_VERSIONS}"
+else
+	max_versions="max_versions = off"
+fi
+
+if [ -n "${WGET_TIMEOUT}" ] && [ "${RSYNC_TIMEOUT}" != "${WGET_TIMEOUT}" ]; then
+	warn "WGET_TIMEOUT differes from RSYNC_TIMEOUT, using RSYNC_TIMEOUT"
+fi
+timeout="timeout = ${RSYNC_TIMEOUT}"
+
+cache_dir="cache_dir = ${APT_PROXY_CACHE}"
+
+if $DEBUG; then
+	debug="debug = all db:0"
+fi
+
+SED_SCRIPT="
+s|^min_refresh_delay *=.*$|$min_refresh_delay|
+s|^cleanup_freq *=.*$|$cleanup_freq|
+s|^max_age *=.*$|$max_age|
+s|^max_versions *=.*$|$max_versions|
+s|^timeout *=.*$|$timeout|
+s|^cache_dir *=.*$|$cache_dir|
+s|^debug *=.*$|$debug|"
+
+BACKEND_CONF=""
+append() {
+	BACKEND_CONF="$BACKEND_CONF
+$*"
+}
+
+for BACKEND_STR in $APT_PROXY_BACKENDS
+do
+	NAME=$(echo $BACKEND_STR | sed -e's/,.*$//' -e 's/\///g')
+	append "[$NAME]"
+	SED_SCRIPT="$SED_SCRIPT
+	/^\[$NAME\]/{
+		s/^/;/
+		a\\
+;This backend has been commented out to prevent clash with a \\
+;backend of the same name imported from v1 configuration \\
+;
+	}
+	/^;\[$NAME\]/{
+		: comment
+		n
+		/^\(;*\[\)/b end_backend
+		s/^/;/
+		b comment
+		: end_backend
+	}
+	"
+	CACHE_PATH=$(echo $BACKEND_STR | cut -d, -f2 | sed -e's|/\+|/|g')
+	CACHE_PATH_SHOULD_BE=$(echo $APT_PROXY_CACHE/$NAME/ \
+				| sed -e's|/\+|/|g') 
+	if [ "$CACHE_PATH" != "$CACHE_PATH_SHOULD_BE" ]; then
+		warn
+		warn "cache directory for backend '$NAME' differs" \
+			"from it's name."
+		warn " 	it is '$CACHE_PATH'"
+		warn " 	and should be '$CACHE_PATH_SHOULD_BE'"
+		warn " apt-proxy v2 will not find previously cached" \
+			"files for '$NAME'"
+		warn
+	fi
+	append backends =
+	for BACKEND in $(echo $BACKEND_STR \
+			| sed \
+				-e 's/^\([^,]*,\)\{2\}//' \
+				-e 's|/\?,| |g' \
+				-e 's|/$||g')
+	do
+		#Remove '+' prefix
+		if expr "$BACKEND" : '\+' > /dev/null ; then
+			warn " the '+' prefix is not supported by v2"
+			BACKEND=$(expr "$BACKEND" : '\+\(.*\)$')
+		fi
+		#Put rsync backends in standart proto://host/path notation
+		BACKEND=$(echo $BACKEND|sed -e's|\([^:]*\)::|rsync://\1/|')
+
+		if expr "$BACKEND" : 'rsync:' > /dev/null ; then
+			warn " rsync is not supported on v2 (removed)"
+			append "	;$BACKEND"
+		else
+			append "	$BACKEND"
+		fi
+	done
+done
+
+sed -e "$SED_SCRIPT" $V2_CONFIG_FILE
+
+echo "$BACKEND_CONF"
