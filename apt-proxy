@@ -11,13 +11,14 @@
 #	`I was joking!' -- Paul Mackerras
 #	`Note that Rusty's name is at the top' -- Stephen Rothwell.
 #	`Perl!!!  Please?' -- Martin Schwenke
-APT_PROXY_VERSION=1.2.9.9
+APT_PROXY_VERSION=1.2.9.10
 
 # Default values
 APT_PROXY_LOGFILE=/dev/null
 CONFIG_FILE=/etc/apt-proxy/apt-proxy.conf
 RSYNC=rsync
 WGET=wget
+STAT=/usr/bin/stat
 
 # Parse commandline
 while [ $# -gt 0 ]; do
@@ -65,11 +66,13 @@ log()
 # Determine the size of a file
 #	file_size(file name)
 #
-if [ -x "/usr/bin/stat" ]; then
+if [ -x $STAT ] &&
+   [ "`$STAT -tl /dev/null | sed "s,/dev/null 0 .*,PASSED,"`" = "PASSED" ]
+then
     file_size()
     {
 	[ -z "$1" -o ! -f "$1" ] && return 1
-	set -- `/usr/bin/stat -tl "$1"`
+	set -- `$STAT -tl "$1"`
 	[ -z "$2" ] && return 1
 	echo $2
     }
