@@ -6,7 +6,7 @@ apt-proxy (1.9.13pre14) unstable; urgency=low
   * Update to use the new twisted way to handle internet applications
     (Otavio). (closes: #240294)
   * Add twisted 1.3.0rc1 in know versions (Otavio).
-  * Update packaging, now conforming to policy version 3.6.1 (Otavio).
+  * Update packaging, now conforming to policy version 3.6.1.1 (Otavio).
   * Major packaging cleanup to use better debhelper tools like dh_python
     and like (Otavio).
   * Swap maintainer and uploaders field as requested by Chris (Otavio).
