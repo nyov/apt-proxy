@@ -558,7 +558,13 @@ copy_best_match()
     done
 
     debug Found best basis for ${1}: $CBM_BEST
-    [ -n "$CBM_BEST" ] && cp $CBM_BEST $2
+    if [ -n "$CBM_BEST" ] ;then
+        # Save the access time of file because we use it during cache cleaning
+    	touch --reference $CBM_BEST $CBM_BEST.timestamp
+        cp $CBM_BEST $2
+	touch --reference $CBM_BEST.timestamp $CBM_BEST
+	rm $CBM_BEST.timestamp
+    fi
 }
 
 # Do rsync, drop lock.
@@ -887,9 +893,6 @@ verify_file()
 # Read our configuration
 #. /etc/apt-proxy/apt-proxy.conf
 . $CONFIG_FILE
-
-# rsync command
-RSYNC=rsync
 
 # Set rsync timeout if specified in config file
 if [ -n "$RSYNC_TIMEOUT" ] ; then
