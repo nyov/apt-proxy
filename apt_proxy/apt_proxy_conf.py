@@ -18,7 +18,26 @@ from apt_proxy import AptProxyBackend
 import packages
 import ConfigParser, os
 from ConfigParser import DEFAULTSECT
-
+    
+class MyConfigParser(ConfigParser.ConfigParser):
+    time_multipliers={
+        's': 1,    #seconds
+        'm': 60,   #minutes
+        'h': 3600, #hours
+        'd': 86400,#days
+        }
+    def _gettime(self, section, option):
+        mult = 1
+        value = self.get(section, option)
+        suffix = value[-1].lower()
+        if suffix in self.time_multipliers.keys():
+            mult = self.time_multipliers[suffix]
+            value = value[:-1]
+        return int(value)*mult
+    def gettime(self, section, option):
+        value = self._gettime(section, option)
+        return value
+    
 def aptProxyFactoryConfig(factory):
     defaults = {
         'port': '8000',
@@ -34,7 +53,7 @@ def aptProxyFactoryConfig(factory):
         'import_dir': '/var/cache/apt-proxy/import',
         'disable_pipelining': '0'
         }
-    conf = ConfigParser.ConfigParser(defaults)
+    conf = MyConfigParser(defaults)
     if os.path.exists('/etc/apt-proxy/apt-proxy-v2.conf'):
         conf.read('/etc/apt-proxy/apt-proxy-v2.conf')
     elif os.path.exists('/etc/apt-proxy/apt-proxy-2.conf'):
@@ -44,11 +63,11 @@ def aptProxyFactoryConfig(factory):
 
     factory.proxy_port = conf.getint(DEFAULTSECT, 'port')
     factory.cache_dir = conf.get(DEFAULTSECT, 'cache_dir')
-    factory.max_freq = conf.getint(DEFAULTSECT, 'min_refresh_delay')
+    factory.max_freq = conf.gettime(DEFAULTSECT, 'min_refresh_delay')
     factory.max_versions = conf.getint(DEFAULTSECT, 'max_versions')
-    factory.max_age = conf.getint(DEFAULTSECT, 'max_age')
-    factory.timeout = conf.getint(DEFAULTSECT, 'timeout')
-    factory.cleanup_freq = conf.getint(DEFAULTSECT, 'cleanup_freq')
+    factory.max_age = conf.gettime(DEFAULTSECT, 'max_age')
+    factory.timeout = conf.gettime(DEFAULTSECT, 'timeout')
+    factory.cleanup_freq = conf.gettime(DEFAULTSECT, 'cleanup_freq')
     factory.do_debug = conf.getboolean(DEFAULTSECT, 'debug')
     factory.do_db_debug = conf.getboolean(DEFAULTSECT, 'db_debug')
     factory.finish_horphans = conf.getboolean(DEFAULTSECT,
@@ -68,7 +87,7 @@ def aptProxyFactoryConfig(factory):
             server = server[0:-1]
         backend = AptProxyBackend(name, server)
         if conf.has_option(name, 'timeout'):
-            backend.timeout = conf.getint(name, 'timeout')
+            backend.timeout = conf.gettime(name, 'timeout')
         else:
             backend.timeout = factory.timeout
         packages.AptPackages(backend, factory)
