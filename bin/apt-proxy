@@ -4,11 +4,19 @@ from twisted.internet.app import Application
 import apt_proxy.apt_proxy
 from apt_proxy.apt_proxy_conf import factoryConfig
 from apt_proxy.apt_proxy import Factory
+from twisted.manhole.telnet import ShellFactory
 
 factory = Factory()
-factoryConfig(factory)
+shell = ShellFactory()
+
+factoryConfig(factory, shell)
+
 application = Application("AptProxy")
 application.listenTCP(factory.proxy_port, factory)
+if shell.port:
+    application.listenTCP(shell.port, shell)
+
+
 if __name__ == '__main__':
     #Sorry moshez, but I don't jet feel confortable with twistd
     application.run(0)

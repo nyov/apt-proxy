@@ -48,13 +48,16 @@ class MyConfigParser(ConfigParser):
             value = value[:-1]
         return int(value)*mult
     
-def factoryConfig(factory):
+def factoryConfig(factory, shell):
     "Loads the configuration file into 'factory'"
     defaults = {
         'port': '9999',
         'min_refresh_delay': '30',
         'complete_clientless_downloads': '0',
         'debug': '0',
+	'telnet_port': '0',
+	'telnet_user': 'aptproxy',
+	'telnet_pass': 'aptproxy',
         'timeout': '30',
         'cleanup_freq': '600',
         'cache_dir': '/var/cache/apt-proxy',
@@ -120,3 +123,7 @@ def factoryConfig(factory):
         factory.backends.append(backend)
         if len(servers) > 1:
             log.msg("WARNING: using only first server on backend "+name)
+
+    shell.port = conf.getint(DEFAULTSECT, 'telnet_port')
+    shell.username = conf.get(DEFAULTSECT, 'telnet_user')
+    shell.password = conf.get(DEFAULTSECT, 'telnet_pass')
