@@ -1,7 +1,7 @@
 #!/bin/ash
 # (You may safely change the above to /bin/sh if you do not have ash available)
 #
-# $Id: apt-proxy,v 1.44.2.1 2002/07/04 07:18:57 haggai Exp $
+# $Id: apt-proxy,v 1.44.2.2 2002/07/24 14:12:29 haggai Exp $
 # Copyright Paul Russell <rusty@samba.org>
 # Released under the GPL version 2 or later
 #	Fixed by Stephen Rothwell <sfr@canb.auug.org.au>
@@ -198,7 +198,7 @@ download_url()
     case $DL_URL in
       */) 
           DL_DIR=y
-	  DL_URL=`echo $DL_URL | sed "s,/$,,"`
+	  #DL_URL=`echo $DL_URL | sed "s,/$,,"`
 	  ;;
     esac
 
@@ -1240,7 +1240,7 @@ while true; do
 	conenc=x-gzip
 	;;
 
-    *Packages|*Release|*Sources|*Contents-*)
+    *Packages|*Release|*Release.gpg|*Sources|*Contents-*)
 	debug Updating file \`$REQUEST\'
 	resolve_url $REQUEST 1
 	STREAM="`fetch_file_maybe $URL_REST $FRONT_BASE $BACKS`"

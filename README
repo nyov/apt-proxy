@@ -1,4 +1,5 @@
                  	apt-proxy README
+		    http://apt-proxy.sf.net
 
               Chris Halls <chris.halls@gmx.de>
 
@@ -18,6 +19,11 @@ do the following:
 
 If you are installing from the source tar.gz, for example on a non-Debian
 machine, have a look at INSTALL for manual installation instructions.
+
+Version 1.x of apt-proxy is now in maintainence mode only - new features and
+improvements are going into version 2, which is implemented in Python using the
+Twisted.net framework.  See the web page for more details and how to download
+version 2.
 
 Using apt-proxy with Debian Potato
 ----------------------------------
@@ -112,7 +118,7 @@ A3: rootstrap, a tool for making root images for user-mode-linux.  Assuming
 
 A4: pbuilder, which also uses debootstrap.  Add this to /etc/pbuilderrc:
 
-	MIRRORSITE=http://APTPROXT:9999/main
-	NONUSMIRRORSITE=http://APTPROXT:9999/non-US
+	MIRRORSITE=http://APTPROXY:9999/main
+	NONUSMIRRORSITE=http://APTPROXY:9999/non-US
 
-April 2002
+July 2002

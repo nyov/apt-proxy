@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: apt-proxy-import,v 1.16 2002/06/14 14:27:59 ranty Exp $
+# $Id: apt-proxy-import,v 1.16.2.1 2002/07/24 14:12:29 haggai Exp $
 # Import package files from incoming directories
 #
 # Copyright 2002 Chris Halls <chris.halls@gmx.de>
@@ -30,7 +30,7 @@ usage()
   echo
   $echo -e "  <directory>\t\t\t directory containing files to import."
   echo
-  echo     "             \t\t\t e.g.: /var/cache/apt/archives"
+  $echo -e "             \t\t\t e.g.: /var/cache/apt/archives"
   echo
   $echo -e "  -c, --config-file=config_file  set location of apt-proxy " \
   	   "configuration file\n" \
