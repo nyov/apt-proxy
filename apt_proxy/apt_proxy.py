@@ -419,6 +419,7 @@ class Fetcher:
         self.apDataEnd(self.transfered)
         #Because of a bug in tcp.Client we may be called twice,
         #Make sure that next time nothing will happen
+        #FIXME: This hack is probably not anymore pertinent.
         self.connectionFailed = lambda : log.debug('connectionFailed(2)',
                                                    'client','9')
 
@@ -473,9 +474,17 @@ class FetcherHttp(Fetcher, http.HTTPClient):
         if not request.apFetcher:
             return
 
-        tcpclient = reactor.clientTCP(request.backend.host,
-                                      request.backend.port,
-                                      self, request.backend.timeout)
+        class ClientFactory(protocol.ClientFactory):
+            "Dummy ClientFactory to comply with current twisted API"
+            def __init__(self, instance):
+                self.instance = instance
+            def buildProtocol(self, addr):
+                return self.instance
+            def clientConnectionFailed(self, connector, reason):
+                self.instance.connectionFailed(reason)
+
+        reactor.connectTCP(request.backend.host, request.backend.port,
+                           ClientFactory(self), request.backend.timeout)
 
     def connectionMade(self):
         self.sendCommand(self.request.method, self.request.backend.path
