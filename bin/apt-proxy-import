@@ -16,6 +16,8 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import twisted
+import apt_proxy
 from twisted.python import usage
 import sys, pwd, os
 
@@ -24,6 +26,7 @@ class MyOptions(usage.Options):
         ['version', 'V', 'print version and quit'],
         ['verbose', 'v', 'give verbose output'],
         ['quiet', 'q', "try not to write messages to stdout"],
+        ['recursive', 'r', 'recurse into subdirectories'],
         ['help', 'h'],
         ]
     optParameters = [
@@ -65,19 +68,27 @@ class DummyFactory:
 factory = DummyFactory()
 factoryConfig(factory)
 
+twisted.python.log.startLogging(sys.stdout)
+
 if config.opts['debug']:
     print 'debug'
-if config.opts['verbose']:
-    print "verbose"
     factory.do_debug=1
+    apt_proxy.misc.log.addDomains(factory.debug)
+    apt_proxy.misc.log.addDomains( {'all': config.opts['debug']} )
+elif config.opts['verbose']:
+    print "verbose"
+    apt_proxy.misc.log.addDomains( {'all': 10} )
+elif not config.opts['quiet']:
+    # default behaviour
+    apt_proxy.misc.log.addDomains( {'all': 4} )
 
-if factory.do_debug and not config.opts['quiet']:
-    from apt_proxy.misc import log
-    log.addDomains(factory.debug)
-    log.addDomains( {'all': config.opts['debug']} )
+if config.opts['recursive']:
+    recurse = 1
+else:
+    recurse = 0
 
 import_dir = config.opts['import-dir']
 
 if not import_dir:
     import_dir = factory.import_dir
-packages.import_debs(factory, import_dir)
+packages.import_directory(factory, import_dir, recurse)

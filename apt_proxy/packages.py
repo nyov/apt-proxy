@@ -169,12 +169,13 @@ class AptPackages:
                 apt_pkg.Config[key] = value
             apt_pkg.InitSystem()
 
-            if log.isEnabled('apt'):
-                self.cache = apt_pkg.GetCache()
-            else:
-                self.__fake_stdout()
-                self.cache = apt_pkg.GetCache()
-                self.__restore_stdout()
+            # Disabled.  What is this stuff??
+            # if log.isEnabled('apt'):
+            self.cache = apt_pkg.GetCache()
+            #else:
+            #    self.__fake_stdout()
+            #    self.cache = apt_pkg.GetCache()
+            #    self.__restore_stdout()
 
             self.records = apt_pkg.GetPkgRecords(self.cache)
             self.loaded = 1
@@ -270,46 +271,76 @@ def closest_match(info, others):
     else:
         return "/%s/%s_%s.deb"%(dirname, info['Package'], version)
 
-
-    
-def import_debs(factory, dir):
+def import_directory(factory, dir, recursive=0):
+    """
+    Import all files in a given directory into the cache
+    This is used by apt-proxy-import to import new files
+    into the cache
+    """
     if not os.path.exists(dir):
-        os.makedirs(dir)
-    for file in os.listdir(dir):
-        if file[-4:]!='.deb':
-            log.msg("IGNORING:"+ file, 'import')
-            continue
-        log.msg("considering:"+ dir+'/'+file, 'import')
-        paths = get_mirror_path(factory, dir+'/'+file)
-        if paths:
-            if len(paths) != 1:
-                log.msg("WARNING: multiple ocurrences", 'import')
-                log.msg(str(paths), 'import')
-            path = paths[0]
-        else:
-            log.msg("Not found, trying to guess", 'import')
-            path = closest_match(AptDpkgInfo(dir+'/'+file),
-                                 get_mirror_versions(factory, dir+'/'+file))
-        if path:
-            log.msg("MIRROR_PATH:"+ path, 'import')
-            spath = dir+'/'+file
-            dpath = factory.cache_dir+path
-            if not os.path.exists(dpath):
-                log.msg("IMPORTING:"+spath, 'import')
-                dpath = re.sub(r'/\./', '/', dpath)
-                if not os.path.exists(dirname(dpath)):
-                    os.makedirs(dirname(dpath))
-                f = open(dpath, 'w')
-                fcntl.lockf(f.fileno(), fcntl.LOCK_EX)
-                f.truncate(0)
-                shutil.copy2(spath, dpath)
-                f.close()
-                if hasattr(factory, 'access_times'):
-                    atime = os.stat(spath)[stat.ST_ATIME]
-                    factory.access_times[path] = atime
+        log.err('Directory ' + dir + ' does not exist', 'import')
+        return
+
+    if recursive:    
+        log.debug("Importing packages from directory tree: " + dir, 'import')
+        for root, dirs, files in os.walk(dir):
+            for file in files:
+                import_file(factory, root, file)
+    else:
+        log.debug("Importing packages from directory: " + dir, 'import')
+        for file in os.listdir(dir):
+            mode = os.stat(dir + '/' + file)[stat.ST_MODE]
+            if not stat.S_ISDIR(mode):
+                import_file(factory, dir, file)
+
     for backend in factory.backends:
         backend.packages.unload()
-                
+    
+    
+def import_file(factory, dir, file):
+    """
+    Import a .deb into cache from given filename
+    """
+    if file[-4:]!='.deb':
+        log.msg("Ignoring (unknown file type):"+ file, 'import')
+        return
+    
+    log.debug("considering: " + dir + '/' + file, 'import')
+    paths = get_mirror_path(factory, dir+'/'+file)
+    if paths:
+        if len(paths) != 1:
+            log.debug("WARNING: multiple ocurrences", 'import')
+            log.debug(str(paths), 'import')
+        cache_path = paths[0]
+    else:
+        log.debug("Not found, trying to guess", 'import')
+        cache_path = closest_match(AptDpkgInfo(dir+'/'+file),
+                                get_mirror_versions(factory, dir+'/'+file))
+    if cache_path:
+        log.debug("MIRROR_PATH:"+ cache_path, 'import')
+        src_path = dir+'/'+file
+        dest_path = factory.cache_dir+cache_path
+        
+        if not os.path.exists(dest_path):
+            log.debug("IMPORTING:" + src_path, 'import')
+            dest_path = re.sub(r'/\./', '/', dest_path)
+            if not os.path.exists(dirname(dest_path)):
+                os.makedirs(dirname(dest_path))
+            f = open(dest_path, 'w')
+            fcntl.lockf(f.fileno(), fcntl.LOCK_EX)
+            f.truncate(0)
+            shutil.copy2(src_path, dest_path)
+            f.close()
+            if hasattr(factory, 'access_times'):
+                atime = os.stat(src_path)[stat.ST_ATIME]
+                factory.access_times[cache_path] = atime
+            log.msg(file + ' imported', 'import')
+        else:
+            log.msg(file + ' skipped - already in cache', 'import')
+
+    else:
+        log.msg(file + ' skipped - no suitable backend found', 'import')
+            
 def test(factory, file):
     "Just for testing purposes, this should probably go to hell soon."
     for backend in factory.backends:
