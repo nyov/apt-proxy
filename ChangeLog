@@ -1,0 +1,89 @@
+2001-11-02  lordsutch  <lordsutch@host251>
+
+	* BaseHTTPServer.py:
+	Only send the body of error messages when the HTTP method is not
+	HEAD.  This should significantly reduce the number of SIGPIPEs
+	received by subclasses.
+
+2001-10-18  lordsutch  <lordsutch@host251>
+
+	* debproxy:
+	Removed some superfluous debugging output.
+
+2001-10-18  lordsutch  <lordsutch@host251>
+
+	* debproxy:
+	Removed some superfluous debugging output.
+
+2001-10-17  lordsutch  <lordsutch@host251>
+
+	* timeoutsocket.py:
+	Gives support for timeouts on sockets.
+
+	* debproxy:
+	Added support for twiddling various behaviors of debproxy; also added
+	timeoutsocket support.
+
+2001-10-13  lordsutch  <lordsutch@host251>
+
+	* debproxy:
+	Fixed mirror location.
+
+	* debproxy:
+	Fix typo in call to readlink().
+
+2001-10-11  lordsutch  <lordsutch@host251>
+
+	* md5test.py:
+	Testing mmap versus file.read() timings for md5sums in Python.
+
+	* debproxy:
+	Fix --check option so symlink targets won't be deleted.
+
+	* debproxy:
+	Enabled deletion in debproxy --check.
+
+	* debproxy:
+	Deal with Transfer-Encoding: chunked; more robust code in
+	send_bytes(); added command line options; archive integrity checking
+	is now improved; probably a few more things I forgot.
+
+	* httplib.py:
+	Removed since it's no different from the one in Python CVS.
+
+	* BaseHTTPServer.py, SimpleHTTPServer.py:
+	Changes for better HTTP/1.1 compliance.
+
+	* lockfile.py, partial-mirror.sh, updatemirror.py:
+	Removed files that aren't part of debproxy proper.
+
+	* httplib.py:
+	Initial CVS import.
+
+	* httplib.py: New file.
+
+	* BaseHTTPServer.py:
+	Initial CVS import.
+
+	* BaseHTTPServer.py: New file.
+
+	* partial-mirror.sh, updatemirror.py:
+	Initial CVS import.
+
+	* partial-mirror.sh, updatemirror.py: New file.
+
+	* lockfile.py, sources.list:
+	Initial CVS import.
+
+	* lockfile.py, sources.list: New file.
+
+	* SimpleHTTPServer.py:
+	Initial CVS import.
+
+	* SimpleHTTPServer.py: New file.
+
+	* debproxy:
+	Initial CVS import.
+
+	* debproxy: New file.
+
