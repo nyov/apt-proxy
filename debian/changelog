@@ -1,3 +1,9 @@
+apt-proxy (1.9.5.6pre3) experimental; urgency=low
+
+  * Migrate from python 2.2 to 2.3.
+
+ -- Manuel Estrada Sainz <ranty@debian.org>  Wed, 20 Aug 2003 16:43:43 +0200
+
 apt-proxy (1.9.5.6pre2) experimental; urgency=low
 
   * Fix FTP code and clean up.

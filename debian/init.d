@@ -6,7 +6,7 @@ rundir=/var/run/apt-proxy/
 pidfile=$rundir/apt-proxy.pid 
 logfile=/var/log/apt-proxy.log
 application=/usr/sbin/apt-proxy
-twistd=/usr/bin/twistd2.2
+twistd=/usr/bin/twistd2.3
 user=aptproxy
 group=nogroup
 
