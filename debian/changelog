@@ -12,7 +12,7 @@ apt-proxy (1.2.0-1) unstable; urgency=low
       a MD5 sum error which would go away when the file was requested from
       apt-proxy again), by switching back to using dd instead of tail.
     - Check for corrupted .deb and .gz files in the cache before sending
-      them to the client.
+      them to the client. (closes: #132493)
     - Bye bye .diff: The Sourceforge project is now up to date and includes the
       debian packaging.
   * Really rename main archive name, not just put it in the changelog
@@ -25,14 +25,14 @@ apt-proxy (1.2.0-1) unstable; urgency=low
     This is currently first-install only.  I plan to introduce an upgrade path
     for existing users using debconf when I have time.
   * Move installation instructions that are no longer necessary when using the
-    packge into a seperate file, INSTALL. 
+    packge into a seperate file, INSTALL.
   * Remove extra manual installation instructions that are no longer necessary
     from README (closes: #132439)
   * Merge remaining information from README about finding rsync servers into
     apt-proxy.conf manpage.
   * Add UK rsync servers to default apt-proxy.conf, thanks to Simon Huggins.
 
- -- Chris Halls <chris.halls@nikocity.de>  Mon,  4 Feb 2002 13:24:24 +0100
+ -- Chris Halls <chris.halls@nikocity.de>  Wed,  6 Feb 2002 12:20:12 +0100
 
 apt-proxy (1.1.2-2) unstable; urgency=low
 
