@@ -1,5 +1,8 @@
 apt-proxy (1.9.17+CVS) unstable; urgency=low
 
+  * Applied patch provided by Julien Louis <arthur51@ifrance.com> to fix a
+    reference to the apt-proxy.conf(8) manpage and the SEE ALSO section
+    output. (closes: #265682)
   * Applied patch provided by Sam Couter <sam@couter.dropbear.id.au> to
     makes apt-proxy start as root and then change UID *after* binding the
     listen port. (closes: #270650)
