@@ -7,7 +7,7 @@
 #	`perl!' -- Anton Blanchard
 #	`I was joking!' -- Paul Mackerras
 #	`Note that Rusty's name is at the top' -- Stephen Rothwell.
-APT_PROXY_VERSION=1.0.0
+APT_PROXY_VERSION=1.1.0
 
 # Before anything, save output in fd 3, and redirect others to arg1 if avail
 APT_PROXY_LOGFILE=${1:-/dev/null}
@@ -122,12 +122,10 @@ rsync_link()
 #	directories(pathname)
 directories()
 {
-    DR_DIR="`echo $1 | cut -d/ -f1`"
-    DR_REST="`echo $1 | cut -d/ -f2-`"
-    while [ "$DR_DIR" != "$1/$DR_REST" ]; do
-	echo "$DR_DIR"
-	DR_DIR="$DR_DIR/`echo $DR_REST | cut -d/ -f1`"
-	DR_REST="`echo $DR_REST | cut -d/ -f2-`"
+    DR_TOTAL=""
+    for dr_d in `echo $1 | tr / ' '`; do
+	DR_TOTAL="$DR_TOTAL/$dr_d"
+	echo "$DR_TOTAL"
     done
 }
 
@@ -245,6 +243,19 @@ my_lockfile()
     return $ret
 }
 
+# Find a decent match to base rsync on. 
+#	copy_best_match(front partial)
+copy_best_match()
+{
+    # Try to find a previous version of the same package.
+    CBM_START=`echo $1 | cut -d_ -f1`
+    CBM_EXT=`echo $1 | sed 's/^.*\.//'`
+
+    CBM_BEST=`ls "$CBM_START"*."$CBM_EXT" | tail -1`
+    debug Found best basis for ${1}: $CBM_BEST
+    [ -n "$CBM_BEST" ] && cp $CBM_BEST $2
+}
+
 # Do rsync, drop lock.
 #	rsync_unlock(front url-rest backends...)
 rsync_unlock()
@@ -254,15 +265,21 @@ rsync_unlock()
     shift 2
     RSU_PART=$RSU_FRONT.partial
     RSU_FAIL=$RSU_FRONT.fail
-    RSU_OPTS="--perms --links --times --partial"
+    RSU_OPTS="-v --perms --links --times --partial"
 
     # If file exists (eg. Packages file), copy it to partial.
     # In that case, don't get Packages if it's NEWER.
-    cp -p $RSU_FRONT $RSU_PART 2>/dev/null && RSU_OPTS="$RSU_OPTS --update"
+    if [ -f "$RSU_FRONT" ]; then
+	cp -p $RSU_FRONT $RSU_PART
+	RSU_OPTS="$RSU_OPTS --update"
+    elif [ ! -f "$RSU_PART" ]; then
+	copy_best_match $RSU_FRONT $RSU_PART
+    fi
     for rsu_b in $@; do
 	debug Trying $rsu_b...
 	if rsync $RSU_OPTS $rsu_b$RSU_REST $RSU_PART >$RSU_FAIL 2>&1; then
 	    mv $RSU_PART $RSU_FRONT
+	    [ -n "$KEEP_STATS" ] && log $RSU_REST `tail -1 $RSU_FAIL`
 	    rm -f $RSU_FAIL
 	    break;
 	fi

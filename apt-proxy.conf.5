@@ -68,6 +68,10 @@ and the file would be placed in
 \fIBACKEND_FREQ\fP, if set, means that packages files will not be
 synchronized more frequently than this number of minutes.
 
+\fIKEEP_STATS\fP, if set, means that successful rsync transfers from
+the back-end server have their numbers printed to the log (total size
+and speedup factor).
+
 .PP 
 .SH "CLEANUP OPTIONS"
 \fICLEANUP_DAYS\fP, if set, indicates that if we serve a package or
