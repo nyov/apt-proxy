@@ -1,3 +1,13 @@
+apt-proxy (1.9.10) experimental; urgency=low
+
+  * Rework rsync backend support to stream from rsync's temporary
+    file as apt-proxy version 1 used to.  Support for rsync backends
+    is now available without compiling and installing the rsync hack
+    shared library.
+  * Update documentation
+
+ -- Chris Halls <halls@debian.org>  Mon, 19 Apr 2004 16:49:57 +0200
+
 apt-proxy (1.9.9) experimental; urgency=low
 
   * Add support for multiple backends.  If the connection is refused

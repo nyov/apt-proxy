@@ -19,6 +19,7 @@ from twisted.protocols import http, ftp
 from twisted.web import static
 import os, stat, signal, fcntl, exceptions
 from os.path import dirname, basename
+import glob
 import re
 import urlparse
 import time
@@ -254,7 +255,11 @@ class Fetcher:
                 if self.transport:
                     log.debug(
                         "telling the transport to loseConnection",'client')
-                    self.transport.loseConnection()
+                    try:
+                        self.transport.loseConnection()
+                    except KeyError:
+                        # Rsync fetcher already loses conneciton for us
+                        pass
                 if hasattr(self, 'loseConnection'):
                     self.loseConnection()
         else:
@@ -322,39 +327,48 @@ class Fetcher:
             for req in self.requests:
                 req.write(data)
 
-    def apDataEnd(self, data):
+    def apDataEnd(self, data, saveData=True):
         """
         Called by subclasses when the data transfer is over.
 
-           -caches the received data if everyting went well
+           -caches the received data if everyting went well (if saveData=True)
            -takes care or mtime and atime
            -finishes connection with server and the requests
+           
         """
         import shutil
         if (self.status_code == http.OK):
-            dir = dirname(self.local_file)
-            if(not os.path.exists(dir)):
-                os.makedirs(dir)
-            f = open(self.local_file, "w")
-            fcntl.lockf(f.fileno(), fcntl.LOCK_EX)
-            f.truncate(0)
-            if type(data) is StringType:
-                f.write(data)
-            else:
-                data.seek(0, SEEK_SET)
-                shutil.copyfileobj(data, f)
-            f.close()
-            if self.local_mtime != None:
-                os.utime(self.local_file, (time.time(), self.local_mtime))
-            else:
-                log.debug("no local time: "+self.local_file,'client')
-                os.utime(self.local_file, (time.time(), 0))
+            if saveData:
+                dir = dirname(self.local_file)
+                if(not os.path.exists(dir)):
+                    os.makedirs(dir)
+                f = open(self.local_file, "w")
+                fcntl.lockf(f.fileno(), fcntl.LOCK_EX)
+                f.truncate(0)
+                if type(data) is StringType:
+                    f.write(data)
+                else:
+                    data.seek(0, SEEK_SET)
+                    shutil.copyfileobj(data, f)
+                f.close()
+                if self.local_mtime != None:
+                    os.utime(self.local_file, (time.time(), self.local_mtime))
+                else:
+                    log.debug("no local time: "+self.local_file,'client')
+                    os.utime(self.local_file, (time.time(), 0))
 
             self.factory.file_served(self.request.uri)
             self.request.backend.packages.packages_file(self.request.uri)
         
         if self.transport:
-            self.transport.loseConnection()
+            try:
+              self.transport.loseConnection()
+            except exceptions.KeyError:
+              # Couldn't close connection - already closed?
+              log.debug("transport.loseConnection() - "
+                        "connection already closed")
+              pass
+                
         for req in self.requests:
             req.finish()
         self.apEnd()
@@ -369,9 +383,12 @@ class Fetcher:
             del self.factory.runningFetchers[self.request.uri]
         except exceptions.KeyError:
             log.debug("We are not on runningFetchers!!!",'client')
-            log.debug("Class is not in runningFetchers: "+str(self.__class__) 
-                       + ' URI:' + request.uri, 'fetcher_activate')
-            log.debug('Running fetchers: ' +str(self.factory.runningFetchers),'client')
+            log.debug("Class is not in runningFetchers: "+str(self.__class__),
+                      'client')
+            if self.request:
+                log.debug(' URI:' + self.request.uri, 'fetcher_activate')
+            log.debug('Running fetchers: '
+                      +str(self.factory.runningFetchers),'client')
             #raise exceptions.KeyError
         for req in self.requests[:]:
             self.remove_request(req)
@@ -835,7 +852,7 @@ class FetcherGzip(Fetcher, protocol.ProcessProtocol):
         The problem only happends when we try to finish the process
         while decompresing.
         """
-        if hasattr(self, 'process'):
+        if hasattr(self, 'process') and self.process.pid:
             try:
                 os.kill(self.process.pid, signal.SIGTERM)
                 self.process.connectionLost()
@@ -861,74 +878,154 @@ class FetcherRsync(Fetcher, protocol.ProcessProtocol):
     """
     I frequently am not called directly, Request.fetch makes the
     arrangement for FetcherGzip to use us and gzip the result if needed.
-    
-    NOTE: Here we LD_PRELOAD a rsync_hack.so to make rsync more friendly for
-    streaming.
     """
     post_convert = re.compile(r"^Should not match anything$")
     gzip_convert = re.compile(r"/Packages.gz$")
-
-    LD_PRELOAD=os.environ.get('APT_PROXY_RSYNC_HACK')
-    if not LD_PRELOAD:
-        LD_PRELOAD=os.getcwd() + "/rsync_hack/rsync_hack.so"
-        if not os.path.exists(LD_PRELOAD):
-            LD_PRELOAD='/usr/lib/apt-proxy/rsync_hack.so'
+    
+    "Temporary filename that rsync streams to"
+    rsyncTempFile = None
+    
+    "Number of bytes sent to client already"
+    bytes_sent = 0
 
     def activate (self, request):
         Fetcher.activate(self, request)
         if not request.apFetcher:
             return
 
+        # Change /path/to/FILE -> /path/to/.FILE.* to match rsync tempfile
+        self.globpattern = re.sub(r'/([^/]*)$', r'/.\1.*', self.local_file)
+        
+        for file in glob.glob(self.globpattern):
+          log.msg('Deleting stale tempfile:' + file)
+          unlink(file)
+                
         uri = 'rsync://'+request.backend.host\
               +request.backend.path+'/'+request.backend_uri
         self.local_dir=re.sub(r"/[^/]*$", "", self.local_file)+'/'
 
         exe = '/usr/bin/rsync'
         if self.factory.do_debug:
-            args = (exe, '--progress', '--verbose', '--times',
+            args = (exe, '--partial', '--progress', '--verbose', '--times',
                     '--timeout', "%d"%(request.backend.timeout),
                     uri, '.',)
         else:
             args = (exe, '--quiet', '--times', uri, '.',
                     '--timeout',  "%d"%(request.backend.timeout),
                     )
-        env = {'LD_PRELOAD': self.LD_PRELOAD}
-
         if(not os.path.exists(self.local_dir)):
             os.makedirs(self.local_dir)
-        self.process = reactor.spawnProcess(self, exe, args, env,
+        self.process = reactor.spawnProcess(self, exe, args, None,
                                             self.local_dir)
 
+    def findRsyncTempFile(self):
+        """
+        Look for temporary file created by rsync during streaming
+        """
+        files = glob.glob(self.globpattern)
+        
+        if len(files)==1:
+            self.rsyncTempFile = files[0]
+            log.debug('tempfile: ' + self.rsyncTempFile, 'rsync_client')
+        elif not files:
+            # No file created yet
+            pass
+        else:
+            log.error('found more than one tempfile, abort rsync')
+            self.transport.loseConnection()
+             
     def connectionMade(self):
         pass
 
+    "Data received from rsync process to stdout"
     def outReceived(self, data):
-        self.setResponseCode(http.OK)
-        self.apDataReceived(data)
+        for s in string.split(data, '\n'):
+            if len(s):
+                log.debug('rsync: ' + s, 'rsync_client')
+        #self.apDataReceived(data)
+        if not self.rsyncTempFile:
+            self.findRsyncTempFile()
+            # Got tempfile?
+            if self.rsyncTempFile:
+                self.setResponseCode(http.OK)
+        if self.rsyncTempFile:
+            self.sendData()
 
+
+    "Data received from rsync process to stderr"
     def errReceived(self, data):
-        log.debug(data,'rsync_client')
+        for s in string.split(data, '\n'):
+            if len(s):
+                log.err('rsync error: ' + s, 'rsync_client')
 
-    def processEnded(self, reason=None):
+    def sendData(self):
+        f = None
+        if self.rsyncTempFile:
+            try:
+                f = open(self.rsyncTempFile, 'rb')
+            except IOError:
+                return
+        else:
+            # Tempfile has gone, stream main file
+            #log.debug("sendData open dest " + str(self.bytes_sent))
+            f = open(self.local_file, 'rb')
+            
+        if f:
+            f.seek(self.bytes_sent)
+            data = f.read(abstract.FileDescriptor.bufferSize)
+            #log.debug("sendData got " + str(len(data)))
+            f.close()
+            if data:
+                self.apDataReceived(data)
+                self.bytes_sent = self.bytes_sent + len(data)
+                reactor.callLater(0, self.sendData)
+            elif not self.rsyncTempFile:
+                # Finished reading final file
+                #self.transport = None
+                log.debug("sendData complete")
+                # Tell clients, but data is already saved by rsync so don't
+                # write file again
+                self.apDataEnd(self.transfered, False)
+                
+        
+    def processEnded(self, status_object):
         __pychecker__ = 'unusednames=reason'
-        log.debug("Status: %d" %(self.process.status),'rsync_client')
-        if self.process.status != 0:
-            self.setResponseCode(http.NOT_FOUND)
+        log.debug("Status: %d" %(status_object.value.exitCode)
+                  ,'rsync_client')
+        self.rsyncTempFile = None
+        
+        # Success?
+        exitcode = status_object.value.exitCode
+        
+        if exitcode == 0:
+            # File received.  Send to clients.
+            self.local_mtime = os.stat(self.local_file)[stat.ST_MTIME]
+            reactor.callLater(0, self.sendData)
+        else:
+            if exitcode == 10:
+                # Host not found
+                self.setResponseCode(http.INTERNAL_SERVER_ERROR)
+            else:
+                self.setResponseCode(http.NOT_FOUND)
+                
             if not os.path.exists(self.local_file):
                 try:
                     os.removedirs(self.local_dir)
                 except:
                     pass
+            self.apDataReceived("")
+            self.apDataEnd(self.transfered)
 
-        elif self.transfered == '':
-            log.debug("NOT_MODIFIED",'rsync_client')
-            self.apEndCached()
-            return
-        if os.path.exists(self.local_file):
-            self.local_mtime = os.stat(self.local_file)[stat.ST_MTIME]
-        self.apDataReceived("")
-        self.apDataEnd(self.transfered)
-
+    def loseConnection(self):
+        "Kill rsync process"
+        if self.transport:
+            if self.transport.pid:
+                log.debug("killing rsync child" + 
+                          str(self.transport.pid), 'rsync_client')
+                os.kill(self.transport.pid, signal.SIGTERM)
+            #self.transport.loseConnection()
+        
+        
 
 class FetcherFile(Fetcher):
     """

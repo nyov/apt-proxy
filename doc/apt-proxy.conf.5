@@ -61,15 +61,20 @@ specified within are local to the backend.
 The supplied apt-proxy\&.conf will work out of the box, but I suggest you
 look for a mirror closer to you\&.  There are some in the default
 apt-proxy\&.conf and it may be enough just to reorder the lines in the file\&.
-See \fBFINDING NEW BACKEND SERVERS\fP for how to find and add new backends\&.
 
 .TP
 .B timeout
 Overrides the global timeout
 
-.TP backends
-.B backends
-A list of backend URLs.
+.TP
+.B backends = "<protocol>://<server>/<directory>"
+A list of backend URLs\&.
+.br
+Protocol - internet protocol to use: http, ftp or rsync
+.br
+Server - hostname of the backend server to contact
+.br
+Directory - directory name to prepend requests to for this server
 
 .TP
 .B passive_ftp

@@ -79,14 +79,14 @@ else
 fi
 
 if [ -n "${WGET_TIMEOUT}" ] && [ "${RSYNC_TIMEOUT}" != "${WGET_TIMEOUT}" ]; then
-	warn "WGET_TIMEOUT differes from RSYNC_TIMEOUT, using RSYNC_TIMEOUT"
+	warn "WGET_TIMEOUT differs from RSYNC_TIMEOUT, using RSYNC_TIMEOUT"
 fi
 timeout="timeout = ${RSYNC_TIMEOUT}"
 
 cache_dir="cache_dir = ${APT_PROXY_CACHE}"
 
 if $DEBUG; then
-	debug="debug = all db:0"
+	debug="debug = all db:3"
 fi
 
 SED_SCRIPT="
@@ -154,11 +154,10 @@ do
 		BACKEND=$(echo $BACKEND|sed -e's|\([^:]*\)::|rsync://\1/|')
 
 		if expr "$BACKEND" : 'rsync:' > /dev/null ; then
-			warn " rsync is not supported on v2 (removed)"
-			append ";	$BACKEND"
-		else
-			append "	$BACKEND"
+			warn " rsync support is not recommended for general use,"
+                        warn "   please consider using an http backend instead."
 		fi
+		append "	$BACKEND"
 	done
 done
 
