@@ -26,7 +26,13 @@ import string
 import shelve
 from twisted.python.failure import Failure
 import memleak
-from posixfile import SEEK_SET, SEEK_CUR, SEEK_END 
+#from posixfile import SEEK_SET, SEEK_CUR, SEEK_END
+#since posixfile is considered obsolete I'll define the SEEK_* constants
+#myself.
+SEEK_SET = 0
+SEEK_CUR = 1
+SEEK_END = 2
+
 from types import *
 
 #sibling imports
