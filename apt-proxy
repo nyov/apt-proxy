@@ -263,12 +263,13 @@ copy_best_match()
 }
 
 # Do rsync, drop lock.
-#	rsync_unlock(front url-rest backends...)
+#	rsync_unlock(front url-rest lockfile backends...)
 rsync_unlock()
 {
     RSU_FRONT=$1
     RSU_REST=$2
-    shift 2
+    RSU_LOCK=$3
+    shift 3
     RSU_PART=$RSU_FRONT.partial
     RSU_FAIL=$RSU_FRONT.fail
     RSU_OPTS="-v --perms --links --times --partial"
@@ -291,7 +292,7 @@ rsync_unlock()
 	fi
 	debug `tail -1 < $RSU_FAIL`
     done
-    rm -f $RSU_FRONT.lock
+    rm -f $RSU_LOCK
 }
 
 # Given filename, return wildcard which rsync would use.
@@ -311,13 +312,14 @@ fetch_file_start()
     shift 2
 
     FF_FRONT=$FF_FRONT_BASE$FF_URL_REST
+    FF_LOCK=$FF_FRONT.lock
     while true; do
 	debug Fetching $FF_FRONT from $@
 
 	# Need >/dev/null otherwise our caller (waiting for stdout)
 	# waits for rsync_unlock to finish.
-	my_lockfile $FF_FRONT.lock &&
-	    (rsync_unlock $FF_FRONT $FF_URL_REST $@ &) >/dev/null
+	my_lockfile $FF_LOCK &&
+	    (rsync_unlock $FF_FRONT $FF_URL_REST $FF_LOCK $@ &) >/dev/null
 
 	FF_WILD="`rsync_wildcard $FF_FRONT`"
 	while [ -f $FF_FRONT.lock ]; do
