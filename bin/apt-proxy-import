@@ -16,20 +16,19 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from twisted.python import usage
-import sys
+import sys, pwd, os
 
 class MyOptions(usage.Options):
     optFlags = [
         ['version', 'V', 'print version and quit'],
         ['verbose', 'v', 'give verbose output'],
-        ['debug', 'd', "debug mode (don't delete link dir, implies -v)"],
+        ['quiet', 'q', "try not to write messages to stdout"],
         ['help', 'h'],
         ]
     optParameters = [
-        ['config-file', 'c', None,
-         """ set location of apt-proxy  configuration file where backend
-         directories  are defined."""],
         ['import-dir', 'i', None, "Directory to import .deb's from"],
+        ['user', 'u', 'aptproxy', "Change to this username."],
+        ['debug', 'd', 0, "debug level"],
         ]
     longdesc="apt-proxy-import imports .deb files into the apt-proxy cache."
 
@@ -46,25 +45,36 @@ if config.opts['version']:
     print "apt-proxy-import 1.9.x"
     sys.exit(0)
 
+should_be_uid = pwd.getpwnam(config.opts['user'])[2]
+if os.getuid() != should_be_uid:
+    try:
+        os.setuid(should_be_uid)
+    except OSError:
+        print "Error, couldn't change to user %s."%config.opts['user']
+        sys.exit(1)
+
+from apt_proxy.apt_proxy_conf import factoryConfig
+from apt_proxy import packages
+
 class DummyFactory:
     "This is just to get the configuration data somewhere."
     def debug(self, msg):
         print msg
         
-from apt_proxy.apt_proxy_conf import factoryConfig
-from apt_proxy import packages
-
 factory = DummyFactory()
 factoryConfig(factory)
-if factory.do_debug:
-    from apt_proxy.misc import log
-    log.addDomains(factory.debug)
 
 if config.opts['debug']:
     print 'debug'
 if config.opts['verbose']:
     print "verbose"
     factory.do_debug=1
+
+if factory.do_debug and not config.opts['quiet']:
+    from apt_proxy.misc import log
+    log.addDomains(factory.debug)
+    log.addDomains( {'all': config.opts['debug']} )
+
 import_dir = config.opts['import-dir']
 
 if not import_dir:
