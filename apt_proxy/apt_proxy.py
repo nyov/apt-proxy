@@ -149,8 +149,8 @@ class FileVerifier(protocol.ProcessProtocol):
         This get's automatically called when the process finishes, we check
         the status and report through the Deferred.
         """
-        log.debug("Process Status: %d" %(self.process.status),'verify')
-        log.debug(self.data, 'verify')
+        #log.debug("Process Status: %d" %(self.process.status),'verify')
+        #log.debug(self.data, 'verify')
         if self.laterID:
             self.laterID.cancel()
             if self.process.status == 0:
@@ -276,7 +276,7 @@ class Fetcher:
             self.activate(request)
             
     def activate(self, request):
-        log.debug(self.__class__)
+        log.debug(str(self.__class__) + ' URI:' + request.uri, 'fetcher_activate')
         self.local_file = request.local_file
         self.local_mtime = request.local_mtime
         self.factory = request.factory
@@ -286,8 +286,6 @@ class Fetcher:
         for req in self.requests:
             self.update_request(req)
         self.requests.append(request)
-
-        log.debug("Request uri: " + request.uri,'client')
 
         request.apFetcher = self
         if self.factory.runningFetchers.has_key(request.uri):
@@ -1082,14 +1080,14 @@ class Request(http.Request):
                 log.debug("file is immutable: "+self.local_file, 'file_ok')
                 deferred.callback(None)
             elif last_access < min_time:
-                log.debug("file is not ok: "+self.local_file, 'file_ok')
+                log.debug("file is too old: "+self.local_file, 'file_ok')
                 update_times[self.uri] = cur_time
                 deferred.errback()
             else:
                 log.debug("file is ok: "+self.local_file, 'file_ok')
                 deferred.callback(None)
 
-        log.debug("check_cached: "+self.local_file)
+        log.debug("check_cached: "+self.local_file, 'file_ok')
         deferred = defer.Deferred()
         if os.path.exists(self.local_file):
             verifier = FileVerifier(self)
@@ -1138,7 +1136,8 @@ class Request(http.Request):
             if len(dummyFetcher.requests)==0:
                 #The request's are gone, the clients probably closed the
                 #conection
-                log.debug("THE REQUESTS ARE GONE (Clients closed conection)")
+                log.debug("THE REQUESTS ARE GONE (Clients closed conection)", 
+                          'fetch')
                 dummyFetcher.apEnd()
                 return
 
