@@ -1304,6 +1304,8 @@ class Factory(protocol.ServerFactory):
         reactor.callLater(self.cleanup_freq, self.periodic)
         self.recycler = misc.MirrorRecycler(self, 1)
         self.recycler.start()
+        import apt_pkg
+        apt_pkg.InitSystem()
     def clean_versions(self, packages):
         """
         Remove entries for package versions which are not in cache, and delete
@@ -1313,6 +1315,19 @@ class Factory(protocol.ServerFactory):
         comparing the versions of files.
         """
         cache_dir = self.cache_dir
+        
+        def compare(a, b):
+            """
+            This function is just for string.sort and it could somehow cache
+            the version of each file for better performance.
+            """
+            def version(filename):
+                from packages import AptDpkgInfo
+                info = AptDpkgInfo(cache_dir+filename)
+                return info['Version']
+            import apt_pkg
+            return apt_pkg.VersionCompare(version(a), version(b))
+
         if len(packages) <= self.max_versions:
             return
 
@@ -1320,8 +1335,8 @@ class Factory(protocol.ServerFactory):
             if not os.path.exists(cache_dir +'/'+ package):
                 packages.remove(package)
 
-        # this is not the right way to do it, we should sort the list
-        # by package version first or something
+        packages.sort(compare)
+        log.debug(str(packages), 'max_versions')
         while len(packages) > self.max_versions:
             os.unlink(cache_dir +'/'+ packages[0])
             del packages[0]
