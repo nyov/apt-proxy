@@ -1,0 +1,18 @@
+#!/bin/sh
+
+#DEBHELPER#
+
+NAME=apt-proxy
+
+dpkg --listfiles $NAME |
+        awk '$0~/\.py$/ {print $0"c\n" $0"o"}' |
+        xargs rm -f >&2
+
+case "$1" in
+	upgrade)
+	if dpkg --compare-versions "$2"  lt-nl 1.9; then
+		echo "Enabling inetd's apt-proxy v1 line."
+	    	update-inetd --comment-chars "#<apt-proxy-v2># " --enable 9999
+	fi
+	;;
+esac
