@@ -1,3 +1,11 @@
+apt-proxy (1.2.9.10) sourceforge; urgency=low
+
+  * Update installation instructions for non-Debian systems
+  * Add check that stat supports -t option (thanks to Oliver Bornet)
+  * Suggest stat and update description
+
+ -- Chris Halls <chris.halls@gmx.de>  Thu,  4 Apr 2002 08:51:34 +0200
+
 apt-proxy (1.2.9.9) sourceforge; urgency=low
 
   * Add --quiet option to adduser until #141016 is fixed (closes: #140826)
