@@ -1093,7 +1093,7 @@ class FetcherFile(Fetcher):
         self.if_modified(request)
         file = open(self.local_file,'rb')
         fcntl.lockf(file.fileno(), fcntl.LOCK_SH)
-	basic.FileSender().beginFileTransfer(file, request).addCallback(self.apEnd).addCallback(lambda r: file.close())
+        basic.FileSender().beginFileTransfer(file, request).addCallback(self.apEnd).addCallback(lambda r: file.close()).addCallback(lambda r: request.transport.loseConnection())
         
     def activate(self, request):
         Fetcher.activate(self, request)
@@ -1114,7 +1114,7 @@ class FetcherFile(Fetcher):
         request.setHeader("Content-Length", request.local_size)
         request.setHeader("Last-modified",
                           http.datetimeToString(request.local_mtime))
-	basic.FileSender().beginFileTransfer(file, self.request).addCallback(self.apEnd).addCallback(lambda r: file.close())
+        basic.FileSender().beginFileTransfer(file, self.request).addCallback(self.apEnd).addCallback(lambda r: file.close()).addCallback(lambda r: request.transport.loseConnection())
 
     def apEnd(self, ignored=None):
         if len(self.requests) == 0:
