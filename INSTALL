@@ -5,6 +5,23 @@
 These are manual installation instructions for apt-proxy.  They should only
 be necessary if you are trying to install apt-proxy on a non Debian system.
 
+Thanks to Oliver Bornet for providing feedback.  He was able to successfully
+run apt-proxy on a RedHat system.
+
+Programs required to run apt-proxy:
+
+    - ash (0.3 or above) or bash.  ash is faster.  If you don't have ash, change
+      the first line of apt-proxy from #!/bin/ash to the path to bash on your
+      system (probably /bin/bash).
+
+    - wget (if you use http/ftp backends)
+    - rsync (if you use rsync backends)
+
+    Optional programs:
+    - grep-dctrl (for cache cleaning and optimise transfers with HTTP keep-alive)
+    - dpkg (for cache cleaning and to optimise rsync transfers)
+    - stat (needs to accept parameters -tl.  Again, improves performance a little)
+
 To set up apt-proxy as a partial mirror, you need to do the following:
 
 1. Copy the apt-proxy script to /usr/local/sbin or somewhere of your
@@ -37,4 +54,4 @@ inetd.conf. Once this is done, you are ready to use it.
 Note: I do not recommend exposing the apt-proxy to malicious users: if so
 you should run it within a chroot jail.
 
-February 2002
+April 2002
