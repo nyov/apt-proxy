@@ -26,7 +26,7 @@ import string
 import shelve
 from cStringIO import StringIO
 from twisted.python.failure import Failure
-#import memleak
+import memleak
 
 #sibling imports
 import packages, misc
@@ -1206,7 +1206,8 @@ class AptProxy(http.HTTPChannel):
         for req in self.requests:
             req.connectionLost()
         log.debug("Client connection closed")
-        #memleak.print_top_10();
+        if log.isEnabled('memleak'):
+            memleak.print_top_10()
 
 class AptProxyFactory(protocol.ServerFactory):
     """
