@@ -1,0 +1,114 @@
+.\" Man page copied from apt.conf man page.
+.TH "apt-proxy" "8" "26 Sep 2000" "apt-proxy.conf" "" 
+.SH "Name" 
+apt-proxy \- A proxy for saving bandwidth to Debian servers
+.PP 
+.SH "DESCRIPTION" 
+\fBapt-proxy\fP is an advanced shell script designed to be run out of
+inetd, and provides a clean, caching, intelligent proxy for
+\fBapt-get\fP, which speaks HTTP to apt-get clients, and rsync to the
+back-end server(s)\&.  Usually it is run on port 9999, mainly because
+that is the default configuration, and people are lazy\&.
+.PP
+.SH "CLIENT CONFIGURATION"
+Once \fBapt-proxy\fP is configured, users then edit their
+\fBsources\&.list\fP file to point to the proxy (which uses the http
+protocol to serve clients), like so:
+
+.nf 
+
+deb http://SERVER:9999/ woody main contrib non-free
+deb http://SERVER:9999/non-US/ woody/non-US main contrib non-free
+deb http://SERVER:9999/helixcode/ woody main
+deb-src http://SERVER:9999/ woody main
+
+.fi
+
+What path should be specified after the server name and port number
+depends on the configuration of \fBapt-proxy\fP (which can restrict
+paths and send different paths to different servers)\&.  In this
+example, non-US/ and helixcode/ actually retrieve files from different
+back-end servers\&.
+
+Note that you can also use the nicknames `unstable', `frozen' etc, but
+they will be slightly slower for `apt-get update'.
+.PP
+.SH "SERVER CONFIGURATION"
+Create a user (or perhaps use the ftp user) for the server to run as.
+
+Place your backend server and cache directories in your
+\fBapt-proxy&.conf\fP file.  The directories must exist and be
+writable by the user you chose above. If you have an older cache you
+wish to keep, you can simply use that.
+
+Add a line in \fB/etc/inetd.conf\fP which calls apt-proxy, like so:
+
+.nf 
+
+9999           stream  tcp     nowait.400      apt-user    /usr/sbin/tcpd  /usr/local/sbin/apt-proxy /var/log/apt-proxy.log
+
+.fi
+
+The final argument is the apt-proxy log file: if not specified, no log
+is kept.  The `nowait.400' allows up to 400 invocations a minute: the
+default of 40 is usually not enough for a reasonable size server (and
+inetd will disable apt-proxy for 5 minutes when it detects more than
+this many connections a minute).
+
+Configure apt-proxy (see \fBapt-proxy\&.conf\fP(5)); you will have to
+make the root directories specified in this configuration file, and
+ensure they are writable by the user nominated in inetd.conf.  Once
+this is done, you are ready to use it.
+
+Note: I do not recommend exposing the apt-proxy to malicious users: if
+so you should run it within a chroot jail.
+
+.PP
+.SH "SYMLINKS AND DIRECTORIES"
+
+\fBapt-proxy\fP will copy symbolic links from the server, but it will
+never update them while they are still linked to a real file.  For
+most users, this will not matter.  The exception is that every time a
+Packages or Packages.gz file is served from a path which contains a
+directory, the back-end servers are probed to see if the symbolic link
+has changed (eg. `unstable/').  This is why it is slightly faster to
+use the real distribution names (eg. `woody/') in your
+\fBsources.list\fP.
+
+Directories are also created on demand, where they exist on the
+backend server.
+
+.PP
+.SH "CARE AND FEEDING OF MIRRORS"
+
+\fBapt-proxy\fP reduces the bandwidth requirements of Debian mirrors
+by synchronizing uncompressed Packages files where possible (much
+cheaper than downloading the entire compressed file), by restricting
+the frequency of Packages, Releases and Sources file updates from the
+back end, by keeping partial transfers, and only doing a single rsync
+for any file, how ever many users request it from the proxy.
+
+.PP 
+.SH "FILES" 
+/etc/apt-proxy/apt-proxy\&.conf
+
+.PP 
+.SH "SEE ALSO" 
+apt-proxy.conf (5)
+.PP 
+.SH "BUGS" 
+It does not support http front ends, so apt-proxies cannot be chained.
+
+apt-get(8) does not like HTTP headers without a Content-Length:,
+making streaming cumbersome.
+
+Current versions of rsync (2.4.6) do not support --fuzzy, which would
+use similar files as the basis for synchronizing new files.
+
+Current versions of gzip (1.2.4) do not support --rsyncable, which
+gives a 30% reduction in bytes transferred for binary packages, and
+much greater for source and other packages.
+
+.PP 
+.SH "AUTHOR" 
+apt-proxy was written by the Apt-Proxy World Domination Project.

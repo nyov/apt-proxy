@@ -1,0 +1,97 @@
+.\" Man page copied from apt.conf man page.
+.TH "apt-proxy\&.conf" "5" "26 Sep 2000" "apt-proxy" "" 
+.SH "NAME" 
+apt-proxy\&.conf \- configuration file for apt-proxy
+.PP 
+.SH "DESCRIPTION" 
+\fBapt-proxy\&.conf\fP is the configuration file for apt-proxy; the
+only option which cannot be controlled using the configuration file is
+the position of the log (sometimes required before apt-proxy reads the
+config file).  When the apt-proxy program starts up, it will read
+\fB/etc/apt-proxy/apt-proxy\&.conf\fP\&.
+.PP 
+The configuration file is a shell script, which is sourced from
+apt-proxy; in effect your configuration file becomes part of the
+apt-proxy program\&.
+.PP 
+.SH "BACKEND SERVERS" 
+The most difficult job of apt-proxy\&.conf is to define the back-end
+(rsync) Debian servers, and the mapping between the file requested by
+the apt-get client, and the file on the servers\&.  This is done using
+the \fIadd_backend\fP function, which takes three or more arguments\&.
+.PP
+The first is the URI prefix: if the start of the client URL begins
+with this string, then this backend configuration will be used\&.  They
+are examined in order, so list the most specific servers first\&.
+.PP
+The second is the cache path prefix: the client URI will have the
+prefix chopped off and replaced by this to form the location of the
+cache file\&.
+.PP
+The rest are the rsync-compatible server names: the client URI will
+have the prefix chopped off and replaced by this name to form the
+location of the back-end file\&.  If the rsync fails to the first
+server for any reason, it will fall back to successive servers.
+.PP
+This example shows how to give clients access to the Helixcode Debian
+files (the backslashes at the end of the lines are important):
+
+.nf 
+
+add_backend /helixcode/						\\
+	/home/ftp/pub/debian/helixcode/				\\
+	somelocalmirror::helixcode/debian/			\\
+	spidermonkey.helixcode.com::http/distributions/debian/
+
+.fi
+
+.PP
+Using this configuration, the client would use a \fBsources.list\fP entry like:
+
+.nf 
+
+deb http://server:9999/helixcode/ woody main
+
+.fi
+
+And so the file request
+`/helixcode/woody/main/binary-i386/x11/foo_1-1.deb' would turn into a
+back-end request of first
+`somelocalmirror::helixcode/debian/woody/main/binary-i386/x11/foo_1-1.deb'
+and if that failed,
+`spidermonkey.helixcode.com::http/distributions/debian/woody/main/binary-i386/x11/foo_1-1.deb'
+and the file would be placed in
+`/home/ftp/pub/debian/helixcode/woody/main/binary-i386/x11/foo_1-1.deb'\&.
+
+.PP 
+.SH "OTHER OPTIONS"
+\fIBACKEND_FREQ\fP, if set, means that packages files will not be
+synchronized more frequently than this number of minutes.
+
+.PP 
+.SH "CLEANUP OPTIONS"
+\fICLEANUP_DAYS\fP, if set, indicates that if we serve a package or
+source file, and there are older versions of the same file which have
+not been accessed in this many days (beware backup programs which read
+all files), they will be deleted, and the result logged.  This is very
+conservative and cheap.
+
+\fICLEAN_SWEEP\fP, if set, indicates that once this number of days has
+passed, we should sweep through the base of the cache area (the third
+argument to \fIadd_backend\fP above), looking for packages and source
+files which have not been accessed in this many days.  They will be
+deleted, and the result logged.  This is very useful for avoiding the
+buildup of obsolete and very infrequently accessed files, such as
+sources.
+
+.SH "FILES" 
+/etc/apt-proxy/apt-proxy\&.conf
+.PP 
+.SH "SEE ALSO" 
+apt-proxy (8)
+.PP 
+.SH "BUGS" 
+Plently sure.  Please report.
+.PP 
+.SH "AUTHOR" 
+apt-proxy was written by the Apt-Proxy World Domination Project.
