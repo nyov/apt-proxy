@@ -327,10 +327,7 @@ class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
 
         """
 
-        try:
-            short, long = self.responses[code]
-        except KeyError:
-            short, long = '???', '???'
+        short, long = self.responses.get(code, ('???', '???'))
         if not message:
             message = short
         explain = long
@@ -338,10 +335,11 @@ class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
         content = (self.error_message_format %
                    {'code': code, 'message': message, 'explain': explain})
         self.send_response(code, message)
-        self.send_header('Content-Length', len(content))
+        if code != 304:
+            self.send_header('Content-Length', len(content))
         self.send_header('Content-Type', 'text/html')
         self.end_headers()
-        if self.command != 'HEAD':
+        if self.command != 'HEAD' and code != 304:
             self.wfile.write(content)
 
     error_message_format = DEFAULT_ERROR_MESSAGE
@@ -355,13 +353,13 @@ class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
         """
         self.log_request(code)
         if message is None:
-            if self.responses.has_key(code):
+            if code in self.responses:
                 message = self.responses[code][0]
             else:
                 message = ''
         if self.request_version != 'HTTP/0.9':
-            self.wfile.write("%s %s %s\r\n" %
-                             (self.protocol_version, str(code), message))
+            self.wfile.write("%s %d %s\r\n" %
+                             (self.protocol_version, code, message))
         self.send_header('Server', self.version_string())
         self.send_header('Date', self.date_time_string())
 
