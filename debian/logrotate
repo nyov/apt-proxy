@@ -4,4 +4,5 @@
 	weekly
 	delaycompress
 	missingok
+        create 640 aptproxy adm
 }

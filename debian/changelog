@@ -1,4 +1,4 @@
-apt-proxy (1.3.3.4pre2) unstable; urgency=low
+apt-proxy (1.3.3.4pre3) unstable; urgency=low
 
   * Correct spelling error in apt-proxy.conf (closes: #157147)
   * Add more items to the FAQ and improve documentation of the different
@@ -6,8 +6,9 @@ apt-proxy (1.3.3.4pre2) unstable; urgency=low
     Thanks to Heather Stern for the suggestions.
   * Apply patch from Roger Burton West (thanks!) to handle unknown filetypes
     for Jigdo support (closes: #156676, #156009)
+  * logrotate script creates logfile if missing (closes: #161619)
 
- -- Chris Halls <chris.halls@gmx.de>  Mon, 19 Aug 2002 10:22:31 +0200
+ -- Chris Halls <chris.halls@gmx.de>  Fri, 20 Sep 2002 10:59:04 +0200
 
 apt-proxy (1.3.3) unstable; urgency=low
 
