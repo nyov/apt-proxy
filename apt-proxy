@@ -1,12 +1,12 @@
 #!/bin/ash
 # (You may safely change the above to /bin/sh if you do not have ash available)
 #
-# $Id: apt-proxy,v 1.44.2.5 2002/11/15 15:30:49 haggai Exp $
+# $Id: apt-proxy,v 1.44.2.6 2002/11/15 15:39:19 haggai Exp $
 # Copyright Paul Russell <rusty@samba.org>
 # Released under the GPL version 2 or later
 #	Fixed by Stephen Rothwell <sfr@canb.auug.org.au>
 #       Stuff by Martin Schwenke <martin@meltin.net>
-#	Maintained and packaged for Debian by Chris Halls <chris.halls@gmx.de>
+#	Maintained and packaged for Debian by Chris Halls <halls@debian.org>
 #
 #	`perl!' -- Anton Blanchard
 #	`I was joking!' -- Paul Mackerras

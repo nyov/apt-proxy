@@ -1,6 +1,6 @@
                  	apt-proxy INSTALL
 
-              Chris Halls <chris.halls@gmx.de>
+              Chris Halls <halls@debian.org>
 
 These are manual installation instructions for apt-proxy.  They should only
 be necessary if you are trying to install apt-proxy on a non Debian system.

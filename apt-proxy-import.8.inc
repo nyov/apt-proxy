@@ -56,4 +56,4 @@ It does not yet import source.tar.gz or Packages files.
 You must run it as the apt-proxy user or as root.
 
 [AUTHORS]
-Chris Halls <chris.halls@gmx.de>, Manuel Estrada Sainz <ranty@debian.org>
+Chris Halls <halls@debian.org>, Manuel Estrada Sainz <ranty@debian.org>
