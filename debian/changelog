@@ -1,3 +1,11 @@
+apt-proxy (1.9.28) unstable; urgency=low
+
+  * Fix exception in dynamic backends.  Closes: #296513
+  * If another client requests the same Packages/Releases file,
+    send the file instead of HTTP 304 Not Modified.  Closes: #284584
+
+ -- Chris Halls <halls@debian.org>  Thu,  3 Mar 2005 14:55:30 +0000
+
 apt-proxy (1.9.27) unstable; urgency=low
 
   * Delay database directory creation until after uid change.

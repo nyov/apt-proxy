@@ -432,6 +432,7 @@ class Fetcher:
         A backend has indicated that this file has not changed,
         so serve the file from the disk cache
         """
+        self.setResponseCode(http.OK)
         self.apEndTransfer(FetcherFile)
         
     def apEndTransfer(self, fetcher_class):
@@ -1346,8 +1347,8 @@ class Request(http.Request):
             # We are using dynamic backends so we will use the name as
             # the hostname to get the files.
             log.debug("Adding " + self.uri[1:].split('/')[0] + " backend dynamicaly")
-            self.backend = Backend(self.uri[1:].split('/')[0], self.factory
-                                   ("http://" + self.uri[1:].split('/')[0]))
+            self.backend = Backend(self.uri[1:].split('/')[0], self.factory,
+                                   ("http://" + self.uri[1:].split('/')[0],))
             self.backend_uri = self.backend.get_path(self.uri)
             
         self.backendServer = self.backend.get_first_server()
