@@ -236,6 +236,8 @@ class AptProxyClient:
         request.proxy_client = self
 
         #get the new request up to date
+        request.local_mtime = self.request.local_mtime
+        request.local_size = self.request.local_size
         if(self.status_code != None):
             request.setResponseCode(self.status_code)
         for name, value in self.request.headers.items():
@@ -250,6 +252,9 @@ class AptProxyClient:
         
         If this is our last request, we may also close the connection with the
         server depending on the configuration.
+
+        We keep the first request for reference even if the client closed the
+        connection.
         """
         self.requests.remove(request)
         if len(self.requests) == 0:
