@@ -27,6 +27,20 @@ usage()
   echo
 }
 
+line_feedback()
+{
+	local LINE
+	while read LINE
+	do
+		if [ -n "$VERBOSE" ] ;then
+			echo "$@"
+		else
+			echo -n "."
+		fi
+	done
+	echo
+}
+
 mirrorpaths_packages()
 {
 	local filename="$1"
@@ -170,7 +184,18 @@ for directory in $@; do
 	continue
     fi
 
-    for file in $directory/*; do
+    #Make sure that we use the correct names
+    #about dpkg-name:
+    #	The best we could get out of dpkg-name, without renaming the files on
+    #	place, was making symlinks with the right name on a certain directory,
+    #	and that it the reason for creating "$APT_PROXY_CACHE/dpkg-name.links/"
+
+    rm -rf "$APT_PROXY_CACHE/dpkg-name.links/"
+    mkdir "$APT_PROXY_CACHE/dpkg-name.links/"
+    dpkg-name -k -s "$APT_PROXY_CACHE/dpkg-name.links" "$directory"/*.deb \
+    	| line_feedback
+
+    for file in "$APT_PROXY_CACHE"/dpkg-name.links/*; do
 
     	filename=`basename $file`
 	
@@ -213,6 +238,7 @@ for directory in $@; do
 	    debug "Skipping $filename - unsupported type"
 	 esac
     done
+    rm -rf "$APT_PROXY_CACHE/dpkg-name.links/"
 done
 
 exit 0
