@@ -1289,7 +1289,7 @@ class Request(http.Request):
 
         if self.method != 'GET':
             #we currently only support GET
-            log.debug("abort - not implemented")
+            log.debug("abort - method not implemented")
             self.finishCode(http.NOT_IMPLEMENTED)
             return
 
