@@ -32,6 +32,7 @@ def aptProxyFactoryConfig(factory):
         'max_versions': '3',
         'max_age': '10',
         'import_dir': '/var/cache/apt-proxy/import',
+        'disable_pipelining': '0'
         }
     conf = ConfigParser.ConfigParser(defaults)
     if os.path.exists('/etc/apt-proxy/apt-proxy-v2.conf'):
@@ -53,6 +54,8 @@ def aptProxyFactoryConfig(factory):
     factory.finish_horphans = conf.getboolean(DEFAULTSECT,
                                               'complete_clientless_downloads')
     factory.import_dir = conf.get(DEFAULTSECT, 'import_dir')
+    factory.disable_pipelining = conf.getboolean(DEFAULTSECT,
+                                                 'disable_pipelining')
     factory.backends = []
     for name in conf.sections():
         if name.find('/') != -1:

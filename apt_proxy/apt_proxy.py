@@ -81,6 +81,7 @@ class FileVerifier(protocol.ProcessProtocol):
             args = (exe, '-c', "echo unknown file: not verified 1>&2")
 
         self.process = reactor.spawnProcess(self, exe, args)
+        self.laterID = reactor.callLater(self.factory.timeout, self.timedout)
 
     def connectionMade(self):
         self.data = ''
@@ -91,7 +92,13 @@ class FileVerifier(protocol.ProcessProtocol):
     def errReceived(self, data):
         self.data = self.data + data
 
+    def timedout(self):
+        self.factory.debug("Process Timedout:")
+        self.factory.debug("verifier: verication failed")
+        self.deferred.errback(None)
+        
     def processEnded(self):
+        reactor.cancelCallLater(self.laterID)
         self.factory.debug("Process Status: %d" %(self.process.status))
         self.factory.debug("verifier: " + self.data)
         if self.process.status == 0:
@@ -108,6 +115,7 @@ def findFileType(name):
 
 def aptProxyClientDownload(request, serve_cached=1):
     def cached_cb(result, request, serve_cached):
+        request.factory.debug("CACHED")
         if serve_cached:
             return request.send_cached()
         else:
@@ -115,6 +123,7 @@ def aptProxyClientDownload(request, serve_cached=1):
             request.finish()
             return None
     def not_cached_cb(result, request, running):
+        request.factory.debug("NOT_CACHED")
         client_class = request.backend.client
         if client_class.gzip_convert.search(request.uri):
             client = AptProxyClientGzip(request)
@@ -142,6 +151,7 @@ def aptProxyClientDownload(request, serve_cached=1):
         return running[request.uri]
 
     else:
+        request.factory.debug("CHECKING_CACHED")
         d = request.check_cached()
         d.addCallbacks(cached_cb, not_cached_cb,
                        (request,serve_cached,), None,
@@ -705,11 +715,17 @@ class AptProxyRequest(http.Request):
         http.Request.__init__(self, channel, queued)
 
     def connectionLost(self):
-        self.proxy_client.remove_request(self)
+        #If it is waiting for a file verification it may not have a
+        #proxy_client assigned
+        if hasattr(self, 'proxy_client'):
+            self.proxy_client.remove_request(self)
 
     def process(self):
         self.uri = self.simplify_path(self.uri)
         self.local_file = self.factory.cache_dir + self.uri
+
+        if self.factory.disable_pipelining:
+            self.setHeader('Connection','close')
 
         if self.method != 'GET':
             #we currently only support GET
