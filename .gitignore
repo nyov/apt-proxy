@@ -1,0 +1,5 @@
+*.pyo
+*.pyc
+
+# cvs rsync
+apt-proxy.source/
